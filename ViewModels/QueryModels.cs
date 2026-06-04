@@ -4,6 +4,9 @@ namespace NavMeCat.ViewModels;
 
 public enum SortDirection { Asc, Desc }
 
+/// <summary>How the cell detail panel renders the selected cell.</summary>
+public enum CellViewMode { Auto, Text, Hex, Image, Web }
+
 public enum FilterOperator
 {
     Contains, Equals, NotEquals,

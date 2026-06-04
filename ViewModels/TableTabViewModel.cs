@@ -34,11 +34,27 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool showDetailPanel;
     [ObservableProperty] private string? detailColumn;
     [ObservableProperty] private string detailText = "";
+    [ObservableProperty] private string detailHex = "";
+    [ObservableProperty] private System.Windows.Media.ImageSource? detailImage;
+    [ObservableProperty] private string detailHtml = "";
     [ObservableProperty] private GridLength detailRowHeight = new(0);
+    [ObservableProperty] private bool viewMenuOpen;
+    [ObservableProperty] private CellViewMode viewMode = CellViewMode.Auto;
+
+    private CellViewMode _effectiveViewMode = CellViewMode.Text;
+    public bool IsTextMode => _effectiveViewMode == CellViewMode.Text;
+    public bool IsHexMode => _effectiveViewMode == CellViewMode.Hex;
+    public bool IsImageMode => _effectiveViewMode == CellViewMode.Image;
+    public bool IsWebMode => _effectiveViewMode == CellViewMode.Web;
+    public string ViewModeLabel => _effectiveViewMode.ToString();
+    /// <summary>Apply is only meaningful for editable text on a string column.</summary>
+    public bool CanApplyDetail => IsTextMode && _detailIsString;
 
     private double _lastDetailPx = 220;
     private DataRowView? _detailRow;
     private string? _detailColumnName;
+    private byte[]? _detailBytes;
+    private bool _detailIsString;
 
     // ---- filter / sort ---------------------------------------------------
     public ObservableCollection<string> ColumnNames { get; } = new();
@@ -136,11 +152,72 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         _detailRow = row;
         _detailColumnName = column;
         DetailColumn = column;
-        DetailText = value is null or DBNull ? "" : value.ToString() ?? "";
+
+        var actual = value is DBNull ? null : value;
+        if (actual is byte[] bytes)
+        {
+            _detailBytes = bytes;
+            _detailIsString = false;
+            DetailText = $"(binary — {bytes.Length:N0} byte(s))";
+        }
+        else
+        {
+            var text = actual?.ToString() ?? "";
+            DetailText = text;
+            _detailBytes = System.Text.Encoding.UTF8.GetBytes(text);
+            _detailIsString = actual is string || actual is null;
+        }
+
+        UpdateDerived();
     }
 
     [RelayCommand]
-    private void HideDetailPanel() => ShowDetailPanel = false;
+    private void SetViewMode(CellViewMode mode)
+    {
+        ViewMode = mode;
+        ShowDetailPanel = true;
+        ViewMenuOpen = false;
+    }
+
+    partial void OnViewModeChanged(CellViewMode value) => UpdateDerived();
+
+    partial void OnDetailTextChanged(string value)
+    {
+        // Keep the Web view in sync while the user is in text/web on a string.
+        if (IsWebMode) DetailHtml = value;
+    }
+
+    private CellViewMode ResolveMode()
+    {
+        if (ViewMode != CellViewMode.Auto) return ViewMode;
+        if (CellContent.LooksLikeImage(_detailBytes)) return CellViewMode.Image;
+        if (_detailIsString && CellContent.LooksLikeHtml(DetailText)) return CellViewMode.Web;
+        if (!_detailIsString) return CellViewMode.Hex;
+        return CellViewMode.Text;
+    }
+
+    private void UpdateDerived()
+    {
+        _effectiveViewMode = ResolveMode();
+
+        DetailHex = _effectiveViewMode == CellViewMode.Hex ? CellContent.BuildHexDump(_detailBytes) : "";
+        DetailImage = _effectiveViewMode == CellViewMode.Image ? CellContent.TryLoadImage(_detailBytes) : null;
+        DetailHtml = _effectiveViewMode == CellViewMode.Web ? DetailText : "";
+
+        OnPropertyChanged(nameof(IsTextMode));
+        OnPropertyChanged(nameof(IsHexMode));
+        OnPropertyChanged(nameof(IsImageMode));
+        OnPropertyChanged(nameof(IsWebMode));
+        OnPropertyChanged(nameof(ViewModeLabel));
+        OnPropertyChanged(nameof(CanApplyDetail));
+    }
+
+    [RelayCommand]
+    private void HideDetailPanel()
+    {
+        ShowDetailPanel = false;
+        ViewMenuOpen = false;
+    }
 
     partial void OnShowDetailPanelChanged(bool value)
         => DetailRowHeight = value ? new GridLength(_lastDetailPx) : new GridLength(0);
