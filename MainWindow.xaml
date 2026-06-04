@@ -1,0 +1,179 @@
+<Window x:Class="NavMeCat.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:conv="clr-namespace:NavMeCat.Converters"
+        xmlns:vm="clr-namespace:NavMeCat.ViewModels"
+        mc:Ignorable="d"
+        Title="NavMeCat — SQL Server Manager" Height="720" Width="1180"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource B.Bg}">
+
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <conv:NodeTypeToGeometryConverter x:Key="Geo"/>
+        <conv:NodeTypeToBrushConverter x:Key="NodeBrush"/>
+        <conv:IsNullToVisibilityConverter x:Key="NullToVis"/>
+        <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <HierarchicalDataTemplate DataType="{x:Type vm:DbTreeNode}" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal" Margin="2,3">
+                <Path Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0"
+                      Data="{Binding Type, Converter={StaticResource Geo}}"
+                      Stroke="{Binding Type, Converter={StaticResource NodeBrush}}"
+                      StrokeThickness="1.3" Fill="Transparent" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontSize="13"/>
+                <TextBlock Text="loading…" Margin="8,0,0,0" FontSize="11" FontStyle="Italic"
+                           Foreground="{StaticResource B.SidebarMuted}" VerticalAlignment="Center"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"/>
+            </StackPanel>
+        </HierarchicalDataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ===================== TOP BAR ===================== -->
+        <Border Grid.Row="0" Background="{StaticResource B.HeaderBar}"
+                BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1" Padding="18,12">
+            <Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="26" Height="26" CornerRadius="6" Background="{StaticResource B.Sidebar}">
+                        <Path Data="M2,3 H14 V6.5 H2 Z M2,9.5 H14 V13 H2 Z" Width="15" Height="15"
+                              Stretch="Uniform" Stroke="#FF2D7FE0" StrokeThickness="1.4"/>
+                    </Border>
+                    <TextBlock Text="NavMeCat" FontSize="16" FontWeight="Bold" Margin="10,0,0,0"
+                               Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
+                    <TextBlock Text="SQL Server Manager" FontSize="13" Margin="10,0,0,0"
+                               Foreground="{StaticResource B.TextMuted}" VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button HorizontalAlignment="Right" Style="{StaticResource AccentButton}"
+                        Content="＋  New Connection" Command="{Binding AddConnectionCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- ===================== MAIN ===================== -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300" MinWidth="220"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" MinWidth="400"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar -->
+            <Border Grid.Column="0" Background="{StaticResource B.Sidebar}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="CONNECTIONS" Margin="16,16,16,8"
+                               FontSize="11" FontWeight="SemiBold" Opacity="0.7"
+                               Foreground="{StaticResource B.SidebarText}"/>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,0,10,8">
+                        <Button Style="{StaticResource ToolButton}" Content="Add" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding AddConnectionCommand}"/>
+                        <Button Style="{StaticResource ToolButton}" Content="Edit" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding EditConnectionCommand}"/>
+                        <Button Style="{StaticResource ToolButton}" Content="Remove" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding RemoveConnectionCommand}"/>
+                        <Button Style="{StaticResource ToolButton}" Content="Refresh" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding RefreshNodeCommand}"/>
+                    </StackPanel>
+
+                    <TreeView x:Name="Tree" Grid.Row="2" Margin="8,0,8,10"
+                              ItemsSource="{Binding Roots}"
+                              SelectedItemChanged="Tree_SelectedItemChanged"
+                              MouseDoubleClick="Tree_MouseDoubleClick"/>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="{StaticResource B.Border}"/>
+
+            <!-- Content -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Content toolbar -->
+                <Border Grid.Row="0" Background="{StaticResource B.HeaderBar}"
+                        BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1" Padding="16,10">
+                    <Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CurrentTableLabel, TargetNullValue='No table open'}"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
+                            <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="4"
+                                    Background="#FFFDEAEA"
+                                    Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="● Unsaved changes" FontSize="11"
+                                           Foreground="{StaticResource B.Danger}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
+                                       Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
+                            <TextBox Width="72" Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"
+                                     VerticalAlignment="Center"/>
+                            <Button Content="Reload" Margin="10,0,0,0" Command="{Binding ReloadDataCommand}"/>
+                            <Button Content="Save changes" Margin="10,0,0,0" Style="{StaticResource AccentButton}"
+                                    Command="{Binding SaveChangesCommand}"
+                                    IsEnabled="{Binding HasUnsavedChanges}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Grid + empty state -->
+                <Grid Grid.Row="1" Margin="16">
+                    <DataGrid ItemsSource="{Binding GridData}"
+                              IsReadOnly="False"
+                              CanUserAddRows="True" CanUserDeleteRows="True"
+                              AutoGenerateColumns="True"
+                              Visibility="{Binding GridData, Converter={StaticResource NullToVis}, ConverterParameter=inv}"/>
+
+                    <Border Background="{StaticResource B.Surface}" CornerRadius="10"
+                            BorderBrush="{StaticResource B.Border}" BorderThickness="1"
+                            Visibility="{Binding GridData, Converter={StaticResource NullToVis}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
+                                  Width="48" Height="48" Stretch="Uniform"
+                                  Stroke="{StaticResource B.BorderStrong}" StrokeThickness="0.7"/>
+                            <TextBlock Text="No table open" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="{StaticResource B.Text}" HorizontalAlignment="Center" Margin="0,16,0,4"/>
+                            <TextBlock Text="Double-click a table in the tree to view and edit its records."
+                                       FontSize="13" Foreground="{StaticResource B.TextMuted}"
+                                       HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- ===================== STATUS BAR ===================== -->
+        <Border Grid.Row="2" Background="{StaticResource B.Sidebar}" Padding="16,6">
+            <Grid>
+                <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource B.SidebarText}"
+                           FontSize="12" VerticalAlignment="Center"/>
+                <ProgressBar Width="140" Height="6" IsIndeterminate="True" HorizontalAlignment="Right"
+                             Background="Transparent" BorderThickness="0" Foreground="{StaticResource B.Accent}"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
