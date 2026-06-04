@@ -1,3 +1,4 @@
+using System.Data;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -36,11 +37,13 @@ public static class DataGridClarion
         {
             grid.AutoGeneratingColumn += OnAutoGeneratingColumn;
             grid.PreviewMouseRightButtonUp += OnHeaderRightClick;
+            grid.CurrentCellChanged += OnCurrentCellChanged;
         }
         else
         {
             grid.AutoGeneratingColumn -= OnAutoGeneratingColumn;
             grid.PreviewMouseRightButtonUp -= OnHeaderRightClick;
+            grid.CurrentCellChanged -= OnCurrentCellChanged;
         }
     }
 
@@ -58,6 +61,24 @@ public static class DataGridClarion
             binding.ConverterParameter = e.PropertyType; // numeric type for ConvertBack
             column.Header = e.PropertyName + (kind == ClarionKind.Date ? "  📅" : "  🕒");
         }
+    }
+
+    // ---- current cell -> detail panel -----------------------------------
+
+    private static void OnCurrentCellChanged(object? sender, EventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        if (grid.DataContext is not TableTabViewModel tab) return;
+
+        var cell = grid.CurrentCell;
+        if (cell.Column is null || cell.Item is not DataRowView rowView) return;
+
+        var name = GetColumnName(cell.Column);
+        object? value = !string.IsNullOrEmpty(name) && rowView.Row.Table.Columns.Contains(name)
+            ? rowView[name]
+            : null;
+
+        tab.SetDetail(rowView, name, value);
     }
 
     // ---- header right-click menu ----------------------------------------

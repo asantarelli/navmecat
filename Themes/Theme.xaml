@@ -145,6 +145,38 @@
         </Setter>
     </Style>
 
+    <!-- Toggle button styled like a neutral toolbar button (used for Filter/Sort). -->
+    <Style x:Key="ToolToggle" TargetType="ToggleButton">
+        <Setter Property="Background" Value="{StaticResource B.Surface}"/>
+        <Setter Property="Foreground" Value="{StaticResource B.Text}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource B.BorderStrong}"/>
+        <Setter Property="Padding" Value="12,7"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                            CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource B.SurfaceAlt}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource B.Accent}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource B.RowHover}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource B.Accent}"/>
+                            <Setter Property="Foreground" Value="{StaticResource B.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ============================ INPUTS ============================ -->
     <Style TargetType="TextBox">
         <Setter Property="Background" Value="{StaticResource B.Surface}"/>
@@ -324,6 +356,7 @@
         <Setter Property="VerticalGridLinesBrush" Value="{StaticResource B.GridLines}"/>
         <Setter Property="GridLinesVisibility" Value="All"/>
         <Setter Property="RowHeaderWidth" Value="22"/>
+        <Setter Property="RowHeight" Value="28"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="AutoGenerateColumns" Value="True"/>
         <Setter Property="CanUserResizeRows" Value="False"/>
@@ -358,8 +391,9 @@
                 <ControlTemplate TargetType="DataGridCell">
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}">
-                        <ContentPresenter VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            ClipToBounds="True">
+                        <ContentPresenter VerticalAlignment="Top" Margin="{TemplateBinding Padding}"/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -28,6 +29,27 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool hasUnsavedChanges;
     [ObservableProperty] private int rowLimit;
     [ObservableProperty] private bool showClarionTypes = true;
+
+    [ObservableProperty] private bool showDetailPanel;
+    [ObservableProperty] private string? detailColumn;
+    [ObservableProperty] private string detailText = "";
+
+    private DataRowView? _detailRow;
+    private string? _detailColumnName;
+
+    // ---- filter / sort ---------------------------------------------------
+    public ObservableCollection<string> ColumnNames { get; } = new();
+    public ObservableCollection<SortLevel> SortLevels { get; } = new();
+    public ObservableCollection<FilterCondition> FilterConditions { get; } = new();
+    [ObservableProperty] private bool filterMatchAll = true;
+    [ObservableProperty] private bool hasActiveSort;
+    [ObservableProperty] private bool hasActiveFilter;
+
+    private string _sortExpression = "";
+    private string _filterExpression = "";
+
+    public Array SortDirections { get; } = Enum.GetValues(typeof(SortDirection));
+    public Array FilterOperators { get; } = Enum.GetValues(typeof(FilterOperator));
 
     /// <summary>Columns detected as Clarion dates/times in the current data, by kind.</summary>
     public Dictionary<string, ClarionKind> ClarionColumns { get; private set; } =
@@ -80,12 +102,184 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
     partial void OnShowClarionTypesChanged(bool value) => RefreshView();
 
-    /// <summary>Re-projects the same data so the grid regenerates columns (no DB round-trip).</summary>
+    /// <summary>Re-projects the same data (applying current filter+sort) so the grid refreshes.</summary>
     private void RefreshView()
     {
-        if (_session is not null)
-            GridData = new DataView(_session.Data);
+        ProjectView();
+        _detailRow = null; // old view's row handle is stale after re-projection
     }
+
+    /// <summary>Builds the bound DataView from the session, applying the current filter and sort.</summary>
+    private void ProjectView()
+    {
+        if (_session is null) return;
+        var view = new DataView(_session.Data);
+        if (!string.IsNullOrEmpty(_filterExpression))
+        {
+            try { view.RowFilter = _filterExpression; } catch { /* keep unfiltered */ }
+        }
+        if (!string.IsNullOrEmpty(_sortExpression))
+        {
+            try { view.Sort = _sortExpression; } catch { /* keep unsorted */ }
+        }
+        GridData = view;
+    }
+
+    // ---- cell detail panel ----------------------------------------------
+
+    /// <summary>Called by the grid when the current cell changes.</summary>
+    public void SetDetail(DataRowView? row, string? column, object? value)
+    {
+        _detailRow = row;
+        _detailColumnName = column;
+        DetailColumn = column;
+        DetailText = value is null or DBNull ? "" : value.ToString() ?? "";
+    }
+
+    [RelayCommand]
+    private void HideDetailPanel() => ShowDetailPanel = false;
+
+    [RelayCommand]
+    private void ApplyDetail()
+    {
+        if (_detailRow is null || string.IsNullOrEmpty(_detailColumnName)) return;
+        try
+        {
+            var table = _detailRow.Row.Table;
+            if (!table.Columns.Contains(_detailColumnName)) return;
+            var col = table.Columns[_detailColumnName]!;
+
+            object newValue = col.DataType == typeof(string)
+                ? DetailText
+                : string.IsNullOrEmpty(DetailText)
+                    ? DBNull.Value
+                    : Convert.ChangeType(DetailText, col.DataType);
+
+            _detailRow[_detailColumnName] = newValue;
+            _setStatus($"Updated '{_detailColumnName}' for the selected row.");
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Could not update cell", ex.Message);
+        }
+    }
+
+    // ---- sort ------------------------------------------------------------
+
+    [RelayCommand]
+    private void AddSortLevel() =>
+        SortLevels.Add(new SortLevel { Column = ColumnNames.FirstOrDefault() });
+
+    [RelayCommand]
+    private void RemoveSortLevel(SortLevel? level)
+    {
+        if (level is not null) SortLevels.Remove(level);
+    }
+
+    [RelayCommand]
+    private void ApplySort()
+    {
+        var parts = SortLevels
+            .Where(s => !string.IsNullOrEmpty(s.Column))
+            .Select(s => $"{Bracket(s.Column!)} {(s.Direction == SortDirection.Desc ? "DESC" : "ASC")}");
+        _sortExpression = string.Join(", ", parts);
+        HasActiveSort = _sortExpression.Length > 0;
+        ProjectView();
+        _setStatus(HasActiveSort ? $"Sorted by {_sortExpression}." : "Sort cleared.");
+    }
+
+    [RelayCommand]
+    private void ClearSort()
+    {
+        SortLevels.Clear();
+        _sortExpression = "";
+        HasActiveSort = false;
+        ProjectView();
+        _setStatus("Sort cleared.");
+    }
+
+    // ---- filter ----------------------------------------------------------
+
+    [RelayCommand]
+    private void AddFilterCondition() =>
+        FilterConditions.Add(new FilterCondition { Column = ColumnNames.FirstOrDefault() });
+
+    [RelayCommand]
+    private void RemoveFilterCondition(FilterCondition? condition)
+    {
+        if (condition is not null) FilterConditions.Remove(condition);
+    }
+
+    [RelayCommand]
+    private void ApplyFilter()
+    {
+        var expr = BuildFilterExpression();
+        try
+        {
+            // Validate against a throwaway view first so a bad expression doesn't blank the grid.
+            var rows = new DataView(_session!.Data) { RowFilter = expr }.Count;
+            _filterExpression = expr;
+            HasActiveFilter = expr.Length > 0;
+            ProjectView();
+            _setStatus(HasActiveFilter ? $"Filter applied — {rows} row(s) match." : "Filter cleared.");
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Invalid filter", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private void ClearFilter()
+    {
+        FilterConditions.Clear();
+        _filterExpression = "";
+        HasActiveFilter = false;
+        ProjectView();
+        _setStatus("Filter cleared.");
+    }
+
+    private string BuildFilterExpression()
+    {
+        var clauses = FilterConditions
+            .Where(c => !string.IsNullOrEmpty(c.Column))
+            .Select(BuildClause)
+            .Where(c => c.Length > 0)
+            .ToList();
+        if (clauses.Count == 0) return "";
+        var joiner = FilterMatchAll ? " AND " : " OR ";
+        return string.Join(joiner, clauses.Select(c => $"({c})"));
+    }
+
+    private string BuildClause(FilterCondition c)
+    {
+        var col = Bracket(c.Column!);
+        var isString = _session is not null
+            && _session.Data.Columns.Contains(c.Column!)
+            && _session.Data.Columns[c.Column!]!.DataType == typeof(string);
+        var raw = c.Value ?? "";
+
+        string Literal(string v) => isString ? $"'{v.Replace("'", "''")}'" : v;
+        string Like(string pattern) => $"{col} LIKE '{pattern.Replace("'", "''")}'";
+
+        return c.Operator switch
+        {
+            FilterOperator.Contains => Like($"%{raw}%"),
+            FilterOperator.StartsWith => Like($"{raw}%"),
+            FilterOperator.EndsWith => Like($"%{raw}"),
+            FilterOperator.Equals => $"{col} = {Literal(raw)}",
+            FilterOperator.NotEquals => $"{col} <> {Literal(raw)}",
+            FilterOperator.GreaterThan => $"{col} > {Literal(raw)}",
+            FilterOperator.LessThan => $"{col} < {Literal(raw)}",
+            FilterOperator.GreaterOrEqual => $"{col} >= {Literal(raw)}",
+            FilterOperator.LessOrEqual => $"{col} <= {Literal(raw)}",
+            FilterOperator.IsEmpty => isString ? $"{col} IS NULL OR {col} = ''" : $"{col} IS NULL",
+            FilterOperator.IsNotEmpty => isString ? $"{col} IS NOT NULL AND {col} <> ''" : $"{col} IS NOT NULL",
+            _ => ""
+        };
+    }
+
+    private static string Bracket(string column) => "[" + column.Replace("]", "]]") + "]";
 
     public TableTabViewModel(DbTreeNode node, int rowLimit,
         Action<string> setStatus, Action<bool> setBusy)
@@ -121,7 +315,11 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
             OnPropertyChanged(nameof(HasClarionTypes));
             OnPropertyChanged(nameof(ClarionToggleLabel));
 
-            GridData = _session.Data.DefaultView;
+            ColumnNames.Clear();
+            foreach (DataColumn c in _session.Data.Columns)
+                ColumnNames.Add(c.ColumnName);
+
+            ProjectView(); // applies any active filter/sort
             HasUnsavedChanges = false;
             _setStatus($"Loaded {_session.Data.Rows.Count} row(s) from {Identifier} (limit {RowLimit}).");
             return true;

@@ -33,6 +33,10 @@ Grab the latest **portable `.exe`** from the
   - **In-place editing** of cells.
   - **Add** new rows and **delete** rows.
   - **Save changes** writes everything back via `SqlDataAdapter` (requires a primary key).
+  - **Filter** and multi-column **Sort** builders (Navicat-style) per tab.
+  - **Cell detail panel** — view/edit the full content of the selected cell in a scrollable
+    box below the grid (handy for long HTML/text). Rows are capped to a single line in the
+    grid so long values don't blow up row height.
 - **Clarion date & time support** — automatically detects integer columns that hold
   [Clarion Standard Dates/Times](#clarion-dates--times) and displays them as real dates (📅)
   and times (🕒), while keeping them editable. Toggle per tab.

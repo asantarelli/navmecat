@@ -1,0 +1,27 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace NavMeCat.ViewModels;
+
+public enum SortDirection { Asc, Desc }
+
+public enum FilterOperator
+{
+    Contains, Equals, NotEquals,
+    GreaterThan, LessThan, GreaterOrEqual, LessOrEqual,
+    StartsWith, EndsWith, IsEmpty, IsNotEmpty
+}
+
+/// <summary>One level in a multi-column sort.</summary>
+public partial class SortLevel : ObservableObject
+{
+    [ObservableProperty] private string? column;
+    [ObservableProperty] private SortDirection direction;
+}
+
+/// <summary>One condition in a filter.</summary>
+public partial class FilterCondition : ObservableObject
+{
+    [ObservableProperty] private string? column;
+    [ObservableProperty] private FilterOperator @operator;
+    [ObservableProperty] private string? value;
+}
