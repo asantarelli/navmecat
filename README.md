@@ -34,9 +34,10 @@ Grab the latest **portable `.exe`** from the
   - **Add** new rows and **delete** rows.
   - **Save changes** writes everything back via `SqlDataAdapter` (requires a primary key).
   - **Filter** and multi-column **Sort** builders (Navicat-style) per tab.
-  - **Cell detail panel** — view/edit the full content of the selected cell in a scrollable
-    box below the grid (handy for long HTML/text). Rows are capped to a single line in the
-    grid so long values don't blow up row height.
+  - **Cell View panel** — a resizable panel below the grid that shows the full content of the
+    selected cell, with a **View** drop button to render it as **Text** (editable), **Hex**,
+    **Image**, or **Web** (HTML via WebView2). **Auto-detect** picks the best mode. Rows are
+    capped to a single line in the grid so long values don't blow up row height.
 - **Clarion date & time support** — automatically detects integer columns that hold
   [Clarion Standard Dates/Times](#clarion-dates--times) and displays them as real dates (📅)
   and times (🕒), while keeping them editable. Toggle per tab.
