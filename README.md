@@ -33,21 +33,27 @@ Grab the latest **portable `.exe`** from the
   - **In-place editing** of cells.
   - **Add** new rows and **delete** rows.
   - **Save changes** writes everything back via `SqlDataAdapter` (requires a primary key).
-- **Clarion date support** — automatically detects integer columns that hold
-  [Clarion Standard Dates](#clarion-dates) and displays them as real dates (marked 📅),
-  while keeping them editable. Toggle per tab.
+- **Clarion date & time support** — automatically detects integer columns that hold
+  [Clarion Standard Dates/Times](#clarion-dates--times) and displays them as real dates (📅)
+  and times (🕒), while keeping them editable. Toggle per tab.
 - **Professional UI** — clean blue/slate theme, dark sidebar, styled modal dialogs.
 
-## Clarion dates
+## Clarion dates & times
 
-Many Clarion-prepared tables store dates as an integer — the **number of days since
-December 28, 1800** (so `4` = 1801‑01‑01). NavMeCat detects these columns heuristically
-(by name and by value range) and shows them as `yyyy-MM-dd` dates, with a 📅 marker on the
-column header. Editing a converted cell accepts a normal date and writes the correct integer
-back to the database.
+Many Clarion-prepared tables store dates and times as integers:
 
-Use the **Clarion dates** checkbox in a table's toolbar to toggle the conversion on/off if a
-column is misidentified. Empty dates (stored as `0`) display as blank.
+- **Date** — the **number of days since December 28, 1800** (so `4` = 1801‑01‑01).
+- **Time** — the **number of centiseconds since midnight, plus one** (so `1` = 00:00:00,
+  `8,640,001` = 24:00:00).
+
+NavMeCat detects these columns heuristically and shows them as `yyyy-MM-dd` dates (📅) and
+`HH:mm:ss` times (🕒) on the column header. Dates are detected by name and/or value range;
+times are detected mainly by name (their value range overlaps too much ordinary data to
+trust values alone). Editing a converted cell accepts a normal date/time and writes the
+correct integer back to the database.
+
+Use the **Clarion dates/times** checkbox in a table's toolbar to toggle the conversion on/off
+if a column is misidentified. Empty values (stored as `0`) display as blank.
 
 ## Requirements
 

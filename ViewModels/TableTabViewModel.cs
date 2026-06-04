@@ -27,19 +27,29 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private DataView? gridData;
     [ObservableProperty] private bool hasUnsavedChanges;
     [ObservableProperty] private int rowLimit;
-    [ObservableProperty] private bool showClarionDates = true;
+    [ObservableProperty] private bool showClarionTypes = true;
 
-    /// <summary>Column names detected as Clarion dates in the current data.</summary>
-    public HashSet<string> ClarionDateColumns { get; private set; } =
+    /// <summary>Columns detected as Clarion dates/times in the current data, by kind.</summary>
+    public Dictionary<string, ClarionKind> ClarionColumns { get; private set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
-    public bool HasClarionDates => ClarionDateColumns.Count > 0;
-    public string ClarionToggleLabel =>
-        HasClarionDates ? $"Clarion dates ({ClarionDateColumns.Count})" : "Clarion dates";
+    public bool HasClarionTypes => ClarionColumns.Count > 0;
+
+    public string ClarionToggleLabel
+    {
+        get
+        {
+            if (!HasClarionTypes) return "Clarion dates/times";
+            var dates = ClarionColumns.Values.Count(k => k == ClarionKind.Date);
+            var times = ClarionColumns.Values.Count(k => k == ClarionKind.Time);
+            if (dates > 0 && times > 0) return $"Clarion dates/times ({dates}+{times})";
+            return dates > 0 ? $"Clarion dates ({dates})" : $"Clarion times ({times})";
+        }
+    }
 
     public event Action<TableTabViewModel>? CloseRequested;
 
-    partial void OnShowClarionDatesChanged(bool value) => RefreshView();
+    partial void OnShowClarionTypesChanged(bool value) => RefreshView();
 
     /// <summary>Re-projects the same data so the grid regenerates columns (no DB round-trip).</summary>
     private void RefreshView()
@@ -77,9 +87,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
             _session.Data.RowChanged += OnDataChanged;
             _session.Data.RowDeleted += OnDataChanged;
 
-            // Detect Clarion-date columns before the grid generates its columns.
-            ClarionDateColumns = ClarionDateDetector.Detect(_session.Data);
-            OnPropertyChanged(nameof(HasClarionDates));
+            // Detect Clarion date/time columns before the grid generates its columns.
+            ClarionColumns = ClarionDetector.Detect(_session.Data);
+            OnPropertyChanged(nameof(HasClarionTypes));
             OnPropertyChanged(nameof(ClarionToggleLabel));
 
             GridData = _session.Data.DefaultView;

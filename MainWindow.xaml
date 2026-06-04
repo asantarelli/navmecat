@@ -149,9 +149,9 @@
 
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                             <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
-                                                      Margin="0,0,16,0" IsChecked="{Binding ShowClarionDates}"
-                                                      Visibility="{Binding HasClarionDates, Converter={StaticResource BoolToVis}}"
-                                                      ToolTip="Show Clarion date fields (days since 1800-12-28) as real dates"/>
+                                                      Margin="0,0,16,0" IsChecked="{Binding ShowClarionTypes}"
+                                                      Visibility="{Binding HasClarionTypes, Converter={StaticResource BoolToVis}}"
+                                                      ToolTip="Show Clarion date (days since 1800-12-28) and time (centiseconds since midnight) fields as real dates/times"/>
                                             <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
                                                        Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
                                             <TextBox Width="72" VerticalAlignment="Center"
