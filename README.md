@@ -8,6 +8,16 @@ the database.
 
 ![Status](https://img.shields.io/badge/status-v1-blue) ![Platform](https://img.shields.io/badge/platform-Windows-informational) ![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)
 
+## Download
+
+Grab the latest **portable `.exe`** from the
+[**Releases**](https://github.com/robertorenz/navmecat/releases/latest) page.
+
+- Single self-contained file — **no .NET install required**.
+- Just download and double-click `NavMeCat.exe`.
+- First launch is a couple of seconds slower (the compressed bundle self-extracts to a temp cache);
+  later launches are fast.
+
 ## Features
 
 - **Connection manager** — add, edit, and remove SQL Server connections.
