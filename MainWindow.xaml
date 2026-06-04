@@ -105,63 +105,85 @@
 
             <!-- Content -->
             <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+                <!-- One tab per open table -->
+                <TabControl ItemsSource="{Binding OpenTabs}"
+                            SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
+                            Visibility="{Binding SelectedTab, Converter={StaticResource NullToVis}, ConverterParameter=inv}">
+                    <TabControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Width="14" Height="14" Stretch="Uniform" Margin="0,0,7,0"
+                                      Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
+                                      Stroke="#FF4C6275" StrokeThickness="1.2" Fill="Transparent"/>
+                                <TextBlock Text="{Binding Header}" VerticalAlignment="Center"/>
+                                <TextBlock Text="●" Margin="6,0,0,0" FontSize="9" VerticalAlignment="Center"
+                                           Foreground="{StaticResource B.Danger}"
+                                           Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}"/>
+                                <Button Style="{StaticResource TabCloseButton}" Margin="8,0,-4,0"
+                                        Command="{Binding CloseCommand}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </TabControl.ItemTemplate>
+                    <TabControl.ContentTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
 
-                <!-- Content toolbar -->
-                <Border Grid.Row="0" Background="{StaticResource B.HeaderBar}"
-                        BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1" Padding="16,10">
-                    <Grid>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding CurrentTableLabel, TargetNullValue='No table open'}"
-                                       FontSize="14" FontWeight="SemiBold"
-                                       Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
-                            <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="4"
-                                    Background="#FFFDEAEA"
-                                    Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="● Unsaved changes" FontSize="11"
-                                           Foreground="{StaticResource B.Danger}"/>
-                            </Border>
-                        </StackPanel>
+                                <!-- Per-table toolbar -->
+                                <Border Grid.Row="0" Background="{StaticResource B.HeaderBar}"
+                                        BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1" Padding="16,10">
+                                    <Grid>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Identifier}" FontSize="14" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
+                                            <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="4" Background="#FFFDEAEA"
+                                                    Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="● Unsaved changes" FontSize="11"
+                                                           Foreground="{StaticResource B.Danger}"/>
+                                            </Border>
+                                        </StackPanel>
 
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
-                                       Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
-                            <TextBox Width="72" Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"
-                                     VerticalAlignment="Center"/>
-                            <Button Content="Reload" Margin="10,0,0,0" Command="{Binding ReloadDataCommand}"/>
-                            <Button Content="Save changes" Margin="10,0,0,0" Style="{StaticResource AccentButton}"
-                                    Command="{Binding SaveChangesCommand}"
-                                    IsEnabled="{Binding HasUnsavedChanges}"/>
-                        </StackPanel>
-                    </Grid>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
+                                                       Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
+                                            <TextBox Width="72" VerticalAlignment="Center"
+                                                     Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"/>
+                                            <Button Content="Reload" Margin="10,0,0,0" Command="{Binding ReloadCommand}"/>
+                                            <Button Content="Save changes" Margin="10,0,0,0" Style="{StaticResource AccentButton}"
+                                                    Command="{Binding SaveChangesCommand}"
+                                                    IsEnabled="{Binding HasUnsavedChanges}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <DataGrid Grid.Row="1" Margin="16"
+                                          ItemsSource="{Binding GridData}"
+                                          IsReadOnly="False"
+                                          CanUserAddRows="True" CanUserDeleteRows="True"
+                                          AutoGenerateColumns="True"/>
+                            </Grid>
+                        </DataTemplate>
+                    </TabControl.ContentTemplate>
+                </TabControl>
+
+                <!-- Empty state (no tabs open) -->
+                <Border Margin="16" Background="{StaticResource B.Surface}" CornerRadius="10"
+                        BorderBrush="{StaticResource B.Border}" BorderThickness="1"
+                        Visibility="{Binding SelectedTab, Converter={StaticResource NullToVis}}">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
+                              Width="48" Height="48" Stretch="Uniform"
+                              Stroke="{StaticResource B.BorderStrong}" StrokeThickness="0.7"/>
+                        <TextBlock Text="No table open" FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{StaticResource B.Text}" HorizontalAlignment="Center" Margin="0,16,0,4"/>
+                        <TextBlock Text="Double-click a table in the tree to open it in a new tab."
+                                   FontSize="13" Foreground="{StaticResource B.TextMuted}"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
                 </Border>
-
-                <!-- Grid + empty state -->
-                <Grid Grid.Row="1" Margin="16">
-                    <DataGrid ItemsSource="{Binding GridData}"
-                              IsReadOnly="False"
-                              CanUserAddRows="True" CanUserDeleteRows="True"
-                              AutoGenerateColumns="True"
-                              Visibility="{Binding GridData, Converter={StaticResource NullToVis}, ConverterParameter=inv}"/>
-
-                    <Border Background="{StaticResource B.Surface}" CornerRadius="10"
-                            BorderBrush="{StaticResource B.Border}" BorderThickness="1"
-                            Visibility="{Binding GridData, Converter={StaticResource NullToVis}}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Path Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
-                                  Width="48" Height="48" Stretch="Uniform"
-                                  Stroke="{StaticResource B.BorderStrong}" StrokeThickness="0.7"/>
-                            <TextBlock Text="No table open" FontSize="16" FontWeight="SemiBold"
-                                       Foreground="{StaticResource B.Text}" HorizontalAlignment="Center" Margin="0,16,0,4"/>
-                            <TextBlock Text="Double-click a table in the tree to view and edit its records."
-                                       FontSize="13" Foreground="{StaticResource B.TextMuted}"
-                                       HorizontalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
             </Grid>
         </Grid>
 

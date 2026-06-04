@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NavMeCat.Models;
@@ -11,18 +10,17 @@ namespace NavMeCat.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly ConnectionStore _store = new();
-    private EditableTableSession? _session;
-    private DbTreeNode? _openNode;
 
     public ObservableCollection<DbTreeNode> Roots { get; } = new();
+    public ObservableCollection<TableTabViewModel> OpenTabs { get; } = new();
 
     [ObservableProperty] private DbTreeNode? selectedNode;
-    [ObservableProperty] private DataView? gridData;
-    [ObservableProperty] private string? currentTableLabel;
+    [ObservableProperty] private TableTabViewModel? selectedTab;
     [ObservableProperty] private string statusText = "Ready";
     [ObservableProperty] private bool isBusy;
-    [ObservableProperty] private bool hasUnsavedChanges;
-    [ObservableProperty] private int rowLimit = 1000;
+
+    /// <summary>Row limit applied when opening a new tab.</summary>
+    private const int DefaultRowLimit = 1000;
 
     public MainViewModel()
     {
@@ -91,7 +89,7 @@ public partial class MainViewModel : ObservableObject
         StatusText = $"Refreshed '{node.Name}'.";
     }
 
-    // ---- data viewing / editing -----------------------------------------
+    // ---- tabbed data viewing / editing ----------------------------------
 
     [RelayCommand]
     private async Task OpenTable(DbTreeNode? node)
@@ -99,76 +97,42 @@ public partial class MainViewModel : ObservableObject
         node ??= SelectedNode;
         if (node is not { Type: NodeType.Table }) return;
 
-        IsBusy = true;
-        StatusText = $"Loading {node.Database}.{node.Schema}.{node.Name}…";
-        try
+        // Already open? Just switch to it.
+        var key = TableTabViewModel.MakeKey(node);
+        var existing = OpenTabs.FirstOrDefault(t => t.Key == key);
+        if (existing is not null)
         {
-            DetachSession();
-            _openNode = node;
-            _session = await EditableTableSession.OpenAsync(
-                node.Connection.BuildConnectionString(),
-                node.Database!, node.Schema!, node.Name, RowLimit);
+            SelectedTab = existing;
+            StatusText = $"Switched to {existing.Identifier}.";
+            return;
+        }
 
-            _session.Data.RowChanged += OnDataChanged;
-            _session.Data.RowDeleted += OnDataChanged;
+        var tab = new TableTabViewModel(node, DefaultRowLimit,
+            s => StatusText = s, b => IsBusy = b);
+        tab.CloseRequested += CloseTab;
+        OpenTabs.Add(tab);
+        SelectedTab = tab;
 
-            GridData = _session.Data.DefaultView;
-            CurrentTableLabel = _session.Identifier;
-            HasUnsavedChanges = false;
-            StatusText = $"Loaded {_session.Data.Rows.Count} row(s) from {_session.Identifier} (limit {RowLimit}).";
-        }
-        catch (Exception ex)
-        {
-            Dialogs.ShowError("Could not open table", ex.Message);
-            StatusText = "Failed to open table.";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        if (!await tab.LoadAsync())
+            CloseTab(tab); // load failed — don't leave an empty tab behind
     }
 
-    [RelayCommand]
-    private async Task ReloadData()
+    private void CloseTab(TableTabViewModel tab)
     {
-        if (_openNode is not null)
-            await OpenTable(_openNode);
-    }
+        if (tab.HasUnsavedChangesNow &&
+            !Dialogs.Confirm("Close tab",
+                $"'{tab.Identifier}' has unsaved changes. Close anyway?"))
+            return;
 
-    [RelayCommand]
-    private async Task SaveChanges()
-    {
-        if (_session is null || !_session.HasChanges) return;
+        tab.CloseRequested -= CloseTab;
+        var index = OpenTabs.IndexOf(tab);
+        OpenTabs.Remove(tab);
+        tab.Dispose();
 
-        IsBusy = true;
-        try
-        {
-            var affected = await _session.SaveAsync();
-            HasUnsavedChanges = false;
-            StatusText = $"Saved {affected} change(s) to {_session.Identifier}.";
-        }
-        catch (Exception ex)
-        {
-            Dialogs.ShowError("Save failed", ex.Message +
-                "\n\nIn-place editing requires the table to have a primary key.");
-            StatusText = "Save failed.";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    private void OnDataChanged(object? sender, DataRowChangeEventArgs e)
-        => HasUnsavedChanges = _session?.HasChanges ?? false;
-
-    private void DetachSession()
-    {
-        if (_session is null) return;
-        _session.Data.RowChanged -= OnDataChanged;
-        _session.Data.RowDeleted -= OnDataChanged;
-        _session.Dispose();
-        _session = null;
+        if (SelectedTab == tab)
+            SelectedTab = OpenTabs.Count > 0
+                ? OpenTabs[Math.Min(index, OpenTabs.Count - 1)]
+                : null;
     }
 
     private static void CopyInto(ConnectionProfile from, ConnectionProfile to)
