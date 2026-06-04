@@ -130,8 +130,9 @@
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="*" MinHeight="120"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="{Binding DetailRowHeight, Mode=TwoWay}"/>
                                 </Grid.RowDefinitions>
 
                                 <!-- Per-table toolbar -->
@@ -281,15 +282,32 @@
                                     </Grid>
                                 </Border>
 
-                                <DataGrid Grid.Row="1" Margin="16"
+                                <DataGrid Grid.Row="1" Margin="16,16,16,8"
                                           ItemsSource="{Binding GridData}"
                                           IsReadOnly="False"
                                           CanUserAddRows="True" CanUserDeleteRows="True"
                                           AutoGenerateColumns="True"
                                           beh:DataGridClarion.Enabled="True"/>
 
+                                <!-- Resizable splitter for the detail panel -->
+                                <GridSplitter Grid.Row="2" Height="7" Margin="16,0,16,0"
+                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                              ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
+                                              Background="Transparent"
+                                              Visibility="{Binding ShowDetailPanel, Converter={StaticResource BoolToVis}}">
+                                    <GridSplitter.Template>
+                                        <ControlTemplate TargetType="GridSplitter">
+                                            <Border Background="Transparent">
+                                                <Border Height="4" Width="48" CornerRadius="2"
+                                                        Background="{StaticResource B.BorderStrong}"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </GridSplitter.Template>
+                                </GridSplitter>
+
                                 <!-- Cell detail panel -->
-                                <Border Grid.Row="2" Height="220" Margin="16,0,16,16"
+                                <Border Grid.Row="3" Margin="16,0,16,16"
                                         Background="{StaticResource B.Surface}" CornerRadius="8"
                                         BorderBrush="{StaticResource B.Border}" BorderThickness="1"
                                         Visibility="{Binding ShowDetailPanel, Converter={StaticResource BoolToVis}}">

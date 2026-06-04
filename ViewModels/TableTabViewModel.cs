@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NavMeCat.Services;
@@ -33,7 +34,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool showDetailPanel;
     [ObservableProperty] private string? detailColumn;
     [ObservableProperty] private string detailText = "";
+    [ObservableProperty] private GridLength detailRowHeight = new(0);
 
+    private double _lastDetailPx = 220;
     private DataRowView? _detailRow;
     private string? _detailColumnName;
 
@@ -138,6 +141,16 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void HideDetailPanel() => ShowDetailPanel = false;
+
+    partial void OnShowDetailPanelChanged(bool value)
+        => DetailRowHeight = value ? new GridLength(_lastDetailPx) : new GridLength(0);
+
+    partial void OnDetailRowHeightChanged(GridLength value)
+    {
+        // Remember the last user-dragged size so re-opening restores it.
+        if (value.IsAbsolute && value.Value > 0)
+            _lastDetailPx = value.Value;
+    }
 
     [RelayCommand]
     private void ApplyDetail()
