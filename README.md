@@ -52,8 +52,10 @@ times are detected mainly by name (their value range overlaps too much ordinary 
 trust values alone). Editing a converted cell accepts a normal date/time and writes the
 correct integer back to the database.
 
-Use the **Clarion dates/times** checkbox in a table's toolbar to toggle the conversion on/off
-if a column is misidentified. Empty values (stored as `0`) display as blank.
+Detection recognizes English and Spanish name hints (e.g. `FECHA` → date, `HORA` → time).
+Use the **Clarion dates/times** checkbox in a table's toolbar to toggle all conversions on/off,
+or **right-click any column header** to force it to **date**, **time**, or **plain number**, or
+back to **auto-detect**. Empty values (stored as `0`) display as blank.
 
 ## Requirements
 

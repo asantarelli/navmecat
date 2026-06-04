@@ -33,7 +33,36 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     public Dictionary<string, ClarionKind> ClarionColumns { get; private set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Manual per-column overrides set via the header right-click menu.
+    /// A present key wins over detection; a null value forces "plain number".
+    /// </summary>
+    public Dictionary<string, ClarionKind?> ClarionOverrides { get; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public bool HasClarionTypes => ClarionColumns.Count > 0;
+
+    /// <summary>Resolves how a column should be displayed: date, time, or plain (null).</summary>
+    public ClarionKind? GetEffectiveKind(string column)
+    {
+        if (!ShowClarionTypes) return null;
+        if (ClarionOverrides.TryGetValue(column, out var ov)) return ov;
+        return ClarionColumns.TryGetValue(column, out var k) ? k : null;
+    }
+
+    public bool HasOverride(string column) => ClarionOverrides.ContainsKey(column);
+
+    public void SetClarionOverride(string column, ClarionKind? kind)
+    {
+        ClarionOverrides[column] = kind;
+        RefreshView();
+    }
+
+    public void ClearClarionOverride(string column)
+    {
+        if (ClarionOverrides.Remove(column))
+            RefreshView();
+    }
 
     public string ClarionToggleLabel
     {

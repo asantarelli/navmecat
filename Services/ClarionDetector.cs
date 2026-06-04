@@ -79,13 +79,17 @@ public static class ClarionDetector
     private static bool NameLooksLikeDate(string name)
     {
         var lower = name.ToLowerInvariant();
-        return lower.Contains("date") || lower.EndsWith("dt");
+        // English + Spanish (fecha) date hints.
+        return lower.Contains("date") || lower.Contains("fecha")
+            || lower.EndsWith("dt") || lower.EndsWith("fec");
     }
 
     private static bool NameLooksLikeTime(string name)
     {
         var lower = name.ToLowerInvariant();
-        return lower.Contains("time") || lower.EndsWith("tm");
+        // English + Spanish (hora) time hints.
+        return lower.Contains("time") || lower.Contains("hora")
+            || lower.EndsWith("tm") || lower.EndsWith("hra");
     }
 
     private static bool TryGetIntegral(object value, out long result)
