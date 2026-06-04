@@ -27,8 +27,26 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private DataView? gridData;
     [ObservableProperty] private bool hasUnsavedChanges;
     [ObservableProperty] private int rowLimit;
+    [ObservableProperty] private bool showClarionDates = true;
+
+    /// <summary>Column names detected as Clarion dates in the current data.</summary>
+    public HashSet<string> ClarionDateColumns { get; private set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public bool HasClarionDates => ClarionDateColumns.Count > 0;
+    public string ClarionToggleLabel =>
+        HasClarionDates ? $"Clarion dates ({ClarionDateColumns.Count})" : "Clarion dates";
 
     public event Action<TableTabViewModel>? CloseRequested;
+
+    partial void OnShowClarionDatesChanged(bool value) => RefreshView();
+
+    /// <summary>Re-projects the same data so the grid regenerates columns (no DB round-trip).</summary>
+    private void RefreshView()
+    {
+        if (_session is not null)
+            GridData = new DataView(_session.Data);
+    }
 
     public TableTabViewModel(DbTreeNode node, int rowLimit,
         Action<string> setStatus, Action<bool> setBusy)
@@ -58,6 +76,11 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
             _session.Data.RowChanged += OnDataChanged;
             _session.Data.RowDeleted += OnDataChanged;
+
+            // Detect Clarion-date columns before the grid generates its columns.
+            ClarionDateColumns = ClarionDateDetector.Detect(_session.Data);
+            OnPropertyChanged(nameof(HasClarionDates));
+            OnPropertyChanged(nameof(ClarionToggleLabel));
 
             GridData = _session.Data.DefaultView;
             HasUnsavedChanges = false;

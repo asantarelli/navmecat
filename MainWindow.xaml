@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:conv="clr-namespace:NavMeCat.Converters"
+        xmlns:beh="clr-namespace:NavMeCat.Behaviors"
         xmlns:vm="clr-namespace:NavMeCat.ViewModels"
         mc:Ignorable="d"
         Title="NavMeCat — SQL Server Manager" Height="720" Width="1180"
@@ -147,6 +148,10 @@
                                         </StackPanel>
 
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
+                                                      Margin="0,0,16,0" IsChecked="{Binding ShowClarionDates}"
+                                                      Visibility="{Binding HasClarionDates, Converter={StaticResource BoolToVis}}"
+                                                      ToolTip="Show Clarion date fields (days since 1800-12-28) as real dates"/>
                                             <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
                                                        Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
                                             <TextBox Width="72" VerticalAlignment="Center"
@@ -163,7 +168,8 @@
                                           ItemsSource="{Binding GridData}"
                                           IsReadOnly="False"
                                           CanUserAddRows="True" CanUserDeleteRows="True"
-                                          AutoGenerateColumns="True"/>
+                                          AutoGenerateColumns="True"
+                                          beh:DataGridClarion.Enabled="True"/>
                             </Grid>
                         </DataTemplate>
                     </TabControl.ContentTemplate>

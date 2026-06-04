@@ -27,11 +27,27 @@ Grab the latest **portable `.exe`** from the
   - Connections are saved to `%AppData%\NavMeCat\connections.json`; passwords are
     encrypted at rest with **Windows DPAPI** (current-user scope).
 - **Object tree** — lazily loads databases, schemas, and tables, color-coded by type.
-- **Data grid** — double-click a table to load its rows (configurable row limit).
+- **Tabbed data view** — double-click a table to open it in its own tab (configurable row
+  limit). Re-opening a table just switches to its existing tab. Tabs flag unsaved changes
+  and can be closed individually.
   - **In-place editing** of cells.
   - **Add** new rows and **delete** rows.
   - **Save changes** writes everything back via `SqlDataAdapter` (requires a primary key).
+- **Clarion date support** — automatically detects integer columns that hold
+  [Clarion Standard Dates](#clarion-dates) and displays them as real dates (marked 📅),
+  while keeping them editable. Toggle per tab.
 - **Professional UI** — clean blue/slate theme, dark sidebar, styled modal dialogs.
+
+## Clarion dates
+
+Many Clarion-prepared tables store dates as an integer — the **number of days since
+December 28, 1800** (so `4` = 1801‑01‑01). NavMeCat detects these columns heuristically
+(by name and by value range) and shows them as `yyyy-MM-dd` dates, with a 📅 marker on the
+column header. Editing a converted cell accepts a normal date and writes the correct integer
+back to the database.
+
+Use the **Clarion dates** checkbox in a table's toolbar to toggle the conversion on/off if a
+column is misidentified. Empty dates (stored as `0`) display as blank.
 
 ## Requirements
 
