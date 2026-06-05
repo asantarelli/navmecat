@@ -46,7 +46,15 @@ Grab the latest **portable `.exe`** from the
 - **Clarion date & time support** — automatically detects integer columns that hold
   [Clarion Standard Dates/Times](#clarion-dates--times) and displays them as real dates (📅)
   and times (🕒), while keeping them editable. Toggle per tab.
-- **Professional UI** — clean blue/slate theme, dark sidebar, styled modal dialogs.
+- **Object tree (Navicat-style)** — Server → Database → Schema → **Tables / Views / Functions /
+  Procedures** folders, with a **filter/locator** box to jump to a table by name. Open tables or
+  views to browse rows.
+- **Structure inspector** — a dockable/pinnable side panel showing **Info**, **DDL**
+  (`CREATE TABLE` + indexes + foreign keys), and **Relationships**.
+- **SQL query window** — **New Query** opens a window to run arbitrary SQL (Run / F5) with a
+  results grid, row counts and timing.
+- **Settings** — defaults for row limit and which panels open with a table.
+- **Professional UI** — clean blue/slate theme, dark sidebar, button icons, styled modal dialogs.
 
 ## Clarion dates & times
 

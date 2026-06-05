@@ -60,6 +60,12 @@
                                Foreground="{StaticResource B.TextMuted}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Margin="0,0,10,0" Command="{Binding OpenQueryCommand}"
+                            ToolTip="Open a SQL query window for the selected connection/database">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE943;"/><TextBlock Text="New Query"/>
+                        </StackPanel>
+                    </Button>
                     <Button Margin="0,0,10,0" Command="{Binding OpenSettingsCommand}"
                             ToolTip="Set default row limit and which panels open with a table">
                         <StackPanel Orientation="Horizontal">

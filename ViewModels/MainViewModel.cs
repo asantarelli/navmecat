@@ -40,6 +40,21 @@ public partial class MainViewModel : ObservableObject
     // ---- connection management ------------------------------------------
 
     [RelayCommand]
+    private void OpenQuery()
+    {
+        var node = SelectedNode;
+        var connection = node?.Connection
+            ?? Roots.FirstOrDefault(r => r.Type == NodeType.Server)?.Connection;
+        if (connection is null)
+        {
+            StatusText = "Add a connection first.";
+            return;
+        }
+        new Views.QueryWindow(connection, node?.Database).Show();
+        StatusText = $"Opened a query window for '{connection.Name}'.";
+    }
+
+    [RelayCommand]
     private void OpenSettings()
     {
         if (new Views.SettingsDialog().ShowDialog() == true)
