@@ -39,6 +39,7 @@ public static class DataGridClarion
             grid.PreviewMouseRightButtonUp += OnHeaderRightClick;
             grid.CurrentCellChanged += OnCurrentCellChanged;
 
+            grid.PreviewTextInput += OnPreviewTextInput;
             grid.BeginningEdit += OnBeginningEdit;
             grid.CellEditEnding += OnCellEditEnding;
 
@@ -55,6 +56,7 @@ public static class DataGridClarion
             grid.AutoGeneratingColumn -= OnAutoGeneratingColumn;
             grid.PreviewMouseRightButtonUp -= OnHeaderRightClick;
             grid.CurrentCellChanged -= OnCurrentCellChanged;
+            grid.PreviewTextInput -= OnPreviewTextInput;
             grid.BeginningEdit -= OnBeginningEdit;
             grid.CellEditEnding -= OnCellEditEnding;
         }
@@ -94,18 +96,29 @@ public static class DataGridClarion
         return menu;
     }
 
-    // Selection captured when an edit begins, so type-fill survives the commit moving selection.
+    // Selection captured before an edit starts, so type-fill survives the edit collapsing/moving it.
     private static List<(DataRowView Row, DataGridColumn Col)>? _fillSnapshot;
 
-    private static void OnBeginningEdit(object? sender, DataGridBeginningEditEventArgs e)
-    {
-        if (sender is not DataGrid grid) return;
-        _fillSnapshot = grid.SelectedCells.Count > 1
+    private static List<(DataRowView Row, DataGridColumn Col)>? SnapshotSelection(DataGrid grid) =>
+        grid.SelectedCells.Count > 1
             ? grid.SelectedCells
                 .Where(c => c.Item is DataRowView)
                 .Select(c => ((DataRowView)c.Item, c.Column))
                 .ToList()
             : null;
+
+    // Typing a character is the earliest signal — selection is still intact here.
+    private static void OnPreviewTextInput(object? sender, TextCompositionEventArgs e)
+    {
+        if (sender is DataGrid grid && grid.SelectedCells.Count > 1)
+            _fillSnapshot = SnapshotSelection(grid);
+    }
+
+    private static void OnBeginningEdit(object? sender, DataGridBeginningEditEventArgs e)
+    {
+        // Fallback (e.g. F2 then type) — don't clobber a snapshot already taken on text input.
+        if (_fillSnapshot is null && sender is DataGrid grid)
+            _fillSnapshot = SnapshotSelection(grid);
     }
 
     /// <summary>When several cells were selected, typing into one fills them all.</summary>
