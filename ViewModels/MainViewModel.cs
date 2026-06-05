@@ -76,6 +76,35 @@ public partial class MainViewModel : ObservableObject
             StatusText = "Settings saved (applies to tables opened from now on).";
     }
 
+    private const string RepoUrl = "https://github.com/robertorenz/navmecat";
+
+    [RelayCommand]
+    private static void ExitApp() => System.Windows.Application.Current?.Shutdown();
+
+    [RelayCommand]
+    private void ShowAbout()
+    {
+        var v = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
+        var version = v is null ? "" : $"Version {v.Major}.{v.Minor}.{v.Build}";
+        Dialogs.ShowMessage("About NavMeCat",
+            $"NavMeCat — SQL Server Manager\n{version}\n\nA Navicat-style database manager for SQL Server.\n{RepoUrl}");
+    }
+
+    [RelayCommand]
+    private void OpenGitHub() => OpenUrl(RepoUrl);
+
+    [RelayCommand]
+    private void OpenReleases() => OpenUrl(RepoUrl + "/releases/latest");
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch { /* no browser available */ }
+    }
+
     [RelayCommand]
     private void AddConnection()
     {

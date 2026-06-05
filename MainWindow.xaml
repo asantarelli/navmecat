@@ -56,33 +56,31 @@
                     </Border>
                     <TextBlock Text="NavMeCat" FontSize="16" FontWeight="Bold" Margin="10,0,0,0"
                                Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
-                    <TextBlock Text="SQL Server Manager" FontSize="13" Margin="10,0,0,0"
-                               Foreground="{StaticResource B.TextMuted}" VerticalAlignment="Center"/>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Margin="0,0,10,0" Command="{Binding OpenQueryCommand}"
-                            ToolTip="Open a SQL query window for the selected connection/database">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE943;"/><TextBlock Text="New Query"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Margin="0,0,10,0" Command="{Binding OpenQueryBuilderCommand}"
-                            ToolTip="Build a query visually (tables, joins, filters)">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE71C;"/><TextBlock Text="Query Builder"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Margin="0,0,10,0" Command="{Binding OpenSettingsCommand}"
-                            ToolTip="Set default row limit and which panels open with a table">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE713;"/><TextBlock Text="Settings"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource AccentButton}" Command="{Binding AddConnectionCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="New Connection"/>
-                        </StackPanel>
-                    </Button>
+
+                    <Menu Background="Transparent" VerticalAlignment="Center" Margin="18,0,0,0" FontSize="13">
+                        <MenuItem Header="_File">
+                            <MenuItem Header="New Connection" Command="{Binding AddConnectionCommand}"/>
+                            <MenuItem Header="New Query" Command="{Binding OpenQueryCommand}"/>
+                            <MenuItem Header="Query Builder" Command="{Binding OpenQueryBuilderCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="Exit" Command="{Binding ExitAppCommand}"/>
+                        </MenuItem>
+                        <MenuItem Header="_Connection">
+                            <MenuItem Header="Add Connection" Command="{Binding AddConnectionCommand}"/>
+                            <MenuItem Header="Edit Connection" Command="{Binding EditConnectionCommand}"/>
+                            <MenuItem Header="Remove Connection" Command="{Binding RemoveConnectionCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="Refresh" Command="{Binding RefreshNodeCommand}"/>
+                        </MenuItem>
+                        <MenuItem Header="_Help">
+                            <MenuItem Header="About NavMeCat" Command="{Binding ShowAboutCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="GitHub Repository" Command="{Binding OpenGitHubCommand}"/>
+                            <MenuItem Header="Latest Release" Command="{Binding OpenReleasesCommand}"/>
+                        </MenuItem>
+                    </Menu>
                 </StackPanel>
             </Grid>
         </Border>
