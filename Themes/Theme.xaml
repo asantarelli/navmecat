@@ -418,7 +418,8 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             ClipToBounds="True">
-                        <ContentPresenter VerticalAlignment="Top" Margin="{TemplateBinding Padding}"/>
+                        <ContentPresenter VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
+                                          Margin="{TemplateBinding Padding}"/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
