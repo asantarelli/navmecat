@@ -16,8 +16,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="⤢" Width="26" Style="{StaticResource ToolButton}"
                         Command="{Binding PinInspectorCommand}" ToolTip="Pin / pop out to a floating window"/>
-                <Button Content="✕" Width="26" Style="{StaticResource ToolButton}"
-                        Command="{Binding HideInspectorCommand}" ToolTip="Close"/>
+                <Button Style="{StaticResource PaneCloseButton}" Command="{Binding HideInspectorCommand}"/>
             </StackPanel>
         </Grid>
 

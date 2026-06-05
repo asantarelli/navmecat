@@ -497,6 +497,33 @@
         </Setter>
     </Style>
 
+    <!-- Clear close (✕) button for pane headers; reddens on hover. -->
+    <Style x:Key="PaneCloseButton" TargetType="Button">
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="22"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="ToolTip" Value="Close"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <Path x:Name="X" Data="M0,0 L10,10 M10,0 L0,10" Width="10" Height="10"
+                              Stroke="{StaticResource B.TextMuted}" StrokeThickness="1.5"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource B.Danger}"/>
+                            <Setter TargetName="X" Property="Stroke" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Vertical drag handle to resize the side inspector panel. -->
     <Style x:Key="PaneThumbV" TargetType="Thumb">
         <Setter Property="Width" Value="9"/>

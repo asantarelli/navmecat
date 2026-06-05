@@ -19,8 +19,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="⤢" Width="26" Style="{StaticResource ToolButton}"
                         Command="{Binding PinSqlCommand}" ToolTip="Pin / pop out to a floating window"/>
-                <Button Content="✕" Width="26" Style="{StaticResource ToolButton}"
-                        Command="{Binding HideSqlPanelCommand}" ToolTip="Close"/>
+                <Button Style="{StaticResource PaneCloseButton}" Command="{Binding HideSqlPanelCommand}"/>
             </StackPanel>
         </Grid>
 
