@@ -70,6 +70,20 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     private readonly RowIdentityStore _identityStore = new();
     private string? _identityKey;
 
+    // ---- structure inspector ---------------------------------------------
+    [ObservableProperty] private bool showInspector;
+    [ObservableProperty] private bool inspectorPopped;
+    [ObservableProperty] private double inspectorWidth = 400;
+    [ObservableProperty] private string inspectorContent = "";
+    [ObservableProperty] private InspectorSection inspectorSection = InspectorSection.Ddl;
+
+    private TableStructure? _structure;
+
+    public bool IsInfoSection => InspectorSection == InspectorSection.Info;
+    public bool IsDdlSection => InspectorSection == InspectorSection.Ddl;
+    public bool IsRelSection => InspectorSection == InspectorSection.Relationships;
+    public string PaneTitle => Identifier;
+
     /// <summary>Shown only for tables without a primary key / unique index.</summary>
     public bool CanPickRowIdentity => _session is not null && !_session.HasNaturalKey;
 
@@ -242,6 +256,64 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void PinSql() => PaneService.TogglePopOut(this, PaneKind.Sql);
+
+    // ---- structure inspector --------------------------------------------
+
+    [RelayCommand]
+    private void HideInspector()
+    {
+        PaneService.ClosePopOut(this, PaneKind.Inspector);
+        ShowInspector = false;
+    }
+
+    [RelayCommand]
+    private void PinInspector() => PaneService.TogglePopOut(this, PaneKind.Inspector);
+
+    [RelayCommand]
+    private void SetInspectorSection(InspectorSection section)
+    {
+        InspectorSection = section;
+        ShowInspector = true;
+    }
+
+    partial void OnShowInspectorChanged(bool value)
+    {
+        if (value && _structure is null) _ = LoadStructureAsync();
+    }
+
+    partial void OnInspectorSectionChanged(InspectorSection value)
+    {
+        UpdateInspectorContent();
+        OnPropertyChanged(nameof(IsInfoSection));
+        OnPropertyChanged(nameof(IsDdlSection));
+        OnPropertyChanged(nameof(IsRelSection));
+    }
+
+    private async Task LoadStructureAsync()
+    {
+        InspectorContent = "Loading…";
+        try
+        {
+            _structure = await TableMetadataService.GetAsync(
+                Node.Connection.BuildConnectionString(), Node.Database!, Node.Schema!, Node.Name);
+            UpdateInspectorContent();
+        }
+        catch (Exception ex)
+        {
+            InspectorContent = "-- Error loading structure: " + ex.Message;
+        }
+    }
+
+    private void UpdateInspectorContent()
+    {
+        if (_structure is null) return;
+        InspectorContent = InspectorSection switch
+        {
+            InspectorSection.Info => _structure.Info,
+            InspectorSection.Relationships => _structure.Relationships,
+            _ => _structure.Ddl
+        };
+    }
 
     [RelayCommand]
     private void PickRowIdentity()

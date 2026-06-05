@@ -37,11 +37,19 @@ public partial class MainWindow : Window
     {
         if (sender is not Thumb thumb || thumb.DataContext is not TableTabViewModel tab) return;
 
-        static double Clamp(double h) => Math.Max(120, Math.Min(900, h));
+        static double Clamp(double v) => Math.Max(120, Math.Min(900, v));
 
-        if ((string)thumb.Tag == "sql")
-            tab.SqlPaneHeight = Clamp(tab.SqlPaneHeight - e.VerticalChange);
-        else
-            tab.DetailPaneHeight = Clamp(tab.DetailPaneHeight - e.VerticalChange);
+        switch ((string)thumb.Tag)
+        {
+            case "sql":
+                tab.SqlPaneHeight = Clamp(tab.SqlPaneHeight - e.VerticalChange);
+                break;
+            case "inspector":
+                tab.InspectorWidth = Math.Max(220, Math.Min(1000, tab.InspectorWidth - e.HorizontalChange));
+                break;
+            default:
+                tab.DetailPaneHeight = Clamp(tab.DetailPaneHeight - e.VerticalChange);
+                break;
+        }
     }
 }

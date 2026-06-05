@@ -3,7 +3,7 @@ using NavMeCat.ViewModels;
 
 namespace NavMeCat.Views;
 
-public enum PaneKind { Detail, Sql }
+public enum PaneKind { Detail, Sql, Inspector }
 
 /// <summary>
 /// Pops a tab's pane (cell detail or SQL preview) out into a floating window that can be
@@ -25,13 +25,23 @@ public static class PaneService
             return;
         }
 
-        FrameworkElement body = kind == PaneKind.Detail
-            ? new CellDetailView { DataContext = tab }
-            : new SqlPreviewView { DataContext = tab };
+        FrameworkElement body = kind switch
+        {
+            PaneKind.Detail => new CellDetailView { DataContext = tab },
+            PaneKind.Sql => new SqlPreviewView { DataContext = tab },
+            _ => new InspectorView { DataContext = tab }
+        };
+
+        var titlePrefix = kind switch
+        {
+            PaneKind.Detail => "Cell detail — ",
+            PaneKind.Sql => "SQL preview — ",
+            _ => "Structure — "
+        };
 
         var window = new FloatingPaneWindow
         {
-            Title = (kind == PaneKind.Detail ? "Cell detail — " : "SQL preview — ") + tab.PaneTitleSuffix,
+            Title = titlePrefix + tab.PaneTitleSuffix,
             Owner = Application.Current?.MainWindow
         };
         window.SetBody(body);

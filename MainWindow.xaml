@@ -130,6 +130,13 @@
                     <TabControl.ContentTemplate>
                         <DataTemplate>
                             <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Grid Grid.Column="0">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*" MinHeight="120"/>
@@ -303,9 +310,12 @@
                                                     </StackPanel>
                                                 </Border>
                                             </Popup>
-                                            <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
+                                            <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,8,0"
                                                           IsChecked="{Binding ShowSqlPanel}" Content="SQL"
                                                           ToolTip="Show the SQL that Save will run for pending changes"/>
+                                            <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
+                                                          IsChecked="{Binding ShowInspector}" Content="Structure"
+                                                          ToolTip="Show the table structure: Info, DDL and Relationships"/>
                                             <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
                                                        Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
                                             <TextBox Width="72" VerticalAlignment="Center"
@@ -366,6 +376,29 @@
                                         <v:SqlPreviewView/>
                                     </Border>
                                 </Grid>
+                                </Grid>
+
+                                <Thumb Grid.Column="1" Style="{StaticResource PaneThumbV}" Tag="inspector"
+                                       DragDelta="PaneThumb_DragDelta">
+                                    <Thumb.Visibility>
+                                        <MultiBinding Converter="{StaticResource ShownNotPopped}">
+                                            <Binding Path="ShowInspector"/>
+                                            <Binding Path="InspectorPopped"/>
+                                        </MultiBinding>
+                                    </Thumb.Visibility>
+                                </Thumb>
+
+                                <Border Grid.Column="2" Width="{Binding InspectorWidth}"
+                                        Background="{StaticResource B.Surface}"
+                                        BorderBrush="{StaticResource B.Border}" BorderThickness="1,0,0,0">
+                                    <Border.Visibility>
+                                        <MultiBinding Converter="{StaticResource ShownNotPopped}">
+                                            <Binding Path="ShowInspector"/>
+                                            <Binding Path="InspectorPopped"/>
+                                        </MultiBinding>
+                                    </Border.Visibility>
+                                    <v:InspectorView/>
+                                </Border>
                             </Grid>
                         </DataTemplate>
                     </TabControl.ContentTemplate>

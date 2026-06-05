@@ -1,0 +1,45 @@
+<UserControl x:Class="NavMeCat.Views.InspectorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:NavMeCat.ViewModels"
+             Background="{StaticResource B.Surface}">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Text="Structure" FontWeight="SemiBold" FontSize="13"
+                       Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="⤢" Width="26" Style="{StaticResource ToolButton}"
+                        Command="{Binding PinInspectorCommand}" ToolTip="Pin / pop out to a floating window"/>
+                <Button Content="✕" Width="26" Style="{StaticResource ToolButton}"
+                        Command="{Binding HideInspectorCommand}" ToolTip="Close"/>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <ToggleButton Content="Info" Style="{StaticResource ToolToggle}" Margin="0,0,6,0"
+                          IsChecked="{Binding IsInfoSection, Mode=OneWay}"
+                          Command="{Binding SetInspectorSectionCommand}"
+                          CommandParameter="{x:Static vm:InspectorSection.Info}"/>
+            <ToggleButton Content="DDL" Style="{StaticResource ToolToggle}" Margin="0,0,6,0"
+                          IsChecked="{Binding IsDdlSection, Mode=OneWay}"
+                          Command="{Binding SetInspectorSectionCommand}"
+                          CommandParameter="{x:Static vm:InspectorSection.Ddl}"/>
+            <ToggleButton Content="Relationships" Style="{StaticResource ToolToggle}"
+                          IsChecked="{Binding IsRelSection, Mode=OneWay}"
+                          Command="{Binding SetInspectorSectionCommand}"
+                          CommandParameter="{x:Static vm:InspectorSection.Relationships}"/>
+        </StackPanel>
+
+        <Border Grid.Row="2" BorderBrush="{StaticResource B.Border}" BorderThickness="1" CornerRadius="6">
+            <TextBox Text="{Binding InspectorContent, Mode=OneWay}" IsReadOnly="True" TextWrapping="NoWrap"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                     FontFamily="Consolas" FontSize="12" BorderThickness="0" Padding="8"/>
+        </Border>
+    </Grid>
+</UserControl>

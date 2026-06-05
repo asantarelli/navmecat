@@ -7,6 +7,9 @@ public enum SortDirection { Asc, Desc }
 /// <summary>How the cell detail panel renders the selected cell.</summary>
 public enum CellViewMode { Auto, Text, Hex, Image, Web }
 
+/// <summary>Section shown in the table structure inspector.</summary>
+public enum InspectorSection { Info, Ddl, Relationships }
+
 public enum FilterOperator
 {
     Contains, Equals, NotEquals,

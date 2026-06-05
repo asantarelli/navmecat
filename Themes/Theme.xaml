@@ -497,6 +497,28 @@
         </Setter>
     </Style>
 
+    <!-- Vertical drag handle to resize the side inspector panel. -->
+    <Style x:Key="PaneThumbV" TargetType="Thumb">
+        <Setter Property="Width" Value="9"/>
+        <Setter Property="Cursor" Value="SizeWE"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="Transparent">
+                        <Border x:Name="Grip" Width="4" Height="52" CornerRadius="2"
+                                Background="{StaticResource B.BorderStrong}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Grip" Property="Background" Value="{StaticResource B.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Splitter handle used between the grid and the dockable panes. -->
     <Style x:Key="PaneSplitter" TargetType="GridSplitter">
         <Setter Property="Template">
