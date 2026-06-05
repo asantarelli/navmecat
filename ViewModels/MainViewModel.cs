@@ -20,7 +20,6 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool isBusy;
 
     /// <summary>Row limit applied when opening a new tab.</summary>
-    private const int DefaultRowLimit = 1000;
 
     public MainViewModel()
     {
@@ -32,6 +31,13 @@ public partial class MainViewModel : ObservableObject
         _store.Save(Roots.Where(r => r.Type == NodeType.Server).Select(r => r.Connection));
 
     // ---- connection management ------------------------------------------
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        if (new Views.SettingsDialog().ShowDialog() == true)
+            StatusText = "Settings saved (applies to tables opened from now on).";
+    }
 
     [RelayCommand]
     private void AddConnection()
@@ -107,7 +113,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        var tab = new TableTabViewModel(node, DefaultRowLimit,
+        var tab = new TableTabViewModel(node, SettingsStore.Current.DefaultRowLimit,
             s => StatusText = s, b => IsBusy = b);
         tab.CloseRequested += CloseTab;
         OpenTabs.Add(tab);

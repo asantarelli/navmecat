@@ -59,8 +59,12 @@
                     <TextBlock Text="SQL Server Manager" FontSize="13" Margin="10,0,0,0"
                                Foreground="{StaticResource B.TextMuted}" VerticalAlignment="Center"/>
                 </StackPanel>
-                <Button HorizontalAlignment="Right" Style="{StaticResource AccentButton}"
-                        Content="＋  New Connection" Command="{Binding AddConnectionCommand}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="⚙  Settings" Margin="0,0,10,0" Command="{Binding OpenSettingsCommand}"
+                            ToolTip="Set default row limit and which panels open with a table"/>
+                    <Button Style="{StaticResource AccentButton}"
+                            Content="＋  New Connection" Command="{Binding AddConnectionCommand}"/>
+                </StackPanel>
             </Grid>
         </Border>
 

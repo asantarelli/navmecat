@@ -304,6 +304,20 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Opens the panels the user has chosen to show by default (after the table loads).</summary>
+    private void ApplyDefaults()
+    {
+        var s = SettingsStore.Current;
+        ShowClarionTypes = s.ShowClarionTypesByDefault;
+        if (s.ShowStructureByDefault)
+        {
+            InspectorSection = s.DefaultStructureSection;
+            ShowInspector = true;
+        }
+        if (s.ShowSqlByDefault) ShowSqlPanel = true;
+        if (s.ShowCellDetailByDefault) ShowDetailPanel = true;
+    }
+
     private void UpdateInspectorContent()
     {
         if (_structure is null) return;
@@ -578,6 +592,8 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
             ProjectView(); // applies any active filter/sort
             HasUnsavedChanges = false;
+            ApplyDefaults();
+
             var keyNote = _session.HasReliableKey
                 ? ""
                 : $"  ⚠ No primary key — edits/deletes match on {_session.KeyDescription} (one row at a time).";
