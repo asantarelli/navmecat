@@ -328,12 +328,12 @@
                                               HorizontalAlignment="Stretch" VerticalAlignment="Center"
                                               ResizeBehavior="PreviousAndNext" ResizeDirection="Rows" Background="Transparent"
                                               Style="{StaticResource PaneSplitter}"
-                                              Visibility="{Binding DetailDockedVisible, Converter={StaticResource BoolToVis}}"/>
+                                              Visibility="{Binding ShowDetailPanel, Converter={StaticResource BoolToVis}}"/>
 
                                 <!-- Cell detail pane (docked) -->
                                 <Border Grid.Row="3" Margin="16,0,16,16" Background="{StaticResource B.Surface}" CornerRadius="8"
                                         BorderBrush="{StaticResource B.Border}" BorderThickness="1"
-                                        Visibility="{Binding DetailDockedVisible, Converter={StaticResource BoolToVis}}">
+                                        Visibility="{Binding ShowDetailPanel, Converter={StaticResource BoolToVis}}">
                                     <v:CellDetailView/>
                                 </Border>
 
@@ -342,12 +342,12 @@
                                               HorizontalAlignment="Stretch" VerticalAlignment="Center"
                                               ResizeBehavior="PreviousAndNext" ResizeDirection="Rows" Background="Transparent"
                                               Style="{StaticResource PaneSplitter}"
-                                              Visibility="{Binding SqlDockedVisible, Converter={StaticResource BoolToVis}}"/>
+                                              Visibility="{Binding ShowSqlPanel, Converter={StaticResource BoolToVis}}"/>
 
                                 <!-- SQL preview pane (docked) -->
                                 <Border Grid.Row="5" Margin="16,0,16,16" Background="{StaticResource B.Surface}" CornerRadius="8"
                                         BorderBrush="{StaticResource B.Border}" BorderThickness="1"
-                                        Visibility="{Binding SqlDockedVisible, Converter={StaticResource BoolToVis}}">
+                                        Visibility="{Binding ShowSqlPanel, Converter={StaticResource BoolToVis}}">
                                     <v:SqlPreviewView/>
                                 </Border>
                             </Grid>
