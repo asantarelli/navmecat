@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private DbTreeNode? selectedNode;
     [ObservableProperty] private TableTabViewModel? selectedTab;
+    [ObservableProperty] private string treeFilter = "";
     [ObservableProperty] private string statusText = "Ready";
     [ObservableProperty] private bool isBusy;
 
@@ -29,6 +30,12 @@ public partial class MainViewModel : ObservableObject
 
     private void Persist() =>
         _store.Save(Roots.Where(r => r.Type == NodeType.Server).Select(r => r.Connection));
+
+    partial void OnTreeFilterChanged(string value)
+    {
+        DbTreeNode.ActiveFilter = value;
+        foreach (var root in Roots) root.ApplyFilter(value);
+    }
 
     // ---- connection management ------------------------------------------
 

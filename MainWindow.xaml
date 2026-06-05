@@ -82,6 +82,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
@@ -89,7 +90,28 @@
                                FontSize="11" FontWeight="SemiBold" Opacity="0.7"
                                Foreground="{StaticResource B.SidebarText}"/>
 
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="10,0,10,8">
+                    <!-- Filter / locator -->
+                    <Grid Grid.Row="1" Margin="10,0,10,8">
+                        <TextBox Text="{Binding TreeFilter, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#FF2B3845" Foreground="{StaticResource B.SidebarText}"
+                                 BorderBrush="#FF3A4A57" CaretBrush="White" Padding="8,5"
+                                 ToolTip="Type to filter tables (and schemas/databases) by name"/>
+                        <TextBlock Text="Filter tables…" Margin="11,0,0,0" VerticalAlignment="Center"
+                                   Foreground="{StaticResource B.SidebarMuted}" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TreeFilter}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="10,0,10,8">
                         <Button Style="{StaticResource ToolButton}" Content="Add" Foreground="{StaticResource B.SidebarText}"
                                 Command="{Binding AddConnectionCommand}"/>
                         <Button Style="{StaticResource ToolButton}" Content="Edit" Foreground="{StaticResource B.SidebarText}"
@@ -100,10 +122,17 @@
                                 Command="{Binding RefreshNodeCommand}"/>
                     </StackPanel>
 
-                    <TreeView x:Name="Tree" Grid.Row="2" Margin="8,0,8,10"
+                    <TreeView x:Name="Tree" Grid.Row="3" Margin="8,0,8,10"
                               ItemsSource="{Binding Roots}"
                               SelectedItemChanged="Tree_SelectedItemChanged"
-                              MouseDoubleClick="Tree_MouseDoubleClick"/>
+                              MouseDoubleClick="Tree_MouseDoubleClick">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                <Setter Property="Visibility"
+                                        Value="{Binding IsVisible, Converter={StaticResource BoolToVis}}"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                    </TreeView>
                 </Grid>
             </Border>
 

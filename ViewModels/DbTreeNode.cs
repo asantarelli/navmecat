@@ -24,9 +24,47 @@ public partial class DbTreeNode : ObservableObject
     [ObservableProperty] private bool isExpanded;
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private bool hasError;
+    [ObservableProperty] private bool isVisible = true;
 
     private bool _loaded;
     public bool IsLeaf => Type is NodeType.Table or NodeType.Message;
+
+    /// <summary>The filter currently applied to the tree (so lazily-loaded children inherit it).</summary>
+    public static string ActiveFilter { get; set; } = "";
+
+    /// <summary>Filters this node and its loaded descendants. Returns whether this node stays visible.</summary>
+    public bool ApplyFilter(string filter)
+    {
+        if (Type == NodeType.Message) { IsVisible = true; return false; }
+
+        if (string.IsNullOrWhiteSpace(filter))
+        {
+            IsVisible = true;
+            foreach (var c in Children) c.ApplyFilter(filter);
+            return true;
+        }
+
+        if (Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+        {
+            ShowAll(); // a matching parent reveals all its children
+            return true;
+        }
+
+        var childMatch = false;
+        foreach (var c in Children)
+            if (c.Type != NodeType.Message && c.ApplyFilter(filter)) childMatch = true;
+
+        IsVisible = childMatch;
+        if (childMatch) IsExpanded = true;
+        return IsVisible;
+    }
+
+    private void ShowAll()
+    {
+        IsVisible = true;
+        foreach (var c in Children)
+            if (c.Type != NodeType.Message) c.ShowAll();
+    }
 
     // ---- factory helpers -------------------------------------------------
 
@@ -100,6 +138,10 @@ public partial class DbTreeNode : ObservableObject
                 Children.Add(Message("(empty)"));
             else
                 foreach (var n in items) Children.Add(n);
+
+            // Apply the active filter to freshly-loaded children.
+            if (!string.IsNullOrWhiteSpace(ActiveFilter))
+                foreach (var n in items) n.ApplyFilter(ActiveFilter);
         }
         catch (Exception ex)
         {
