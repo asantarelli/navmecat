@@ -55,6 +55,21 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenQueryBuilder()
+    {
+        var node = SelectedNode;
+        var connection = node?.Connection
+            ?? Roots.FirstOrDefault(r => r.Type == NodeType.Server)?.Connection;
+        if (connection is null)
+        {
+            StatusText = "Add a connection first.";
+            return;
+        }
+        new Views.QueryBuilderWindow(connection, node?.Database).Show();
+        StatusText = $"Opened the query builder for '{connection.Name}'.";
+    }
+
+    [RelayCommand]
     private void OpenSettings()
     {
         if (new Views.SettingsDialog().ShowDialog() == true)
