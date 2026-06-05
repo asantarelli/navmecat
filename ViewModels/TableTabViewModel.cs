@@ -478,7 +478,10 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
             ProjectView(); // applies any active filter/sort
             HasUnsavedChanges = false;
-            _setStatus($"Loaded {_session.Data.Rows.Count} row(s) from {Identifier} (limit {RowLimit}).");
+            var keyNote = _session.HasReliableKey
+                ? ""
+                : $"  ⚠ No primary key — edits/deletes match on {_session.KeyDescription} (one row at a time).";
+            _setStatus($"Loaded {_session.Data.Rows.Count} row(s) from {Identifier} (limit {RowLimit}).{keyNote}");
             return true;
         }
         catch (Exception ex)

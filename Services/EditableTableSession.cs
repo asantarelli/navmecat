@@ -8,12 +8,17 @@ namespace NavMeCat.Services;
 /// <summary>
 /// Holds an open, editable view of a single table. Changes made to <see cref="Data"/>
 /// (in-place edits, new rows, deleted rows) are pushed back to SQL Server on <see cref="SaveAsync"/>.
-/// UPDATEs only touch the columns that actually changed; UPDATE/DELETE need a primary key.
+///
+/// Rows are matched for UPDATE/DELETE by, in order of preference: the primary key, a unique
+/// index, or — for keyless tables — every comparable column (with TOP (1) so only one row is
+/// affected). UPDATEs only set the columns that actually changed.
 /// </summary>
 public sealed class EditableTableSession : IDisposable
 {
     private readonly SqlConnection _connection;
     private readonly SqlDataAdapter _adapter;
+    private readonly DataColumn[] _keyColumns;
+    private readonly bool _useTopOne;
 
     public DataTable Data { get; }
     public string Database { get; }
@@ -21,10 +26,15 @@ public sealed class EditableTableSession : IDisposable
     public string Table { get; }
     public int RowLimit { get; }
 
+    /// <summary>How rows are identified for save: "primary key", "unique index", or "all columns".</summary>
+    public string KeyDescription { get; }
+    public bool HasReliableKey { get; }
+
     public string Identifier => $"{Database}.{Schema}.{Table}";
 
     private EditableTableSession(SqlConnection connection, SqlDataAdapter adapter, DataTable data,
-        string database, string schema, string table, int rowLimit)
+        string database, string schema, string table, int rowLimit,
+        DataColumn[] keyColumns, bool useTopOne, string keyDescription, bool hasReliableKey)
     {
         _connection = connection;
         _adapter = adapter;
@@ -33,6 +43,10 @@ public sealed class EditableTableSession : IDisposable
         Schema = schema;
         Table = table;
         RowLimit = rowLimit;
+        _keyColumns = keyColumns;
+        _useTopOne = useTopOne;
+        KeyDescription = keyDescription;
+        HasReliableKey = hasReliableKey;
     }
 
     private static string Quote(string identifier) => "[" + identifier.Replace("]", "]]") + "]";
@@ -46,17 +60,92 @@ public sealed class EditableTableSession : IDisposable
         var sql = $"SELECT TOP ({rowLimit}) * FROM {Quote(schema)}.{Quote(table)}";
         var adapter = new SqlDataAdapter(sql, connection)
         {
-            // Pull key + schema info so we know the primary key for UPDATE/DELETE.
             MissingSchemaAction = MissingSchemaAction.AddWithKey
         };
 
         var data = new DataTable(table);
         await Task.Run(() => adapter.Fill(data));
 
-        return new EditableTableSession(connection, adapter, data, database, schema, table, rowLimit);
+        var (keys, topOne, description, reliable) = await ResolveKeyAsync(connection, schema, table, data);
+
+        return new EditableTableSession(connection, adapter, data, database, schema, table, rowLimit,
+            keys, topOne, description, reliable);
     }
 
     public bool HasChanges => Data.GetChanges() is not null;
+
+    // ---- key resolution --------------------------------------------------
+
+    private static async Task<(DataColumn[] Keys, bool TopOne, string Description, bool Reliable)>
+        ResolveKeyAsync(SqlConnection conn, string schema, string table, DataTable data)
+    {
+        if (data.PrimaryKey.Length > 0)
+            return (data.PrimaryKey, false, "primary key", true);
+
+        var fq = $"{Quote(schema)}.{Quote(table)}";
+
+        var unique = await GetFirstUniqueIndexAsync(conn, fq, data);
+        if (unique.Length > 0)
+            return (unique, false, "unique index", true);
+
+        // Keyless: match on every comparable column, limiting to one affected row.
+        var nonComparable = await GetNonComparableColumnsAsync(conn, fq);
+        var keys = data.Columns.Cast<DataColumn>()
+            .Where(c => c.DataType != typeof(byte[]) && !nonComparable.Contains(c.ColumnName))
+            .ToArray();
+        return (keys, keys.Length > 0, "all columns", false);
+    }
+
+    private static async Task<DataColumn[]> GetFirstUniqueIndexAsync(SqlConnection conn, string fq, DataTable data)
+    {
+        const string sql = @"
+            SELECT i.index_id, c.name
+            FROM sys.indexes i
+            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id AND ic.is_included_column = 0
+            JOIN sys.columns c ON c.object_id = i.object_id AND c.column_id = ic.column_id
+            WHERE i.object_id = OBJECT_ID(@fq) AND i.is_unique = 1 AND i.is_disabled = 0 AND i.has_filter = 0
+            ORDER BY i.index_id, ic.key_ordinal";
+
+        var byIndex = new Dictionary<int, List<string>>();
+        await using (var cmd = new SqlCommand(sql, conn))
+        {
+            cmd.Parameters.AddWithValue("@fq", fq);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var id = reader.GetInt32(0);
+                if (!byIndex.TryGetValue(id, out var list)) byIndex[id] = list = new List<string>();
+                list.Add(reader.GetString(1));
+            }
+        }
+
+        // Prefer the unique index with the fewest columns that are all present in the loaded data.
+        foreach (var cols in byIndex.Values.OrderBy(c => c.Count))
+        {
+            if (cols.All(data.Columns.Contains))
+                return cols.Select(n => data.Columns[n]!).ToArray();
+        }
+        return Array.Empty<DataColumn>();
+    }
+
+    private static async Task<HashSet<string>> GetNonComparableColumnsAsync(SqlConnection conn, string fq)
+    {
+        const string sql = @"
+            SELECT c.name
+            FROM sys.columns c
+            JOIN sys.types t ON c.user_type_id = t.user_type_id
+            WHERE c.object_id = OBJECT_ID(@fq)
+              AND (t.name IN ('text','ntext','image','xml','geography','geometry','hierarchyid','sql_variant')
+                   OR c.max_length = -1)";
+
+        var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var cmd = new SqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@fq", fq);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            result.Add(reader.GetString(0));
+        return result;
+    }
 
     // ---- change generation ----------------------------------------------
 
@@ -66,7 +155,6 @@ public sealed class EditableTableSession : IDisposable
     {
         var statements = new List<ChangeStatement>();
         var fqTable = $"{Quote(Schema)}.{Quote(Table)}";
-        var pk = Data.PrimaryKey;
 
         foreach (DataRow row in Data.Rows)
         {
@@ -76,11 +164,11 @@ public sealed class EditableTableSession : IDisposable
                     statements.Add(BuildInsert(row, fqTable));
                     break;
                 case DataRowState.Modified:
-                    var update = BuildUpdate(row, fqTable, pk);
+                    var update = BuildUpdate(row, fqTable);
                     if (update is not null) statements.Add(update);
                     break;
                 case DataRowState.Deleted:
-                    statements.Add(BuildDelete(row, fqTable, pk));
+                    statements.Add(BuildDelete(row, fqTable));
                     break;
             }
         }
@@ -88,11 +176,19 @@ public sealed class EditableTableSession : IDisposable
         return statements;
     }
 
+    private void RequireKey()
+    {
+        if (_keyColumns.Length == 0)
+            throw new InvalidOperationException(
+                "This table has no primary key, unique index, or comparable columns, so rows can't be " +
+                "identified for update/delete.");
+    }
+
     private ChangeStatement BuildInsert(DataRow row, string fqTable)
     {
         var values = new List<object>();
         var names = new List<string>();
-        var paramPlaceholders = new List<string>();
+        var placeholders = new List<string>();
         var previewValues = new List<string>();
 
         foreach (DataColumn c in Data.Columns)
@@ -100,21 +196,20 @@ public sealed class EditableTableSession : IDisposable
             if (c.AutoIncrement) continue;
             var v = row[c, DataRowVersion.Current];
             names.Add(Quote(c.ColumnName));
-            paramPlaceholders.Add("@p" + values.Count);
+            placeholders.Add("@p" + values.Count);
             previewValues.Add(FormatLiteral(v));
             values.Add(v);
         }
 
         var cols = string.Join(", ", names);
-        var sql = $"INSERT INTO {fqTable} ({cols}) VALUES ({string.Join(", ", paramPlaceholders)})";
+        var sql = $"INSERT INTO {fqTable} ({cols}) VALUES ({string.Join(", ", placeholders)})";
         var preview = $"INSERT INTO {fqTable} ({cols}) VALUES ({string.Join(", ", previewValues)})";
         return new ChangeStatement(sql, values, preview);
     }
 
-    private ChangeStatement? BuildUpdate(DataRow row, string fqTable, DataColumn[] pk)
+    private ChangeStatement? BuildUpdate(DataRow row, string fqTable)
     {
-        if (pk.Length == 0)
-            throw new InvalidOperationException("Table has no primary key; cannot generate UPDATE.");
+        RequireKey();
 
         var changed = new List<DataColumn>();
         foreach (DataColumn c in Data.Columns)
@@ -123,11 +218,12 @@ public sealed class EditableTableSession : IDisposable
             if (!ValuesEqual(row[c, DataRowVersion.Original], row[c, DataRowVersion.Current]))
                 changed.Add(c);
         }
-        if (changed.Count == 0) return null; // nothing really changed
+        if (changed.Count == 0) return null;
 
+        var top = _useTopOne ? "TOP (1) " : "";
         var values = new List<object>();
-        var sql = new StringBuilder($"UPDATE {fqTable} SET ");
-        var preview = new StringBuilder($"UPDATE {fqTable} SET ");
+        var sql = new StringBuilder($"UPDATE {top}{fqTable} SET ");
+        var preview = new StringBuilder($"UPDATE {top}{fqTable} SET ");
 
         for (var i = 0; i < changed.Count; i++)
         {
@@ -139,40 +235,48 @@ public sealed class EditableTableSession : IDisposable
             values.Add(v);
         }
 
-        AppendKeyWhere(sql, preview, row, pk, values);
+        AppendKeyWhere(sql, preview, row, values);
         return new ChangeStatement(sql.ToString(), values, preview.ToString());
     }
 
-    private ChangeStatement BuildDelete(DataRow row, string fqTable, DataColumn[] pk)
+    private ChangeStatement BuildDelete(DataRow row, string fqTable)
     {
-        if (pk.Length == 0)
-            throw new InvalidOperationException("Table has no primary key; cannot generate DELETE.");
+        RequireKey();
 
+        var top = _useTopOne ? "TOP (1) " : "";
         var values = new List<object>();
-        var sql = new StringBuilder($"DELETE FROM {fqTable}");
-        var preview = new StringBuilder($"DELETE FROM {fqTable}");
-        AppendKeyWhere(sql, preview, row, pk, values);
+        var sql = new StringBuilder($"DELETE {top}FROM {fqTable}");
+        var preview = new StringBuilder($"DELETE {top}FROM {fqTable}");
+        AppendKeyWhere(sql, preview, row, values);
         return new ChangeStatement(sql.ToString(), values, preview.ToString());
     }
 
-    private void AppendKeyWhere(StringBuilder sql, StringBuilder preview, DataRow row, DataColumn[] pk, List<object> values)
+    private void AppendKeyWhere(StringBuilder sql, StringBuilder preview, DataRow row, List<object> values)
     {
         sql.Append(" WHERE ");
         preview.Append(" WHERE ");
-        for (var i = 0; i < pk.Length; i++)
+        var first = true;
+        foreach (var c in _keyColumns)
         {
-            var c = pk[i];
+            var sep = first ? "" : " AND ";
+            first = false;
             var v = row[c, DataRowVersion.Original];
-            var sep = i > 0 ? " AND " : "";
-            sql.Append(sep).Append($"{Quote(c.ColumnName)} = @p{values.Count}");
-            preview.Append(sep).Append($"{Quote(c.ColumnName)} = {FormatLiteral(v)}");
-            values.Add(v);
+            if (v is DBNull)
+            {
+                sql.Append(sep).Append($"{Quote(c.ColumnName)} IS NULL");
+                preview.Append(sep).Append($"{Quote(c.ColumnName)} IS NULL");
+            }
+            else
+            {
+                sql.Append(sep).Append($"{Quote(c.ColumnName)} = @p{values.Count}");
+                preview.Append(sep).Append($"{Quote(c.ColumnName)} = {FormatLiteral(v)}");
+                values.Add(v);
+            }
         }
     }
 
     // ---- save / preview --------------------------------------------------
 
-    /// <summary>Pushes pending changes to the server. Returns the number of affected rows.</summary>
     public async Task<int> SaveAsync()
     {
         var changes = BuildChanges();
@@ -191,7 +295,6 @@ public sealed class EditableTableSession : IDisposable
         return affected;
     }
 
-    /// <summary>Readable preview of the statements Save will run (values inlined for readability).</summary>
     public List<string> BuildChangePreview()
     {
         try
