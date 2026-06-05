@@ -60,10 +60,17 @@
                                Foreground="{StaticResource B.TextMuted}" VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="⚙  Settings" Margin="0,0,10,0" Command="{Binding OpenSettingsCommand}"
-                            ToolTip="Set default row limit and which panels open with a table"/>
-                    <Button Style="{StaticResource AccentButton}"
-                            Content="＋  New Connection" Command="{Binding AddConnectionCommand}"/>
+                    <Button Margin="0,0,10,0" Command="{Binding OpenSettingsCommand}"
+                            ToolTip="Set default row limit and which panels open with a table">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE713;"/><TextBlock Text="Settings"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource AccentButton}" Command="{Binding AddConnectionCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="New Connection"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -112,14 +119,30 @@
                     </Grid>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="10,0,10,8">
-                        <Button Style="{StaticResource ToolButton}" Content="Add" Foreground="{StaticResource B.SidebarText}"
-                                Command="{Binding AddConnectionCommand}"/>
-                        <Button Style="{StaticResource ToolButton}" Content="Edit" Foreground="{StaticResource B.SidebarText}"
-                                Command="{Binding EditConnectionCommand}"/>
-                        <Button Style="{StaticResource ToolButton}" Content="Remove" Foreground="{StaticResource B.SidebarText}"
-                                Command="{Binding RemoveConnectionCommand}"/>
-                        <Button Style="{StaticResource ToolButton}" Content="Refresh" Foreground="{StaticResource B.SidebarText}"
-                                Command="{Binding RefreshNodeCommand}"/>
+                        <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding AddConnectionCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="Add"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding EditConnectionCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE70F;"/><TextBlock Text="Edit"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding RemoveConnectionCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74D;"/><TextBlock Text="Remove"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
+                                Command="{Binding RefreshNodeCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/><TextBlock Text="Refresh"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
 
                     <TreeView x:Name="Tree" Grid.Row="3" Margin="8,0,8,10"
@@ -195,6 +218,7 @@
                                             <!-- Filter -->
                                             <ToggleButton x:Name="FilterToggle" Style="{StaticResource ToolToggle}" Margin="0,0,8,0">
                                                 <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE71C;"/>
                                                     <TextBlock Text="Filter"/>
                                                     <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
                                                                Visibility="{Binding HasActiveFilter, Converter={StaticResource BoolToVis}}"/>
@@ -256,6 +280,7 @@
                                             <!-- Sort -->
                                             <ToggleButton x:Name="SortToggle" Style="{StaticResource ToolToggle}" Margin="0,0,16,0">
                                                 <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8CB;"/>
                                                     <TextBlock Text="Sort"/>
                                                     <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
                                                                Visibility="{Binding HasActiveSort, Converter={StaticResource BoolToVis}}"/>
@@ -305,10 +330,15 @@
                                                 </Border>
                                             </Popup>
 
-                                            <Button Content="Row identity…" Margin="0,0,16,0"
+                                            <Button Margin="0,0,16,0"
                                                     Command="{Binding PickRowIdentityCommand}"
                                                     Visibility="{Binding CanPickRowIdentity, Converter={StaticResource BoolToVis}}"
-                                                    ToolTip="No primary key — choose which columns identify a row for edits/deletes"/>
+                                                    ToolTip="No primary key — choose which columns identify a row for edits/deletes">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8D7;"/>
+                                                    <TextBlock Text="Row identity…"/>
+                                                </StackPanel>
+                                            </Button>
                                             <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
                                                       Margin="0,0,16,0" IsChecked="{Binding ShowClarionTypes}"
                                                       Visibility="{Binding HasClarionTypes, Converter={StaticResource BoolToVis}}"
@@ -316,7 +346,10 @@
                                             <ToggleButton x:Name="ViewToggle" Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
                                                           IsChecked="{Binding ViewMenuOpen, Mode=TwoWay}"
                                                           ToolTip="View the selected cell's content as Text, Hex, Image or Web">
-                                                <TextBlock Text="View  ▾"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE890;"/>
+                                                    <TextBlock Text="View  ▾"/>
+                                                </StackPanel>
                                             </ToggleButton>
                                             <Popup PlacementTarget="{Binding ElementName=ViewToggle}" Placement="Bottom"
                                                    StaysOpen="False" AllowsTransparency="True"
@@ -344,19 +377,39 @@
                                                 </Border>
                                             </Popup>
                                             <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,8,0"
-                                                          IsChecked="{Binding ShowSqlPanel}" Content="SQL"
-                                                          ToolTip="Show the SQL that Save will run for pending changes"/>
+                                                          IsChecked="{Binding ShowSqlPanel}"
+                                                          ToolTip="Show the SQL that Save will run for pending changes">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE943;"/>
+                                                    <TextBlock Text="SQL"/>
+                                                </StackPanel>
+                                            </ToggleButton>
                                             <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
-                                                          IsChecked="{Binding ShowInspector}" Content="Structure"
-                                                          ToolTip="Show the table structure: Info, DDL and Relationships"/>
+                                                          IsChecked="{Binding ShowInspector}"
+                                                          ToolTip="Show the table structure: Info, DDL and Relationships">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8A5;"/>
+                                                    <TextBlock Text="Structure"/>
+                                                </StackPanel>
+                                            </ToggleButton>
                                             <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
                                                        Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
                                             <TextBox Width="72" VerticalAlignment="Center"
                                                      Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"/>
-                                            <Button Content="Reload" Margin="10,0,0,0" Command="{Binding ReloadCommand}"/>
-                                            <Button Content="Save changes" Margin="10,0,0,0" Style="{StaticResource AccentButton}"
+                                            <Button Margin="10,0,0,0" Command="{Binding ReloadCommand}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/>
+                                                    <TextBlock Text="Reload"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Margin="10,0,0,0" Style="{StaticResource AccentButton}"
                                                     Command="{Binding SaveChangesCommand}"
-                                                    IsEnabled="{Binding HasUnsavedChanges}"/>
+                                                    IsEnabled="{Binding HasUnsavedChanges}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74E;"/>
+                                                    <TextBlock Text="Save changes"/>
+                                                </StackPanel>
+                                            </Button>
                                         </StackPanel>
                                     </Grid>
                                 </Border>

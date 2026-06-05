@@ -37,6 +37,14 @@
     <SolidColorBrush x:Key="B.RowSelected"   Color="#FFD6E7FA"/>
     <SolidColorBrush x:Key="B.GridLines"     Color="#FFE6EBF0"/>
 
+    <!-- Icon glyph (Segoe Fluent / MDL2) used inside toolbar buttons. -->
+    <Style x:Key="ToolIcon" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+    </Style>
+
     <!-- ============================ TEXT ============================ -->
     <Style x:Key="H1" TargetType="TextBlock">
         <Setter Property="FontSize" Value="15"/>
