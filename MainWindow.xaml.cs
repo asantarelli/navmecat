@@ -1,4 +1,6 @@
+using System;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using NavMeCat.ViewModels;
 
@@ -28,5 +30,18 @@ public partial class MainWindow : Window
         {
             Vm.OpenTableCommand.Execute(node);
         }
+    }
+
+    /// <summary>Drag handle above a docked pane resizes it (dragging up makes it taller).</summary>
+    private void PaneThumb_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (sender is not Thumb thumb || thumb.DataContext is not TableTabViewModel tab) return;
+
+        static double Clamp(double h) => Math.Max(120, Math.Min(900, h));
+
+        if ((string)thumb.Tag == "sql")
+            tab.SqlPaneHeight = Clamp(tab.SqlPaneHeight - e.VerticalChange);
+        else
+            tab.DetailPaneHeight = Clamp(tab.DetailPaneHeight - e.VerticalChange);
     }
 }

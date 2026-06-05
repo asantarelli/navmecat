@@ -81,6 +81,20 @@ public class IsNullToVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+/// <summary>Visible when the first bool is true AND the second is false (shown AND not popped-out).</summary>
+public class AndNotToVisibilityConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        var shown = values.Length > 0 && values[0] is true;
+        var popped = values.Length > 1 && values[1] is true;
+        return shown && !popped ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 /// <summary>Inverse of the built-in BooleanToVisibilityConverter.</summary>
 public class InverseBoolToVisibilityConverter : IValueConverter
 {

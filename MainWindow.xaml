@@ -134,9 +134,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*" MinHeight="120"/>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="{Binding DetailRowHeight, Mode=TwoWay}"/>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="{Binding SqlRowHeight, Mode=TwoWay}"/>
                                 </Grid.RowDefinitions>
 
                                 <!-- Per-table toolbar -->
@@ -323,33 +321,47 @@
                                           AutoGenerateColumns="True"
                                           beh:DataGridClarion.Enabled="True"/>
 
-                                <!-- Detail pane splitter -->
-                                <GridSplitter Grid.Row="2" Height="7" Margin="16,0,16,0"
-                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                                              ResizeBehavior="PreviousAndNext" ResizeDirection="Rows" Background="Transparent"
-                                              Style="{StaticResource PaneSplitter}"
-                                              Visibility="{Binding ShowDetailPanel, Converter={StaticResource BoolToVis}}"/>
+                                <!-- Cell detail pane (docked, resizable) -->
+                                <Grid Grid.Row="2">
+                                    <Grid.Visibility>
+                                        <MultiBinding Converter="{StaticResource ShownNotPopped}">
+                                            <Binding Path="ShowDetailPanel"/>
+                                            <Binding Path="DetailPopped"/>
+                                        </MultiBinding>
+                                    </Grid.Visibility>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Thumb Grid.Row="0" Style="{StaticResource PaneThumb}" Tag="detail"
+                                           DragDelta="PaneThumb_DragDelta"/>
+                                    <Border Grid.Row="1" Height="{Binding DetailPaneHeight}" Margin="16,0,16,16"
+                                            Background="{StaticResource B.Surface}" CornerRadius="8"
+                                            BorderBrush="{StaticResource B.Border}" BorderThickness="1">
+                                        <v:CellDetailView/>
+                                    </Border>
+                                </Grid>
 
-                                <!-- Cell detail pane (docked) -->
-                                <Border Grid.Row="3" Margin="16,0,16,16" Background="{StaticResource B.Surface}" CornerRadius="8"
-                                        BorderBrush="{StaticResource B.Border}" BorderThickness="1"
-                                        Visibility="{Binding ShowDetailPanel, Converter={StaticResource BoolToVis}}">
-                                    <v:CellDetailView/>
-                                </Border>
-
-                                <!-- SQL pane splitter -->
-                                <GridSplitter Grid.Row="4" Height="7" Margin="16,0,16,0"
-                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                                              ResizeBehavior="PreviousAndNext" ResizeDirection="Rows" Background="Transparent"
-                                              Style="{StaticResource PaneSplitter}"
-                                              Visibility="{Binding ShowSqlPanel, Converter={StaticResource BoolToVis}}"/>
-
-                                <!-- SQL preview pane (docked) -->
-                                <Border Grid.Row="5" Margin="16,0,16,16" Background="{StaticResource B.Surface}" CornerRadius="8"
-                                        BorderBrush="{StaticResource B.Border}" BorderThickness="1"
-                                        Visibility="{Binding ShowSqlPanel, Converter={StaticResource BoolToVis}}">
-                                    <v:SqlPreviewView/>
-                                </Border>
+                                <!-- SQL preview pane (docked, resizable) -->
+                                <Grid Grid.Row="3">
+                                    <Grid.Visibility>
+                                        <MultiBinding Converter="{StaticResource ShownNotPopped}">
+                                            <Binding Path="ShowSqlPanel"/>
+                                            <Binding Path="SqlPopped"/>
+                                        </MultiBinding>
+                                    </Grid.Visibility>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Thumb Grid.Row="0" Style="{StaticResource PaneThumb}" Tag="sql"
+                                           DragDelta="PaneThumb_DragDelta"/>
+                                    <Border Grid.Row="1" Height="{Binding SqlPaneHeight}" Margin="16,0,16,16"
+                                            Background="{StaticResource B.Surface}" CornerRadius="8"
+                                            BorderBrush="{StaticResource B.Border}" BorderThickness="1">
+                                        <v:SqlPreviewView/>
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </DataTemplate>
                     </TabControl.ContentTemplate>

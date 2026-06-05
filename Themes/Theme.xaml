@@ -440,6 +440,29 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Drag handle used to resize a dockable pane. -->
+    <Style x:Key="PaneThumb" TargetType="Thumb">
+        <Setter Property="Height" Value="9"/>
+        <Setter Property="Cursor" Value="SizeNS"/>
+        <Setter Property="Margin" Value="16,0,16,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="Transparent">
+                        <Border x:Name="Grip" Height="4" Width="52" CornerRadius="2"
+                                Background="{StaticResource B.BorderStrong}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Grip" Property="Background" Value="{StaticResource B.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Splitter handle used between the grid and the dockable panes. -->
     <Style x:Key="PaneSplitter" TargetType="GridSplitter">
         <Setter Property="Template">

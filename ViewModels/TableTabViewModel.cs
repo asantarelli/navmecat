@@ -37,21 +37,20 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private string detailHex = "";
     [ObservableProperty] private System.Windows.Media.ImageSource? detailImage;
     [ObservableProperty] private string detailHtml = "";
-    [ObservableProperty] private GridLength detailRowHeight = new(0);
     [ObservableProperty] private bool viewMenuOpen;
     [ObservableProperty] private CellViewMode viewMode = CellViewMode.Auto;
 
     [ObservableProperty] private bool detailPopped;
     [ObservableProperty] private bool showSqlPanel;
     [ObservableProperty] private string sqlPreview = "";
-    [ObservableProperty] private GridLength sqlRowHeight = new(0);
     [ObservableProperty] private bool sqlPopped;
 
-    private double _lastSqlPx = 240;
+    /// <summary>Resizable heights of the docked panes (pixels), driven by their drag handles.</summary>
+    [ObservableProperty] private double detailPaneHeight = 240;
+    [ObservableProperty] private double sqlPaneHeight = 240;
 
-    /// <summary>Docked panes are hidden when popped out into a floating window.</summary>
-    public bool DetailDockedVisible => ShowDetailPanel && !DetailPopped;
-    public bool SqlDockedVisible => ShowSqlPanel && !SqlPopped;
+    private bool _sqlRefreshQueued;
+
     public string PaneTitleSuffix => Identifier;
 
     private CellViewMode _effectiveViewMode = CellViewMode.Text;
@@ -63,7 +62,6 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     /// <summary>Apply is only meaningful for editable text on a string column.</summary>
     public bool CanApplyDetail => IsTextMode && _detailIsString;
 
-    private double _lastDetailPx = 220;
     private DataRowView? _detailRow;
     private string? _detailColumnName;
     private byte[]? _detailBytes;
@@ -239,24 +237,6 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void PinSql() => PaneService.TogglePopOut(this, PaneKind.Sql);
 
-    partial void OnShowDetailPanelChanged(bool value) => UpdateDetailRow();
-    partial void OnDetailPoppedChanged(bool value)
-    {
-        UpdateDetailRow();
-        OnPropertyChanged(nameof(DetailDockedVisible));
-    }
-
-    private void UpdateDetailRow()
-    {
-        DetailRowHeight = ShowDetailPanel && !DetailPopped ? new GridLength(_lastDetailPx) : new GridLength(0);
-        OnPropertyChanged(nameof(DetailDockedVisible));
-    }
-
-    partial void OnDetailRowHeightChanged(GridLength value)
-    {
-        if (value.IsAbsolute && value.Value > 0) _lastDetailPx = value.Value;
-    }
-
     // ---- SQL preview pane ------------------------------------------------
 
     [RelayCommand]
@@ -276,6 +256,27 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Refreshes the preview after edits settle, so a burst of changes only rebuilds once.</summary>
+    private void QueueSqlRefresh()
+    {
+        if (!ShowSqlPanel || _sqlRefreshQueued) return;
+        _sqlRefreshQueued = true;
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            _sqlRefreshQueued = false;
+            RefreshSqlPreview();
+            return;
+        }
+
+        dispatcher.BeginInvoke(new Action(() =>
+        {
+            _sqlRefreshQueued = false;
+            if (ShowSqlPanel) RefreshSqlPreview();
+        }), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
     [RelayCommand]
     private void HideSqlPanel()
     {
@@ -293,24 +294,6 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     partial void OnShowSqlPanelChanged(bool value)
     {
         if (value) RefreshSqlPreview();
-        UpdateSqlRow();
-    }
-
-    partial void OnSqlPoppedChanged(bool value)
-    {
-        UpdateSqlRow();
-        OnPropertyChanged(nameof(SqlDockedVisible));
-    }
-
-    private void UpdateSqlRow()
-    {
-        SqlRowHeight = ShowSqlPanel && !SqlPopped ? new GridLength(_lastSqlPx) : new GridLength(0);
-        OnPropertyChanged(nameof(SqlDockedVisible));
-    }
-
-    partial void OnSqlRowHeightChanged(GridLength value)
-    {
-        if (value.IsAbsolute && value.Value > 0) _lastSqlPx = value.Value;
     }
 
     [RelayCommand]
@@ -542,9 +525,11 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     public bool HasUnsavedChangesNow => _session?.HasChanges ?? false;
 
     private void OnDataChanged(object? sender, DataRowChangeEventArgs e)
-        // Cheap dirty flag — DataTable.GetChanges() here would be O(rows) on every edit,
-        // which made live multi-cell fill very slow. SaveChanges still verifies real changes.
-        => HasUnsavedChanges = true;
+    {
+        // Cheap dirty flag — DataTable.GetChanges() here would be O(rows) on every edit.
+        HasUnsavedChanges = true;
+        QueueSqlRefresh(); // live-update the SQL preview if it's open (debounced)
+    }
 
     private void Detach()
     {
