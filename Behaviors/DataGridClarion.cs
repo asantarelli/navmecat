@@ -39,17 +39,24 @@ public static class DataGridClarion
             grid.PreviewMouseRightButtonUp += OnHeaderRightClick;
             grid.CurrentCellChanged += OnCurrentCellChanged;
 
-            // Spreadsheet-friendly copy: replace the built-in copy and add a context menu.
+            grid.BeginningEdit += OnBeginningEdit;
+            grid.CellEditEnding += OnCellEditEnding;
+
+            // Spreadsheet-friendly copy/paste: replace the built-in copy and add a context menu.
             grid.ClipboardCopyMode = DataGridClipboardCopyMode.None;
             grid.CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy,
                 (_, ev) => { GridClipboard.Copy(grid, false); ev.Handled = true; }));
-            grid.ContextMenu = BuildCopyMenu(grid);
+            grid.CommandBindings.Add(new CommandBinding(ApplicationCommands.Paste,
+                (_, ev) => { GridClipboard.Paste(grid); ev.Handled = true; }));
+            grid.ContextMenu = BuildContextMenu(grid);
         }
         else
         {
             grid.AutoGeneratingColumn -= OnAutoGeneratingColumn;
             grid.PreviewMouseRightButtonUp -= OnHeaderRightClick;
             grid.CurrentCellChanged -= OnCurrentCellChanged;
+            grid.BeginningEdit -= OnBeginningEdit;
+            grid.CellEditEnding -= OnCellEditEnding;
         }
     }
 
@@ -69,16 +76,53 @@ public static class DataGridClarion
         }
     }
 
-    private static ContextMenu BuildCopyMenu(DataGrid grid)
+    private static ContextMenu BuildContextMenu(DataGrid grid)
     {
         var menu = new ContextMenu();
+
         var copy = new MenuItem { Header = "Copy", InputGestureText = "Ctrl+C" };
         copy.Click += (_, _) => GridClipboard.Copy(grid, false);
         var copyWithHeaders = new MenuItem { Header = "Copy with headers" };
         copyWithHeaders.Click += (_, _) => GridClipboard.Copy(grid, true);
+        var paste = new MenuItem { Header = "Paste", InputGestureText = "Ctrl+V" };
+        paste.Click += (_, _) => GridClipboard.Paste(grid);
+
         menu.Items.Add(copy);
         menu.Items.Add(copyWithHeaders);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(paste);
         return menu;
+    }
+
+    // Selection captured when an edit begins, so type-fill survives the commit moving selection.
+    private static List<(DataRowView Row, DataGridColumn Col)>? _fillSnapshot;
+
+    private static void OnBeginningEdit(object? sender, DataGridBeginningEditEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        _fillSnapshot = grid.SelectedCells.Count > 1
+            ? grid.SelectedCells
+                .Where(c => c.Item is DataRowView)
+                .Select(c => ((DataRowView)c.Item, c.Column))
+                .ToList()
+            : null;
+    }
+
+    /// <summary>When several cells were selected, typing into one fills them all.</summary>
+    private static void OnCellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
+    {
+        var snapshot = _fillSnapshot;
+        _fillSnapshot = null;
+
+        if (e.EditAction != DataGridEditAction.Commit) return;
+        if (sender is not DataGrid grid) return;
+        if (snapshot is null || snapshot.Count <= 1) return;
+        if (e.EditingElement is not TextBox box) return;
+
+        var value = box.Text;
+        grid.Dispatcher.BeginInvoke(
+            new Action(() => GridClipboard.FillCells(grid, snapshot, value)),
+            System.Windows.Threading.DispatcherPriority.Background);
     }
 
     // ---- current cell -> detail panel -----------------------------------

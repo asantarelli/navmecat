@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Windows;
@@ -6,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using NavMeCat.Services;
 using NavMeCat.ViewModels;
+using NavMeCat.Views;
 
 namespace NavMeCat.Behaviors;
 
@@ -169,5 +171,190 @@ public static class GridClipboard
             case decimal d when d == Math.Truncate(d): result = (long)d; return true;
             default: result = 0; return false;
         }
+    }
+
+    // ===================== PASTE / FILL =====================
+
+    /// <summary>
+    /// Pastes clipboard data. A single value fills every selected cell; a block is pasted
+    /// from the top-left of the selection (or the current cell), adding rows past the end.
+    /// </summary>
+    public static void Paste(DataGrid grid)
+    {
+        var text = GetClipboardText();
+        if (string.IsNullOrEmpty(text)) return;
+        if (grid.ItemsSource is not DataView view || view.Table is not { } table) return;
+
+        var matrix = ParseMatrix(text);
+        if (matrix.Count == 0) return;
+
+        var tab = grid.DataContext as TableTabViewModel;
+        var columns = grid.Columns
+            .Where(c => c.Visibility == Visibility.Visible)
+            .OrderBy(c => c.DisplayIndex)
+            .ToList();
+        if (columns.Count == 0) return;
+
+        try
+        {
+            var singleValue = matrix.Count == 1 && matrix[0].Count == 1;
+            if (singleValue && grid.SelectedCells.Count > 1)
+            {
+                FillSelectedCells(grid, matrix[0][0]);
+                return;
+            }
+
+            var (anchorRow, anchorCol) = ResolveAnchor(grid, view, columns);
+
+            for (var r = 0; r < matrix.Count; r++)
+            {
+                var viewIndex = anchorRow + r;
+                var targetRow = viewIndex < view.Count ? view[viewIndex] : view.AddNew()!;
+
+                var rowVals = matrix[r];
+                for (var c = 0; c < rowVals.Count; c++)
+                {
+                    var colIndex = anchorCol + c;
+                    if (colIndex >= columns.Count) break;
+                    SetCellValue(table, tab, targetRow, columns[colIndex], rowVals[c]);
+                }
+                targetRow.EndEdit(); // commits an added row, no-op for an existing one
+            }
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Paste failed", ex.Message);
+        }
+    }
+
+    /// <summary>Sets every currently-selected cell to the same value (paste-fill).</summary>
+    public static void FillSelectedCells(DataGrid grid, string value)
+    {
+        if (grid.ItemsSource is not DataView view || view.Table is not { } table) return;
+        var tab = grid.DataContext as TableTabViewModel;
+        foreach (var cell in grid.SelectedCells)
+            SetCellValue(table, tab, cell.Item as DataRowView, cell.Column, value);
+    }
+
+    /// <summary>Sets a captured list of cells to the same value (type-fill across a selection).</summary>
+    public static void FillCells(DataGrid grid, IEnumerable<(DataRowView Row, DataGridColumn Col)> cells, string value)
+    {
+        if (grid.ItemsSource is not DataView view || view.Table is not { } table) return;
+        var tab = grid.DataContext as TableTabViewModel;
+        foreach (var (row, col) in cells)
+            SetCellValue(table, tab, row, col, value);
+    }
+
+    private static (int Row, int Col) ResolveAnchor(DataGrid grid, DataView view, List<DataGridColumn> columns)
+    {
+        var row = int.MaxValue;
+        var col = int.MaxValue;
+        foreach (var cell in grid.SelectedCells)
+        {
+            var ri = cell.Item is DataRowView rv ? IndexOfRow(view, rv) : -1;
+            var ci = columns.IndexOf(cell.Column);
+            if (ri >= 0 && ri < row) row = ri;
+            if (ci >= 0 && ci < col) col = ci;
+        }
+
+        if (row == int.MaxValue)
+        {
+            row = grid.CurrentCell.Item is DataRowView crv ? IndexOfRow(view, crv) : view.Count;
+            if (row < 0) row = view.Count;
+        }
+        if (col == int.MaxValue)
+            col = grid.CurrentCell.Column is { } cc ? Math.Max(0, columns.IndexOf(cc)) : 0;
+
+        return (row, col);
+    }
+
+    private static int IndexOfRow(DataView view, DataRowView target)
+    {
+        for (var i = 0; i < view.Count; i++)
+            if (ReferenceEquals(view[i].Row, target.Row)) return i;
+        return -1;
+    }
+
+    private static void SetCellValue(DataTable table, TableTabViewModel? tab,
+        DataRowView? row, DataGridColumn? column, string text)
+    {
+        if (row is null || column is null) return;
+        var name = GetColumnName(column);
+        if (string.IsNullOrEmpty(name) || !table.Columns.Contains(name)) return;
+
+        var col = table.Columns[name]!;
+        if (col.ReadOnly || col.AutoIncrement) return;
+
+        try { row[name] = ConvertForColumn(tab, name, col, text); }
+        catch { /* value not compatible with this column — skip it */ }
+    }
+
+    private static object ConvertForColumn(TableTabViewModel? tab, string name, DataColumn col, string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            if (col.AllowDBNull) return DBNull.Value;
+            return col.DataType == typeof(string) ? "" : DBNull.Value;
+        }
+
+        var kind = tab?.GetEffectiveKind(name);
+        if (kind == ClarionKind.Date &&
+            (DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out var dt) ||
+             DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt)))
+            return Convert.ChangeType(ClarionDate.ToClarion(dt), col.DataType);
+
+        if (kind == ClarionKind.Time && ClarionTime.TryParse(text, out var clarion))
+            return Convert.ChangeType(clarion, col.DataType);
+
+        if (col.DataType == typeof(string)) return text;
+        return Convert.ChangeType(text, col.DataType, CultureInfo.CurrentCulture);
+    }
+
+    private static string GetClipboardText()
+    {
+        try
+        {
+            if (Clipboard.ContainsText(TextDataFormat.UnicodeText)) return Clipboard.GetText(TextDataFormat.UnicodeText);
+            if (Clipboard.ContainsText(TextDataFormat.Text)) return Clipboard.GetText(TextDataFormat.Text);
+        }
+        catch { /* clipboard busy */ }
+        return "";
+    }
+
+    /// <summary>Parses tab-delimited clipboard text into a matrix, honoring quoted fields.</summary>
+    private static List<List<string>> ParseMatrix(string text)
+    {
+        var rows = new List<List<string>>();
+        var row = new List<string>();
+        var sb = new StringBuilder();
+        var inQuotes = false;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+            if (inQuotes)
+            {
+                if (ch == '"')
+                {
+                    if (i + 1 < text.Length && text[i + 1] == '"') { sb.Append('"'); i++; }
+                    else inQuotes = false;
+                }
+                else sb.Append(ch);
+            }
+            else
+            {
+                switch (ch)
+                {
+                    case '"': inQuotes = true; break;
+                    case '\t': row.Add(sb.ToString()); sb.Clear(); break;
+                    case '\r': break;
+                    case '\n': row.Add(sb.ToString()); sb.Clear(); rows.Add(row); row = new List<string>(); break;
+                    default: sb.Append(ch); break;
+                }
+            }
+        }
+        if (sb.Length > 0 || row.Count > 0) { row.Add(sb.ToString()); rows.Add(row); }
+
+        return rows;
     }
 }

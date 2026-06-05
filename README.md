@@ -34,9 +34,11 @@ Grab the latest **portable `.exe`** from the
   - **Add** new rows and **delete** rows.
   - **Save changes** writes everything back via `SqlDataAdapter` (requires a primary key).
   - **Filter** and multi-column **Sort** builders (Navicat-style) per tab.
-  - **Spreadsheet-friendly copy** — select rows/cells and **Ctrl+C** (or right-click → Copy /
-    Copy with headers). Pastes cleanly into Excel and Google Sheets, with each value in its
-    own cell even when it contains line breaks.
+  - **Spreadsheet-friendly copy & paste** — select rows/cells and **Ctrl+C** (or right-click →
+    Copy / Copy with headers); pastes cleanly into Excel/Sheets with each value in its own cell.
+    **Ctrl+V** pastes a block back into the grid from the top-left of the selection (adding rows
+    past the end). A single clipboard value, or typing into one cell, fills **all selected
+    cells**. Clarion date/time text is parsed back to the stored integer.
   - **Cell View panel** — a resizable panel below the grid that shows the full content of the
     selected cell, with a **View** drop button to render it as **Text** (editable), **Hex**,
     **Image**, or **Web** (HTML via WebView2). **Auto-detect** picks the best mode. Rows are
