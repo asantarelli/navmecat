@@ -440,6 +440,50 @@
         </Style.Triggers>
     </Style>
 
+    <!-- ===================== NAVICAT-STYLE CELLS ===================== -->
+    <SolidColorBrush x:Key="B.Numeric"  Color="#FFA3322A"/>
+    <SolidColorBrush x:Key="B.NullText" Color="#FF9AA7B4"/>
+
+    <!-- Text cell: grays the "(Null)" placeholder. -->
+    <Style x:Key="GridText" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Style.Triggers>
+            <Trigger Property="Text" Value="(Null)">
+                <Setter Property="Foreground" Value="{StaticResource B.NullText}"/>
+                <Setter Property="FontStyle" Value="Italic"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Numeric cell: right-aligned, maroon (Navicat). -->
+    <Style x:Key="GridNumericText" TargetType="TextBlock" BasedOn="{StaticResource GridText}">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Foreground" Value="{StaticResource B.Numeric}"/>
+    </Style>
+
+    <!-- Edit-in-place editor: blue border (Navicat EIP). -->
+    <Style x:Key="GridEditBox" TargetType="TextBox">
+        <Setter Property="Foreground" Value="{StaticResource B.Text}"/>
+        <Setter Property="CaretBrush" Value="{StaticResource B.Accent}"/>
+        <Setter Property="Padding" Value="6,1"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border Background="White" BorderBrush="{StaticResource B.Accent}"
+                            BorderThickness="1.5" CornerRadius="2">
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="GridNumericEditBox" TargetType="TextBox" BasedOn="{StaticResource GridEditBox}">
+        <Setter Property="HorizontalContentAlignment" Value="Right"/>
+        <Setter Property="Foreground" Value="{StaticResource B.Numeric}"/>
+    </Style>
+
     <!-- Drag handle used to resize a dockable pane. -->
     <Style x:Key="PaneThumb" TargetType="Thumb">
         <Setter Property="Height" Value="9"/>

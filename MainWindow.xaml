@@ -265,6 +265,10 @@
                                                 </Border>
                                             </Popup>
 
+                                            <Button Content="Row identity…" Margin="0,0,16,0"
+                                                    Command="{Binding PickRowIdentityCommand}"
+                                                    Visibility="{Binding CanPickRowIdentity, Converter={StaticResource BoolToVis}}"
+                                                    ToolTip="No primary key — choose which columns identify a row for edits/deletes"/>
                                             <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
                                                       Margin="0,0,16,0" IsChecked="{Binding ShowClarionTypes}"
                                                       Visibility="{Binding HasClarionTypes, Converter={StaticResource BoolToVis}}"

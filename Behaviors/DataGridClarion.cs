@@ -21,6 +21,7 @@ public static class DataGridClarion
 {
     private static readonly ClarionDateConverter DateConverter = new();
     private static readonly ClarionTimeConverter TimeConverter = new();
+    private static readonly NullEditConverter NullConverter = new();
 
     public static readonly DependencyProperty EnabledProperty =
         DependencyProperty.RegisterAttached(
@@ -68,15 +69,32 @@ public static class DataGridClarion
     {
         if (sender is not DataGrid grid) return;
         if (grid.DataContext is not TableTabViewModel tab) return;
+        if (e.Column is not DataGridTextColumn column || column.Binding is not Binding binding) return;
+
+        // Edit-in-place editor gets a blue border (Navicat style).
+        column.EditingElementStyle = FindStyle("GridEditBox");
 
         var kind = tab.GetEffectiveKind(e.PropertyName);
-        if (kind is null) return;
-
-        if (e.Column is DataGridTextColumn column && column.Binding is Binding binding)
+        if (kind is not null)
         {
             binding.Converter = kind == ClarionKind.Date ? DateConverter : TimeConverter;
-            binding.ConverterParameter = e.PropertyType; // numeric type for ConvertBack
+            binding.ConverterParameter = e.PropertyType;
             column.Header = e.PropertyName + (kind == ClarionKind.Date ? "  📅" : "  🕒");
+            return;
+        }
+
+        // Plain columns: "(Null)" placeholder + numeric alignment/colour.
+        binding.Converter = NullConverter;
+        binding.ConverterParameter = e.PropertyType;
+
+        if (IsNumeric(e.PropertyType))
+        {
+            column.ElementStyle = FindStyle("GridNumericText");
+            column.EditingElementStyle = FindStyle("GridNumericEditBox");
+        }
+        else
+        {
+            column.ElementStyle = FindStyle("GridText");
         }
     }
 
@@ -245,4 +263,11 @@ public static class DataGridClarion
             current = VisualTreeHelper.GetParent(current);
         return current as T;
     }
+
+    private static Style? FindStyle(string key) => Application.Current?.TryFindResource(key) as Style;
+
+    private static bool IsNumeric(Type t) =>
+        t == typeof(int) || t == typeof(long) || t == typeof(short) || t == typeof(byte) ||
+        t == typeof(decimal) || t == typeof(double) || t == typeof(float) ||
+        t == typeof(uint) || t == typeof(ulong) || t == typeof(ushort) || t == typeof(sbyte);
 }

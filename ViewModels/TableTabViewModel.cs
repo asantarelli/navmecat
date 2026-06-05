@@ -67,6 +67,12 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     private byte[]? _detailBytes;
     private bool _detailIsString;
 
+    private readonly RowIdentityStore _identityStore = new();
+    private string? _identityKey;
+
+    /// <summary>Shown only for tables without a primary key / unique index.</summary>
+    public bool CanPickRowIdentity => _session is not null && !_session.HasNaturalKey;
+
     // ---- filter / sort ---------------------------------------------------
     public ObservableCollection<string> ColumnNames { get; } = new();
     public ObservableCollection<SortLevel> SortLevels { get; } = new();
@@ -236,6 +242,19 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void PinSql() => PaneService.TogglePopOut(this, PaneKind.Sql);
+
+    [RelayCommand]
+    private void PickRowIdentity()
+    {
+        if (_session is null) return;
+        var dialog = new RowIdentityDialog(_session);
+        if (dialog.ShowDialog() != true) return;
+
+        _session.SetRowIdentity(dialog.SelectedColumns);
+        if (_identityKey is not null) _identityStore.Set(_identityKey, dialog.SelectedColumns);
+        RefreshSqlPreview();
+        _setStatus($"Row identity for {Identifier}: {_session.KeyDescription}.");
+    }
 
     // ---- SQL preview pane ------------------------------------------------
 
@@ -475,6 +494,15 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
             ColumnNames.Clear();
             foreach (DataColumn c in _session.Data.Columns)
                 ColumnNames.Add(c.ColumnName);
+
+            // Apply a saved row-identity choice (keyless tables).
+            _identityKey = RowIdentityStore.MakeKey(Node.Connection.Id, Node.Database, Node.Schema, Node.Name);
+            if (!_session.HasNaturalKey)
+            {
+                var saved = _identityStore.Get(_identityKey);
+                if (saved is not null) _session.SetRowIdentity(saved);
+            }
+            OnPropertyChanged(nameof(CanPickRowIdentity));
 
             ProjectView(); // applies any active filter/sort
             HasUnsavedChanges = false;

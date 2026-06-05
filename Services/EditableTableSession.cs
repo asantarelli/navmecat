@@ -11,14 +11,21 @@ namespace NavMeCat.Services;
 ///
 /// Rows are matched for UPDATE/DELETE by, in order of preference: the primary key, a unique
 /// index, or — for keyless tables — every comparable column (with TOP (1) so only one row is
-/// affected). UPDATEs only set the columns that actually changed.
+/// affected). For keyless tables the caller can override which columns identify a row via
+/// <see cref="SetRowIdentity"/>. UPDATEs only set the columns that actually changed.
 /// </summary>
 public sealed class EditableTableSession : IDisposable
 {
     private readonly SqlConnection _connection;
     private readonly SqlDataAdapter _adapter;
-    private readonly DataColumn[] _keyColumns;
-    private readonly bool _useTopOne;
+    private readonly HashSet<string> _nonComparable;
+
+    // Current key (may be a custom row identity); plus the auto-resolved default to revert to.
+    private DataColumn[] _keyColumns;
+    private bool _useTopOne;
+    private readonly DataColumn[] _defaultKeys;
+    private readonly bool _defaultTopOne;
+    private readonly string _defaultDescription;
 
     public DataTable Data { get; }
     public string Database { get; }
@@ -26,15 +33,21 @@ public sealed class EditableTableSession : IDisposable
     public string Table { get; }
     public int RowLimit { get; }
 
-    /// <summary>How rows are identified for save: "primary key", "unique index", or "all columns".</summary>
-    public string KeyDescription { get; }
-    public bool HasReliableKey { get; }
+    public string KeyDescription { get; private set; }
+    public bool HasReliableKey { get; private set; }
+    /// <summary>True when the table has a real primary key or unique index (no identity picker needed).</summary>
+    public bool HasNaturalKey { get; }
+    public bool IsCustomIdentity { get; private set; }
 
     public string Identifier => $"{Database}.{Schema}.{Table}";
+    public IReadOnlyList<string> AllColumnNames => Data.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
+    public IReadOnlyList<string> KeyColumnNames => _keyColumns.Select(c => c.ColumnName).ToList();
+    public IReadOnlyCollection<string> NonComparableColumns => _nonComparable;
 
     private EditableTableSession(SqlConnection connection, SqlDataAdapter adapter, DataTable data,
         string database, string schema, string table, int rowLimit,
-        DataColumn[] keyColumns, bool useTopOne, string keyDescription, bool hasReliableKey)
+        DataColumn[] keyColumns, bool useTopOne, string keyDescription, bool hasNaturalKey,
+        HashSet<string> nonComparable)
     {
         _connection = connection;
         _adapter = adapter;
@@ -45,8 +58,13 @@ public sealed class EditableTableSession : IDisposable
         RowLimit = rowLimit;
         _keyColumns = keyColumns;
         _useTopOne = useTopOne;
+        _defaultKeys = keyColumns;
+        _defaultTopOne = useTopOne;
+        _defaultDescription = keyDescription;
         KeyDescription = keyDescription;
-        HasReliableKey = hasReliableKey;
+        HasNaturalKey = hasNaturalKey;
+        HasReliableKey = hasNaturalKey;
+        _nonComparable = nonComparable;
     }
 
     private static string Quote(string identifier) => "[" + identifier.Replace("]", "]]") + "]";
@@ -57,7 +75,8 @@ public sealed class EditableTableSession : IDisposable
         var connection = new SqlConnection(SqlServerService.WithDatabase(connectionString, database));
         await connection.OpenAsync();
 
-        var sql = $"SELECT TOP ({rowLimit}) * FROM {Quote(schema)}.{Quote(table)}";
+        var fq = $"{Quote(schema)}.{Quote(table)}";
+        var sql = $"SELECT TOP ({rowLimit}) * FROM {fq}";
         var adapter = new SqlDataAdapter(sql, connection)
         {
             MissingSchemaAction = MissingSchemaAction.AddWithKey
@@ -66,34 +85,98 @@ public sealed class EditableTableSession : IDisposable
         var data = new DataTable(table);
         await Task.Run(() => adapter.Fill(data));
 
-        var (keys, topOne, description, reliable) = await ResolveKeyAsync(connection, schema, table, data);
+        var nonComparable = await GetNonComparableColumnsAsync(connection, fq);
+
+        DataColumn[] keys;
+        bool topOne;
+        string description;
+        bool naturalKey;
+
+        if (data.PrimaryKey.Length > 0)
+        {
+            keys = data.PrimaryKey; topOne = false; description = "primary key"; naturalKey = true;
+        }
+        else
+        {
+            var unique = await GetFirstUniqueIndexAsync(connection, fq, data);
+            if (unique.Length > 0)
+            {
+                keys = unique; topOne = false; description = "unique index"; naturalKey = true;
+            }
+            else
+            {
+                keys = data.Columns.Cast<DataColumn>()
+                    .Where(c => c.DataType != typeof(byte[]) && !nonComparable.Contains(c.ColumnName))
+                    .ToArray();
+                topOne = keys.Length > 0; description = "all columns"; naturalKey = false;
+            }
+        }
 
         return new EditableTableSession(connection, adapter, data, database, schema, table, rowLimit,
-            keys, topOne, description, reliable);
+            keys, topOne, description, naturalKey, nonComparable);
     }
 
     public bool HasChanges => Data.GetChanges() is not null;
 
-    // ---- key resolution --------------------------------------------------
+    // ---- row identity (keyless tables) ----------------------------------
 
-    private static async Task<(DataColumn[] Keys, bool TopOne, string Description, bool Reliable)>
-        ResolveKeyAsync(SqlConnection conn, string schema, string table, DataTable data)
+    /// <summary>Overrides which columns identify a row. Null/empty reverts to the default.</summary>
+    public void SetRowIdentity(IReadOnlyList<string>? columns)
     {
-        if (data.PrimaryKey.Length > 0)
-            return (data.PrimaryKey, false, "primary key", true);
+        if (columns is null || columns.Count == 0)
+        {
+            _keyColumns = _defaultKeys;
+            _useTopOne = _defaultTopOne;
+            KeyDescription = _defaultDescription;
+            HasReliableKey = HasNaturalKey;
+            IsCustomIdentity = false;
+            return;
+        }
 
-        var fq = $"{Quote(schema)}.{Quote(table)}";
+        var cols = columns.Where(Data.Columns.Contains).Select(n => Data.Columns[n]!).ToArray();
+        if (cols.Length == 0) return;
 
-        var unique = await GetFirstUniqueIndexAsync(conn, fq, data);
-        if (unique.Length > 0)
-            return (unique, false, "unique index", true);
+        _keyColumns = cols;
+        _useTopOne = true; // user-chosen identity — keep one-row safety
+        KeyDescription = "custom (" + string.Join(", ", cols.Select(c => c.ColumnName)) + ")";
+        HasReliableKey = true;
+        IsCustomIdentity = true;
+    }
 
-        // Keyless: match on every comparable column, limiting to one affected row.
-        var nonComparable = await GetNonComparableColumnsAsync(conn, fq);
-        var keys = data.Columns.Cast<DataColumn>()
-            .Where(c => c.DataType != typeof(byte[]) && !nonComparable.Contains(c.ColumnName))
-            .ToArray();
-        return (keys, keys.Length > 0, "all columns", false);
+    /// <summary>Suggests the smallest set of comparable columns whose values are unique across loaded rows.</summary>
+    public List<string> DetectIdentityColumns()
+    {
+        var candidates = Data.Columns.Cast<DataColumn>()
+            .Where(c => c.DataType != typeof(byte[]) && !_nonComparable.Contains(c.ColumnName))
+            .ToList();
+        var rows = Data.Rows.Cast<DataRow>().Where(r => r.RowState != DataRowState.Deleted).ToList();
+        if (candidates.Count == 0 || rows.Count == 0) return new();
+
+        int Distinct(IEnumerable<DataColumn> cols) =>
+            rows.Select(r => string.Join("¦", cols.Select(c => r[c]?.ToString() ?? "∅")))
+                .Distinct().Count();
+
+        // Any single column that's already unique wins.
+        var single = candidates.OrderByDescending(c => Distinct(new[] { c })).First();
+        if (Distinct(new[] { single }) == rows.Count) return new() { single.ColumnName };
+
+        // Greedy: keep adding the column that increases distinct combinations the most.
+        var chosen = new List<DataColumn> { single };
+        while (Distinct(chosen) < rows.Count && chosen.Count < candidates.Count)
+        {
+            DataColumn? best = null;
+            var bestCount = Distinct(chosen);
+            foreach (var c in candidates)
+            {
+                if (chosen.Contains(c)) continue;
+                var d = Distinct(chosen.Append(c));
+                if (d > bestCount) { bestCount = d; best = c; }
+            }
+            if (best is null) break;
+            chosen.Add(best);
+        }
+
+        return chosen.Select(c => c.ColumnName).ToList();
     }
 
     private static async Task<DataColumn[]> GetFirstUniqueIndexAsync(SqlConnection conn, string fq, DataTable data)
@@ -119,12 +202,9 @@ public sealed class EditableTableSession : IDisposable
             }
         }
 
-        // Prefer the unique index with the fewest columns that are all present in the loaded data.
         foreach (var cols in byIndex.Values.OrderBy(c => c.Count))
-        {
             if (cols.All(data.Columns.Contains))
                 return cols.Select(n => data.Columns[n]!).ToArray();
-        }
         return Array.Empty<DataColumn>();
     }
 
@@ -180,8 +260,8 @@ public sealed class EditableTableSession : IDisposable
     {
         if (_keyColumns.Length == 0)
             throw new InvalidOperationException(
-                "This table has no primary key, unique index, or comparable columns, so rows can't be " +
-                "identified for update/delete.");
+                "No columns are available to identify a row for update/delete. Set a row identity, " +
+                "or add a primary key / unique index to the table.");
     }
 
     private ChangeStatement BuildInsert(DataRow row, string fqTable)
