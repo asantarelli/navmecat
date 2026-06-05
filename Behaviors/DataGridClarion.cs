@@ -38,6 +38,12 @@ public static class DataGridClarion
             grid.AutoGeneratingColumn += OnAutoGeneratingColumn;
             grid.PreviewMouseRightButtonUp += OnHeaderRightClick;
             grid.CurrentCellChanged += OnCurrentCellChanged;
+
+            // Spreadsheet-friendly copy: replace the built-in copy and add a context menu.
+            grid.ClipboardCopyMode = DataGridClipboardCopyMode.None;
+            grid.CommandBindings.Add(new CommandBinding(ApplicationCommands.Copy,
+                (_, ev) => { GridClipboard.Copy(grid, false); ev.Handled = true; }));
+            grid.ContextMenu = BuildCopyMenu(grid);
         }
         else
         {
@@ -61,6 +67,18 @@ public static class DataGridClarion
             binding.ConverterParameter = e.PropertyType; // numeric type for ConvertBack
             column.Header = e.PropertyName + (kind == ClarionKind.Date ? "  📅" : "  🕒");
         }
+    }
+
+    private static ContextMenu BuildCopyMenu(DataGrid grid)
+    {
+        var menu = new ContextMenu();
+        var copy = new MenuItem { Header = "Copy", InputGestureText = "Ctrl+C" };
+        copy.Click += (_, _) => GridClipboard.Copy(grid, false);
+        var copyWithHeaders = new MenuItem { Header = "Copy with headers" };
+        copyWithHeaders.Click += (_, _) => GridClipboard.Copy(grid, true);
+        menu.Items.Add(copy);
+        menu.Items.Add(copyWithHeaders);
+        return menu;
     }
 
     // ---- current cell -> detail panel -----------------------------------
