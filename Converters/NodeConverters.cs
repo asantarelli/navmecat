@@ -24,6 +24,16 @@ public class NodeTypeToGeometryConverter : IValueConverter
         // Grid for table.
         [NodeType.Table] = Geometry.Parse(
             "M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"),
+        // Folder for a category.
+        [NodeType.Category] = Geometry.Parse(
+            "M2,4.5 C2,3.95 2.45,3.5 3,3.5 L6,3.5 L7.5,5 L13,5 C13.55,5 14,5.45 14,6 " +
+            "L14,12 C14,12.55 13.55,13 13,13 L3,13 C2.45,13 2,12.55 2,12 Z"),
+        // Eye for a view.
+        [NodeType.View] = Geometry.Parse(
+            "M1.5,8 C3.5,4.5 12.5,4.5 14.5,8 C12.5,11.5 3.5,11.5 1.5,8 Z M8,6.2 A1.8,1.8 0 1 0 8,9.8 A1.8,1.8 0 1 0 8,6.2 Z"),
+        // Lines for a function / procedure (script).
+        [NodeType.Function] = Geometry.Parse("M3,4 H13 M3,7 H13 M3,10 H10 M3,13 H8"),
+        [NodeType.Procedure] = Geometry.Parse("M3,4 H13 M3,7 H13 M3,10 H13 M3,13 H11"),
     };
 
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -39,7 +49,11 @@ public class NodeTypeToBrushConverter : IValueConverter
     private static readonly Brush Server = Freeze("#2D7FE0");
     private static readonly Brush Database = Freeze("#1B9E8B");
     private static readonly Brush Schema = Freeze("#E0A52D");
+    private static readonly Brush Category = Freeze("#E0A52D");
     private static readonly Brush Table = Freeze("#4C6275");
+    private static readonly Brush View = Freeze("#1B9E8B");
+    private static readonly Brush Function = Freeze("#2D7FE0");
+    private static readonly Brush Procedure = Freeze("#C0653C");
     private static readonly Brush Default = Freeze("#9AA7B4");
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -48,7 +62,11 @@ public class NodeTypeToBrushConverter : IValueConverter
             NodeType.Server => Server,
             NodeType.Database => Database,
             NodeType.Schema => Schema,
+            NodeType.Category => Category,
             NodeType.Table => Table,
+            NodeType.View => View,
+            NodeType.Function => Function,
+            NodeType.Procedure => Procedure,
             _ => Default,
         };
 

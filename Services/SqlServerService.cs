@@ -29,7 +29,7 @@ public static class SqlServerService
         return result;
     }
 
-    /// <summary>Schemas in the given database that actually contain tables.</summary>
+    /// <summary>Schemas in the given database that own any user object.</summary>
     public static async Task<List<string>> GetSchemasAsync(string connectionString, string database)
     {
         var result = new List<string>();
@@ -38,7 +38,8 @@ public static class SqlServerService
         await using var cmd = new SqlCommand(
             @"SELECT DISTINCT s.name
               FROM sys.schemas s
-              JOIN sys.tables t ON t.schema_id = s.schema_id
+              JOIN sys.objects o ON o.schema_id = s.schema_id
+              WHERE o.type IN ('U','V','P','FN','IF','TF','FS','FT')
               ORDER BY s.name", conn);
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -46,17 +47,45 @@ public static class SqlServerService
         return result;
     }
 
-    public static async Task<List<string>> GetTablesAsync(string connectionString, string database, string schema)
+    public static Task<List<string>> GetTablesAsync(string connectionString, string database, string schema) =>
+        GetObjectsAsync(connectionString, database, schema, "sys.tables");
+
+    public static Task<List<string>> GetViewsAsync(string connectionString, string database, string schema) =>
+        GetObjectsAsync(connectionString, database, schema, "sys.views");
+
+    public static Task<List<string>> GetProceduresAsync(string connectionString, string database, string schema) =>
+        GetObjectsAsync(connectionString, database, schema, "sys.procedures");
+
+    public static async Task<List<string>> GetFunctionsAsync(string connectionString, string database, string schema)
     {
         var result = new List<string>();
         await using var conn = new SqlConnection(WithDatabase(connectionString, database));
         await conn.OpenAsync();
         await using var cmd = new SqlCommand(
-            @"SELECT t.name
-              FROM sys.tables t
-              JOIN sys.schemas s ON t.schema_id = s.schema_id
-              WHERE s.name = @schema
-              ORDER BY t.name", conn);
+            @"SELECT o.name
+              FROM sys.objects o
+              JOIN sys.schemas s ON o.schema_id = s.schema_id
+              WHERE s.name = @schema AND o.type IN ('FN','IF','TF','FS','FT')
+              ORDER BY o.name", conn);
+        cmd.Parameters.AddWithValue("@schema", schema);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            result.Add(reader.GetString(0));
+        return result;
+    }
+
+    private static async Task<List<string>> GetObjectsAsync(
+        string connectionString, string database, string schema, string sysView)
+    {
+        var result = new List<string>();
+        await using var conn = new SqlConnection(WithDatabase(connectionString, database));
+        await conn.OpenAsync();
+        await using var cmd = new SqlCommand(
+            $@"SELECT o.name
+               FROM {sysView} o
+               JOIN sys.schemas s ON o.schema_id = s.schema_id
+               WHERE s.name = @schema
+               ORDER BY o.name", conn);
         cmd.Parameters.AddWithValue("@schema", schema);
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())

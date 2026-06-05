@@ -5,11 +5,11 @@ using NavMeCat.Services;
 
 namespace NavMeCat.ViewModels;
 
-public enum NodeType { Server, Database, Schema, Table, Message }
+public enum NodeType { Server, Database, Schema, Category, Table, View, Function, Procedure, Message }
 
 /// <summary>
 /// A node in the connection tree. Children are loaded lazily the first time
-/// the node is expanded. Server → Database → Schema → Table.
+/// the node is expanded. Server → Database → Schema → Category → object.
 /// </summary>
 public partial class DbTreeNode : ObservableObject
 {
@@ -18,6 +18,8 @@ public partial class DbTreeNode : ObservableObject
     public ConnectionProfile Connection { get; private init; } = null!;
     public string? Database { get; private init; }
     public string? Schema { get; private init; }
+    /// <summary>For Category nodes: the object type its children are.</summary>
+    public NodeType CategoryChildType { get; private init; }
 
     public ObservableCollection<DbTreeNode> Children { get; } = new();
 
@@ -27,7 +29,10 @@ public partial class DbTreeNode : ObservableObject
     [ObservableProperty] private bool isVisible = true;
 
     private bool _loaded;
-    public bool IsLeaf => Type is NodeType.Table or NodeType.Message;
+    public bool IsLeaf => Type is NodeType.Table or NodeType.View or NodeType.Function
+        or NodeType.Procedure or NodeType.Message;
+    /// <summary>Tables and views can be opened to view their rows.</summary>
+    public bool IsOpenable => Type is NodeType.Table or NodeType.View;
 
     /// <summary>The filter currently applied to the tree (so lazily-loaded children inherit it).</summary>
     public static string ActiveFilter { get; set; } = "";
@@ -77,8 +82,11 @@ public partial class DbTreeNode : ObservableObject
     private static DbTreeNode SchemaNode(ConnectionProfile c, string db, string schema) =>
         WithPlaceholder(new DbTreeNode { Type = NodeType.Schema, Name = schema, Connection = c, Database = db, Schema = schema });
 
-    private static DbTreeNode TableNode(ConnectionProfile c, string db, string schema, string table) =>
-        new() { Type = NodeType.Table, Name = table, Connection = c, Database = db, Schema = schema };
+    private static DbTreeNode CategoryNode(ConnectionProfile c, string db, string schema, string name, NodeType childType) =>
+        WithPlaceholder(new DbTreeNode { Type = NodeType.Category, Name = name, Connection = c, Database = db, Schema = schema, CategoryChildType = childType });
+
+    private static DbTreeNode ObjectNode(NodeType type, ConnectionProfile c, string db, string schema, string name) =>
+        new() { Type = type, Name = name, Connection = c, Database = db, Schema = schema };
 
     private static DbTreeNode Message(string text) =>
         new() { Type = NodeType.Message, Name = text };
@@ -128,8 +136,22 @@ public partial class DbTreeNode : ObservableObject
                         items.Add(SchemaNode(Connection, Database!, schema));
                     break;
                 case NodeType.Schema:
-                    foreach (var table in await SqlServerService.GetTablesAsync(connStr, Database!, Schema!))
-                        items.Add(TableNode(Connection, Database!, Schema!, table));
+                    items.Add(CategoryNode(Connection, Database!, Schema!, "Tables", NodeType.Table));
+                    items.Add(CategoryNode(Connection, Database!, Schema!, "Views", NodeType.View));
+                    items.Add(CategoryNode(Connection, Database!, Schema!, "Functions", NodeType.Function));
+                    items.Add(CategoryNode(Connection, Database!, Schema!, "Procedures", NodeType.Procedure));
+                    break;
+                case NodeType.Category:
+                    var names = CategoryChildType switch
+                    {
+                        NodeType.Table => await SqlServerService.GetTablesAsync(connStr, Database!, Schema!),
+                        NodeType.View => await SqlServerService.GetViewsAsync(connStr, Database!, Schema!),
+                        NodeType.Function => await SqlServerService.GetFunctionsAsync(connStr, Database!, Schema!),
+                        NodeType.Procedure => await SqlServerService.GetProceduresAsync(connStr, Database!, Schema!),
+                        _ => new List<string>()
+                    };
+                    foreach (var n in names)
+                        items.Add(ObjectNode(CategoryChildType, Connection, Database!, Schema!, n));
                     break;
             }
 

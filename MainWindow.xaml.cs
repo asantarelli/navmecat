@@ -25,7 +25,7 @@ public partial class MainWindow : Window
 
     private void Tree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (Vm.SelectedNode is { Type: NodeType.Table } node &&
+        if (Vm.SelectedNode is { IsOpenable: true } node &&
             Vm.OpenTableCommand.CanExecute(node))
         {
             Vm.OpenTableCommand.Execute(node);

@@ -108,7 +108,7 @@ public partial class MainViewModel : ObservableObject
     private async Task OpenTable(DbTreeNode? node)
     {
         node ??= SelectedNode;
-        if (node is not { Type: NodeType.Table }) return;
+        if (node is null || !node.IsOpenable) return;
 
         // Already open? Just switch to it.
         var key = TableTabViewModel.MakeKey(node);
