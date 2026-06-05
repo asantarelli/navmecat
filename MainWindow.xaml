@@ -283,7 +283,7 @@
                                             <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
                                                       Margin="0,0,16,0" IsChecked="{Binding ShowClarionTypes}"
                                                       Visibility="{Binding HasClarionTypes, Converter={StaticResource BoolToVis}}"
-                                                      ToolTip="Show Clarion date (days since 1800-12-28) and time (centiseconds since midnight) fields as real dates/times"/>
+                                                      ToolTip="Show Clarion date (days since 1800-12-28), time (centiseconds since midnight) and ts/sts/dts timestamp (epoch ms) fields in readable form"/>
                                             <ToggleButton x:Name="ViewToggle" Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
                                                           IsChecked="{Binding ViewMenuOpen, Mode=TwoWay}"
                                                           ToolTip="View the selected cell's content as Text, Hex, Image or Web">

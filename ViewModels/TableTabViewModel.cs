@@ -136,17 +136,8 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
             RefreshView();
     }
 
-    public string ClarionToggleLabel
-    {
-        get
-        {
-            if (!HasClarionTypes) return "Clarion dates/times";
-            var dates = ClarionColumns.Values.Count(k => k == ClarionKind.Date);
-            var times = ClarionColumns.Values.Count(k => k == ClarionKind.Time);
-            if (dates > 0 && times > 0) return $"Clarion dates/times ({dates}+{times})";
-            return dates > 0 ? $"Clarion dates ({dates})" : $"Clarion times ({times})";
-        }
-    }
+    public string ClarionToggleLabel =>
+        HasClarionTypes ? $"Clarion fields ({ClarionColumns.Count})" : "Clarion fields";
 
     public event Action<TableTabViewModel>? CloseRequested;
 

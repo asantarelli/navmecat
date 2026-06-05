@@ -36,7 +36,7 @@
                 <CheckBox x:Name="SqlCheck" Content="Open the SQL preview panel by default" Margin="0,0,0,8"/>
                 <CheckBox x:Name="DetailCheck" Content="Open the Cell detail panel by default" Margin="0,0,0,14"/>
 
-                <CheckBox x:Name="ClarionCheck" Content="Convert Clarion date/time columns by default" Margin="0,0,0,4"/>
+                <CheckBox x:Name="ClarionCheck" Content="Convert Clarion date / time / timestamp columns by default" Margin="0,0,0,4"/>
 
                 <TextBlock Text="Changes apply to tables opened from now on." FontSize="11" FontStyle="Italic"
                            Foreground="{StaticResource B.TextMuted}" Margin="0,10,0,0"/>

@@ -21,6 +21,7 @@ public static class DataGridClarion
 {
     private static readonly ClarionDateConverter DateConverter = new();
     private static readonly ClarionTimeConverter TimeConverter = new();
+    private static readonly ClarionTimestampConverter TimestampConverter = new();
     private static readonly NullEditConverter NullConverter = new();
 
     public static readonly DependencyProperty EnabledProperty =
@@ -77,9 +78,19 @@ public static class DataGridClarion
         var kind = tab.GetEffectiveKind(e.PropertyName);
         if (kind is not null)
         {
-            binding.Converter = kind == ClarionKind.Date ? DateConverter : TimeConverter;
+            binding.Converter = kind switch
+            {
+                ClarionKind.Date => DateConverter,
+                ClarionKind.Time => TimeConverter,
+                _ => TimestampConverter
+            };
             binding.ConverterParameter = e.PropertyType;
-            column.Header = e.PropertyName + (kind == ClarionKind.Date ? "  📅" : "  🕒");
+            column.Header = e.PropertyName + kind switch
+            {
+                ClarionKind.Date => "  📅",
+                ClarionKind.Time => "  🕒",
+                _ => "  🕓"
+            };
             return;
         }
 
@@ -232,6 +243,8 @@ public static class DataGridClarion
             () => tab.SetClarionOverride(name, ClarionKind.Date)));
         menu.Items.Add(MakeItem("Show as time 🕒", effective == ClarionKind.Time,
             () => tab.SetClarionOverride(name, ClarionKind.Time)));
+        menu.Items.Add(MakeItem("Show as timestamp 🕓 (epoch ms)", effective == ClarionKind.Timestamp,
+            () => tab.SetClarionOverride(name, ClarionKind.Timestamp)));
         menu.Items.Add(MakeItem("Show as number", effective is null,
             () => tab.SetClarionOverride(name, null)));
         menu.Items.Add(new Separator());
