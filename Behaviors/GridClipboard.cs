@@ -195,22 +195,30 @@ public static class GridClipboard
             .ToList();
         if (columns.Count == 0) return;
 
-        try
+        var singleValue = matrix.Count == 1 && matrix[0].Count == 1;
+        if (singleValue && grid.SelectedCells.Count > 1)
         {
-            var singleValue = matrix.Count == 1 && matrix[0].Count == 1;
-            if (singleValue && grid.SelectedCells.Count > 1)
+            FillSelectedCells(grid, matrix[0][0]);
+            return;
+        }
+
+        var (anchorRow, anchorCol) = ResolveAnchor(grid, view, columns);
+        int applied = 0, skipped = 0;
+        string? firstError = null;
+
+        for (var r = 0; r < matrix.Count; r++)
+        {
+            var viewIndex = anchorRow + r;
+            var isNew = viewIndex >= view.Count;
+            DataRowView targetRow;
+            try
             {
-                FillSelectedCells(grid, matrix[0][0]);
-                return;
+                targetRow = isNew ? view.AddNew()! : view[viewIndex];
             }
+            catch (Exception ex) { skipped++; firstError ??= ex.Message; continue; }
 
-            var (anchorRow, anchorCol) = ResolveAnchor(grid, view, columns);
-
-            for (var r = 0; r < matrix.Count; r++)
+            try
             {
-                var viewIndex = anchorRow + r;
-                var targetRow = viewIndex < view.Count ? view[viewIndex] : view.AddNew()!;
-
                 var rowVals = matrix[r];
                 for (var c = 0; c < rowVals.Count; c++)
                 {
@@ -218,13 +226,25 @@ public static class GridClipboard
                     if (colIndex >= columns.Count) break;
                     SetCellValue(table, tab, targetRow, columns[colIndex], rowVals[c]);
                 }
-                targetRow.EndEdit(); // commits an added row, no-op for an existing one
+                targetRow.EndEdit(); // commits an added row; no-op for an existing one
+                applied++;
+            }
+            catch (Exception ex)
+            {
+                // A row that can't satisfy constraints (e.g. a new row missing a required key)
+                // is rolled back so the rest of the paste still applies.
+                skipped++;
+                firstError ??= ex.Message;
+                try { targetRow.CancelEdit(); } catch { /* ignore */ }
             }
         }
-        catch (Exception ex)
-        {
-            Dialogs.ShowError("Paste failed", ex.Message);
-        }
+
+        if (skipped > 0)
+            Dialogs.ShowError("Paste partially applied",
+                $"{applied} row(s) pasted, {skipped} skipped.\n\n" +
+                $"{firstError}\n\n" +
+                "New rows are skipped when a required column (such as a primary key not covered " +
+                "by the pasted data) would be left empty.");
     }
 
     /// <summary>Sets every currently-selected cell to the same value (paste-fill).</summary>
