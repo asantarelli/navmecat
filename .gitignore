@@ -2,6 +2,7 @@
 bin/
 obj/
 run/
+_pub/
 
 # IDE
 .vs/
