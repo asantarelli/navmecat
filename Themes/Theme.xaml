@@ -408,22 +408,10 @@
     </Style>
 
     <Style TargetType="DataGridCell">
-        <Setter Property="Padding" Value="8,5"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="DataGridCell">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            ClipToBounds="True">
-                        <ContentPresenter VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
-                                          Margin="{TemplateBinding Padding}"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <!-- Default cell template (sizes the in-place editor correctly); clip long values. -->
+        <Setter Property="ClipToBounds" Value="True"/>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Background" Value="{StaticResource B.RowSelected}"/>
@@ -448,6 +436,7 @@
     <!-- Text cell: grays the "(Null)" placeholder. -->
     <Style x:Key="GridText" TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="8,0"/>
         <Style.Triggers>
             <Trigger Property="Text" Value="(Null)">
                 <Setter Property="Foreground" Value="{StaticResource B.NullText}"/>
