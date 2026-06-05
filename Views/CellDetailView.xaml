@@ -37,6 +37,7 @@
                 <TextBox Text="{Binding DetailText, UpdateSourceTrigger=PropertyChanged}"
                          AcceptsReturn="True" AcceptsTab="True" TextWrapping="Wrap"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         VerticalContentAlignment="Top"
                          FontFamily="Consolas" FontSize="12" BorderThickness="0" Padding="8"/>
             </Border>
             <!-- Hex -->
@@ -44,6 +45,7 @@
                     Visibility="{Binding IsHexMode, Converter={StaticResource BoolToVis}}">
                 <TextBox Text="{Binding DetailHex, Mode=OneWay}" IsReadOnly="True" TextWrapping="NoWrap"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         VerticalContentAlignment="Top"
                          FontFamily="Consolas" FontSize="12" BorderThickness="0" Padding="8"/>
             </Border>
             <!-- Image -->

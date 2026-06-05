@@ -39,6 +39,7 @@
         <Border Grid.Row="2" BorderBrush="{StaticResource B.Border}" BorderThickness="1" CornerRadius="6">
             <TextBox Text="{Binding InspectorContent, Mode=OneWay}" IsReadOnly="True" TextWrapping="NoWrap"
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                     VerticalContentAlignment="Top"
                      FontFamily="Consolas" FontSize="12" BorderThickness="0" Padding="8"/>
         </Border>
     </Grid>
