@@ -319,15 +319,43 @@ public static class GridClipboard
 
         var kind = tab?.GetEffectiveKind(name);
         if (kind == ClarionKind.Date &&
-            (DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out var dt) ||
-             DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt)))
-            return Convert.ChangeType(ClarionDate.ToClarion(dt), col.DataType);
+            (DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out var cdt) ||
+             DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out cdt)))
+            return Convert.ChangeType(ClarionDate.ToClarion(cdt), col.DataType);
 
         if (kind == ClarionKind.Time && ClarionTime.TryParse(text, out var clarion))
             return Convert.ChangeType(clarion, col.DataType);
 
-        if (col.DataType == typeof(string)) return text;
-        return Convert.ChangeType(text, col.DataType, CultureInfo.CurrentCulture);
+        var type = col.DataType;
+        if (type == typeof(string)) return text;
+
+        // Types that Convert.ChangeType can't handle from a string.
+        if (type == typeof(Guid)) return Guid.Parse(text.Trim());
+        if (type == typeof(TimeSpan)) return TimeSpan.Parse(text.Trim(), CultureInfo.CurrentCulture);
+        if (type == typeof(bool)) return ParseBool(text);
+        if (type == typeof(DateTime))
+        {
+            if (DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out var dt) ||
+                DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
+                return dt;
+            throw new FormatException($"'{text}' is not a valid date/time.");
+        }
+        if (type == typeof(byte[]))
+            return Convert.FromBase64String(text.Trim());
+
+        return Convert.ChangeType(text, type, CultureInfo.CurrentCulture);
+    }
+
+    private static bool ParseBool(string text)
+    {
+        var s = text.Trim();
+        if (bool.TryParse(s, out var b)) return b;
+        return s.ToLowerInvariant() switch
+        {
+            "1" or "y" or "yes" or "t" or "true" or "si" or "sí" or "verdadero" => true,
+            "0" or "n" or "no" or "f" or "false" or "falso" => false,
+            _ => Convert.ToBoolean(s, CultureInfo.CurrentCulture)
+        };
     }
 
     private static string GetClipboardText()
