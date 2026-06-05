@@ -458,7 +458,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     public bool HasUnsavedChangesNow => _session?.HasChanges ?? false;
 
     private void OnDataChanged(object? sender, DataRowChangeEventArgs e)
-        => HasUnsavedChanges = _session?.HasChanges ?? false;
+        // Cheap dirty flag — DataTable.GetChanges() here would be O(rows) on every edit,
+        // which made live multi-cell fill very slow. SaveChanges still verifies real changes.
+        => HasUnsavedChanges = true;
 
     private void Detach()
     {
