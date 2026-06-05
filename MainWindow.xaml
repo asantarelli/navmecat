@@ -17,6 +17,13 @@
         <vm:MainViewModel/>
     </Window.DataContext>
 
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="N" Command="{Binding AddConnectionCommand}"/>
+        <KeyBinding Modifiers="Control" Key="Q" Command="{Binding OpenQueryCommand}"/>
+        <KeyBinding Modifiers="Control" Key="B" Command="{Binding OpenQueryBuilderCommand}"/>
+        <KeyBinding Key="F5" Command="{Binding RefreshNodeCommand}"/>
+    </Window.InputBindings>
+
     <Window.Resources>
         <conv:NodeTypeToGeometryConverter x:Key="Geo"/>
         <conv:NodeTypeToBrushConverter x:Key="NodeBrush"/>
@@ -59,26 +66,40 @@
 
                     <Menu Background="Transparent" VerticalAlignment="Center" Margin="18,0,0,0" FontSize="13">
                         <MenuItem Header="_File">
-                            <MenuItem Header="New Connection" Command="{Binding AddConnectionCommand}"/>
-                            <MenuItem Header="New Query" Command="{Binding OpenQueryCommand}"/>
-                            <MenuItem Header="Query Builder" Command="{Binding OpenQueryBuilderCommand}"/>
+                            <MenuItem Header="New Connection" Command="{Binding AddConnectionCommand}" InputGestureText="Ctrl+N"/>
+                            <MenuItem Header="New Query" Command="{Binding OpenQueryCommand}" InputGestureText="Ctrl+Q"/>
+                            <MenuItem Header="Query Builder" Command="{Binding OpenQueryBuilderCommand}" InputGestureText="Ctrl+B"/>
                             <Separator/>
                             <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}"/>
                             <Separator/>
-                            <MenuItem Header="Exit" Command="{Binding ExitAppCommand}"/>
+                            <MenuItem Header="Exit" Command="{Binding ExitAppCommand}" InputGestureText="Alt+F4"/>
                         </MenuItem>
                         <MenuItem Header="_Connection">
                             <MenuItem Header="Add Connection" Command="{Binding AddConnectionCommand}"/>
                             <MenuItem Header="Edit Connection" Command="{Binding EditConnectionCommand}"/>
                             <MenuItem Header="Remove Connection" Command="{Binding RemoveConnectionCommand}"/>
                             <Separator/>
-                            <MenuItem Header="Refresh" Command="{Binding RefreshNodeCommand}"/>
+                            <MenuItem Header="Refresh" Command="{Binding RefreshNodeCommand}" InputGestureText="F5"/>
+                        </MenuItem>
+                        <MenuItem Header="_View">
+                            <MenuItem Header="Refresh" Command="{Binding RefreshNodeCommand}" InputGestureText="F5"/>
+                            <Separator/>
+                            <MenuItem Header="Structure panel" IsCheckable="True"
+                                      IsChecked="{Binding SelectedTab.ShowInspector, Mode=TwoWay}"
+                                      IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
+                            <MenuItem Header="SQL preview panel" IsCheckable="True"
+                                      IsChecked="{Binding SelectedTab.ShowSqlPanel, Mode=TwoWay}"
+                                      IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
+                            <MenuItem Header="Cell detail panel" IsCheckable="True"
+                                      IsChecked="{Binding SelectedTab.ShowDetailPanel, Mode=TwoWay}"
+                                      IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
                         </MenuItem>
                         <MenuItem Header="_Help">
-                            <MenuItem Header="About NavMeCat" Command="{Binding ShowAboutCommand}"/>
-                            <Separator/>
+                            <MenuItem Header="Documentation" Command="{Binding OpenDocsCommand}"/>
                             <MenuItem Header="GitHub Repository" Command="{Binding OpenGitHubCommand}"/>
                             <MenuItem Header="Latest Release" Command="{Binding OpenReleasesCommand}"/>
+                            <Separator/>
+                            <MenuItem Header="About NavMeCat" Command="{Binding ShowAboutCommand}"/>
                         </MenuItem>
                     </Menu>
                 </StackPanel>

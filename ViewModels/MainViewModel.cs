@@ -96,6 +96,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenReleases() => OpenUrl(RepoUrl + "/releases/latest");
 
+    [RelayCommand]
+    private void OpenDocs() => OpenUrl(RepoUrl + "#readme");
+
     private static void OpenUrl(string url)
     {
         try

@@ -13,6 +13,7 @@
             <conv:IsNullToVisibilityConverter x:Key="NullToVis"/>
             <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
             <conv:AndNotToVisibilityConverter x:Key="ShownNotPopped"/>
+            <conv:NotNullToBoolConverter x:Key="NotNull"/>
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         </ResourceDictionary>
     </Application.Resources>
