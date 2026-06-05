@@ -440,6 +440,21 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Splitter handle used between the grid and the dockable panes. -->
+    <Style x:Key="PaneSplitter" TargetType="GridSplitter">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Border Background="Transparent">
+                        <Border Height="4" Width="48" CornerRadius="2"
+                                Background="{StaticResource B.BorderStrong}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ============================ TABS ============================ -->
     <Style x:Key="TabCloseButton" TargetType="Button">
         <Setter Property="Width" Value="18"/>

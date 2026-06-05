@@ -41,6 +41,19 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool viewMenuOpen;
     [ObservableProperty] private CellViewMode viewMode = CellViewMode.Auto;
 
+    [ObservableProperty] private bool detailPopped;
+    [ObservableProperty] private bool showSqlPanel;
+    [ObservableProperty] private string sqlPreview = "";
+    [ObservableProperty] private GridLength sqlRowHeight = new(0);
+    [ObservableProperty] private bool sqlPopped;
+
+    private double _lastSqlPx = 240;
+
+    /// <summary>Docked panes are hidden when popped out into a floating window.</summary>
+    public bool DetailDockedVisible => ShowDetailPanel && !DetailPopped;
+    public bool SqlDockedVisible => ShowSqlPanel && !SqlPopped;
+    public string PaneTitleSuffix => Identifier;
+
     private CellViewMode _effectiveViewMode = CellViewMode.Text;
     public bool IsTextMode => _effectiveViewMode == CellViewMode.Text;
     public bool IsHexMode => _effectiveViewMode == CellViewMode.Hex;
@@ -215,18 +228,89 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void HideDetailPanel()
     {
+        PaneService.ClosePopOut(this, PaneKind.Detail);
         ShowDetailPanel = false;
         ViewMenuOpen = false;
     }
 
-    partial void OnShowDetailPanelChanged(bool value)
-        => DetailRowHeight = value ? new GridLength(_lastDetailPx) : new GridLength(0);
+    [RelayCommand]
+    private void PinDetail() => PaneService.TogglePopOut(this, PaneKind.Detail);
+
+    [RelayCommand]
+    private void PinSql() => PaneService.TogglePopOut(this, PaneKind.Sql);
+
+    partial void OnShowDetailPanelChanged(bool value) => UpdateDetailRow();
+    partial void OnDetailPoppedChanged(bool value)
+    {
+        UpdateDetailRow();
+        OnPropertyChanged(nameof(DetailDockedVisible));
+    }
+
+    private void UpdateDetailRow()
+    {
+        DetailRowHeight = ShowDetailPanel && !DetailPopped ? new GridLength(_lastDetailPx) : new GridLength(0);
+        OnPropertyChanged(nameof(DetailDockedVisible));
+    }
 
     partial void OnDetailRowHeightChanged(GridLength value)
     {
-        // Remember the last user-dragged size so re-opening restores it.
-        if (value.IsAbsolute && value.Value > 0)
-            _lastDetailPx = value.Value;
+        if (value.IsAbsolute && value.Value > 0) _lastDetailPx = value.Value;
+    }
+
+    // ---- SQL preview pane ------------------------------------------------
+
+    [RelayCommand]
+    private void RefreshSqlPreview()
+    {
+        if (_session is null) { SqlPreview = ""; return; }
+        try
+        {
+            var list = _session.BuildChangePreview();
+            SqlPreview = list.Count == 0
+                ? "-- No pending changes."
+                : string.Join(";\n\n", list) + ";";
+        }
+        catch (Exception ex)
+        {
+            SqlPreview = "-- Error generating preview: " + ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private void HideSqlPanel()
+    {
+        PaneService.ClosePopOut(this, PaneKind.Sql);
+        ShowSqlPanel = false;
+    }
+
+    [RelayCommand]
+    private async Task ExecuteSql()
+    {
+        await SaveChanges();
+        RefreshSqlPreview();
+    }
+
+    partial void OnShowSqlPanelChanged(bool value)
+    {
+        if (value) RefreshSqlPreview();
+        UpdateSqlRow();
+    }
+
+    partial void OnSqlPoppedChanged(bool value)
+    {
+        UpdateSqlRow();
+        OnPropertyChanged(nameof(SqlDockedVisible));
+    }
+
+    private void UpdateSqlRow()
+    {
+        SqlRowHeight = ShowSqlPanel && !SqlPopped ? new GridLength(_lastSqlPx) : new GridLength(0);
+        OnPropertyChanged(nameof(SqlDockedVisible));
+    }
+
+    partial void OnSqlRowHeightChanged(GridLength value)
+    {
+        if (value.IsAbsolute && value.Value > 0) _lastSqlPx = value.Value;
     }
 
     [RelayCommand]

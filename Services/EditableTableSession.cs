@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using Microsoft.Data.SqlClient;
 
 namespace NavMeCat.Services;
@@ -51,7 +52,11 @@ public sealed class EditableTableSession : IDisposable
             // Pull key + schema info so the command builder can generate UPDATE/DELETE.
             MissingSchemaAction = MissingSchemaAction.AddWithKey
         };
-        var builder = new SqlCommandBuilder(adapter);
+        var builder = new SqlCommandBuilder(adapter)
+        {
+            // Key-only WHERE clause: cleaner generated SQL and the user's edits win.
+            ConflictOption = ConflictOption.OverwriteChanges
+        };
 
         var data = new DataTable(table);
         await Task.Run(() => adapter.Fill(data));
@@ -72,6 +77,81 @@ public sealed class EditableTableSession : IDisposable
     }
 
     public bool HasChanges => Data.GetChanges() is not null;
+
+    /// <summary>
+    /// Builds a readable preview of the INSERT/UPDATE/DELETE statements that <see cref="SaveAsync"/>
+    /// will run for the current pending changes. Values are inlined for readability — the real
+    /// save sends them as parameters.
+    /// </summary>
+    public List<string> BuildChangePreview()
+    {
+        var statements = new List<string>();
+        if (Data.GetChanges() is null) return statements;
+
+        SqlCommand? insert = null, update = null, delete = null;
+
+        foreach (DataRow row in Data.Rows)
+        {
+            try
+            {
+                switch (row.RowState)
+                {
+                    case DataRowState.Added:
+                        insert ??= _builder.GetInsertCommand();
+                        statements.Add(RenderStatement(insert, row));
+                        break;
+                    case DataRowState.Modified:
+                        update ??= _builder.GetUpdateCommand();
+                        statements.Add(RenderStatement(update, row));
+                        break;
+                    case DataRowState.Deleted:
+                        delete ??= _builder.GetDeleteCommand();
+                        statements.Add(RenderStatement(delete, row));
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                statements.Add($"-- Could not generate statement: {ex.Message}");
+            }
+        }
+
+        return statements;
+    }
+
+    private static string RenderStatement(SqlCommand command, DataRow row)
+    {
+        var text = command.CommandText;
+        foreach (SqlParameter p in command.Parameters
+                     .Cast<SqlParameter>()
+                     .OrderByDescending(p => p.ParameterName.Length))
+        {
+            object value;
+            try
+            {
+                var version = p.SourceVersion == DataRowVersion.Default ? DataRowVersion.Current : p.SourceVersion;
+                value = string.IsNullOrEmpty(p.SourceColumn) ? DBNull.Value : row[p.SourceColumn, version];
+            }
+            catch
+            {
+                value = DBNull.Value;
+            }
+            text = text.Replace(p.ParameterName, FormatLiteral(value));
+        }
+        return text.Trim();
+    }
+
+    private static string FormatLiteral(object? value) => value switch
+    {
+        null or DBNull => "NULL",
+        string s => "'" + s.Replace("'", "''") + "'",
+        bool b => b ? "1" : "0",
+        DateTime dt => "'" + dt.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + "'",
+        Guid g => "'" + g + "'",
+        byte[] bytes => "0x" + Convert.ToHexString(bytes),
+        IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+        _ => "'" + value + "'"
+    };
 
     public void Dispose()
     {
