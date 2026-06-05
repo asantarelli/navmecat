@@ -41,6 +41,7 @@ public static class DataGridClarion
 
             grid.PreviewTextInput += OnPreviewTextInput;
             grid.BeginningEdit += OnBeginningEdit;
+            grid.PreparingCellForEdit += OnPreparingCellForEdit;
             grid.CellEditEnding += OnCellEditEnding;
 
             // Spreadsheet-friendly copy/paste: replace the built-in copy and add a context menu.
@@ -58,6 +59,7 @@ public static class DataGridClarion
             grid.CurrentCellChanged -= OnCurrentCellChanged;
             grid.PreviewTextInput -= OnPreviewTextInput;
             grid.BeginningEdit -= OnBeginningEdit;
+            grid.PreparingCellForEdit -= OnPreparingCellForEdit;
             grid.CellEditEnding -= OnCellEditEnding;
         }
     }
@@ -121,11 +123,48 @@ public static class DataGridClarion
             _fillSnapshot = SnapshotSelection(grid);
     }
 
-    /// <summary>When several cells were selected, typing into one fills them all.</summary>
+    // Live type-fill: while editing one cell of a multi-cell selection, mirror each keystroke
+    // into the other selected cells so they all change at the same time.
+    private static DataGrid? _liveGrid;
+    private static TextBox? _liveBox;
+    private static List<(DataRowView Row, DataGridColumn Col)>? _liveOthers;
+
+    private static void OnPreparingCellForEdit(object? sender, DataGridPreparingCellForEditEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        if (_fillSnapshot is null || _fillSnapshot.Count <= 1) return;
+        if (e.EditingElement is not TextBox box) return;
+
+        var editRow = e.Row?.Item as DataRowView;
+        var editCol = e.Column;
+        _liveGrid = grid;
+        _liveBox = box;
+        _liveOthers = _fillSnapshot
+            .Where(c => !(editRow is not null && ReferenceEquals(c.Row.Row, editRow.Row) && c.Col == editCol))
+            .ToList();
+
+        box.TextChanged += OnLiveTextChanged;
+    }
+
+    private static void OnLiveTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_liveGrid is not null && _liveBox is not null && _liveOthers is { Count: > 0 })
+            GridClipboard.FillCells(_liveGrid, _liveOthers, _liveBox.Text);
+    }
+
+    /// <summary>Commit-time fill (also covers F2/paste edits) and teardown of the live mirror.</summary>
     private static void OnCellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
     {
         var snapshot = _fillSnapshot;
         _fillSnapshot = null;
+
+        if (_liveBox is not null)
+        {
+            _liveBox.TextChanged -= OnLiveTextChanged;
+            _liveBox = null;
+            _liveOthers = null;
+            _liveGrid = null;
+        }
 
         if (e.EditAction != DataGridEditAction.Commit) return;
         if (sender is not DataGrid grid) return;
