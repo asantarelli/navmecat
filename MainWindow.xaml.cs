@@ -137,6 +137,13 @@ public partial class MainWindow : Window
         return current as T;
     }
 
+    /// <summary>Collapse toolbar button labels to icons once the command bar gets tight.</summary>
+    private void CommandHost_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TableTabViewModel tab })
+            tab.IsToolbarCompact = e.NewSize.Width < 1000;
+    }
+
     /// <summary>Drag handle above a docked pane resizes it (dragging up makes it taller).</summary>
     private void PaneThumb_DragDelta(object sender, DragDeltaEventArgs e)
     {

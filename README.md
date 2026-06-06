@@ -72,6 +72,9 @@ Grab the latest **portable `.exe`** from the
 - **Localization** — the interface is fully translatable; ships with **English and Spanish**.
   Switch language in **Settings** and the UI updates live (no restart).
 - **Settings** — defaults for row limit, which panels open with a table, and the UI language.
+- **Adaptive toolbar** — the per-table command bar is responsive: as the window narrows, button
+  labels collapse to icons (with tooltips), and any buttons that still don't fit move into a
+  **»** overflow menu — so the toolbar stays usable at any size.
 - **Professional UI** — clean blue/slate theme, dark sidebar, button icons, styled modal dialogs.
 
 ## Clarion dates & times

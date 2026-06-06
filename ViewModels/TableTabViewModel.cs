@@ -28,6 +28,8 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private DataView? gridData;
     [ObservableProperty] private bool hasUnsavedChanges;
+    /// <summary>True when the toolbar is too narrow for labels — buttons collapse to icons.</summary>
+    [ObservableProperty] private bool isToolbarCompact;
     [ObservableProperty] private int rowLimit;
     [ObservableProperty] private bool showClarionTypes = true;
 

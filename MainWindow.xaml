@@ -240,7 +240,12 @@
                                 <Border Grid.Row="0" Background="{StaticResource B.HeaderBar}"
                                         BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1" Padding="16,10">
                                     <Grid>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Identifier}" FontSize="14" FontWeight="SemiBold"
                                                        Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
                                             <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="4" Background="#FFFDEAEA"
@@ -250,16 +255,116 @@
                                             </Border>
                                         </StackPanel>
 
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                            <!-- Filter -->
-                                            <ToggleButton x:Name="FilterToggle" Style="{StaticResource ToolToggle}" Margin="0,0,8,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE71C;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_Filter}"/>
-                                                    <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
-                                                               Visibility="{Binding HasActiveFilter, Converter={StaticResource BoolToVis}}"/>
-                                                </StackPanel>
-                                            </ToggleButton>
+                                        <!-- Adaptive command bar: labels collapse to icons when tight,
+                                             then extra items move into the » overflow menu. -->
+                                        <Grid Grid.Column="1" x:Name="CommandHost" SizeChanged="CommandHost_SizeChanged">
+                                            <ToolBarTray Background="Transparent" IsLocked="True" VerticalAlignment="Center">
+                                                <ToolBar Style="{StaticResource CommandBar}">
+                                                    <!-- Filter -->
+                                                    <ToggleButton x:Name="FilterToggle" ToolBar.OverflowMode="Never"
+                                                                  Style="{StaticResource ToolToggle}" Margin="0,0,6,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE71C;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_Filter}"/>
+                                                            <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
+                                                                       Visibility="{Binding HasActiveFilter, Converter={StaticResource BoolToVis}}"/>
+                                                        </StackPanel>
+                                                    </ToggleButton>
+
+                                                    <!-- Sort -->
+                                                    <ToggleButton x:Name="SortToggle" ToolBar.OverflowMode="Never"
+                                                                  Style="{StaticResource ToolToggle}" Margin="0,0,6,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8CB;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_Sort}"/>
+                                                            <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
+                                                                       Visibility="{Binding HasActiveSort, Converter={StaticResource BoolToVis}}"/>
+                                                        </StackPanel>
+                                                    </ToggleButton>
+
+                                                    <Button Margin="0,0,6,0" Command="{Binding PickRowIdentityCommand}"
+                                                            Style="{StaticResource ToolButton}"
+                                                            Visibility="{Binding CanPickRowIdentity, Converter={StaticResource BoolToVis}}"
+                                                            ToolTip="{loc:Tr Tip_RowIdentity}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8D7;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_RowIdentity}"/>
+                                                        </StackPanel>
+                                                    </Button>
+
+                                                    <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
+                                                              Style="{StaticResource {x:Type CheckBox}}"
+                                                              Margin="0,0,6,0" IsChecked="{Binding ShowClarionTypes}"
+                                                              Visibility="{Binding HasClarionTypes, Converter={StaticResource BoolToVis}}"
+                                                              ToolTip="Show Clarion date (days since 1800-12-28), time (centiseconds since midnight) and ts/sts/dts timestamp (epoch ms) fields in readable form"/>
+
+                                                    <!-- View -->
+                                                    <ToggleButton x:Name="ViewToggle" ToolBar.OverflowMode="Never"
+                                                                  Style="{StaticResource ToolToggle}" Margin="0,0,6,0"
+                                                                  IsChecked="{Binding ViewMenuOpen, Mode=TwoWay}"
+                                                                  ToolTip="{loc:Tr Tip_View}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE890;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_View}"/>
+                                                        </StackPanel>
+                                                    </ToggleButton>
+
+                                                    <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,6,0"
+                                                                  IsChecked="{Binding ShowSqlPanel}"
+                                                                  ToolTip="{loc:Tr Tip_SQL}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE943;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_SQL}"/>
+                                                        </StackPanel>
+                                                    </ToggleButton>
+
+                                                    <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,6,0"
+                                                                  IsChecked="{Binding ShowInspector}"
+                                                                  ToolTip="{loc:Tr Tip_Structure}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8A5;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_Structure}"/>
+                                                        </StackPanel>
+                                                    </ToggleButton>
+
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,6,0">
+                                                        <TextBlock Text="{loc:Tr Lbl_RowLimit}" VerticalAlignment="Center" FontSize="12"
+                                                                   Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
+                                                        <TextBox Width="72" VerticalAlignment="Center"
+                                                                 Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"/>
+                                                    </StackPanel>
+
+                                                    <Button Margin="0,0,6,0" Command="{Binding ExportCommand}"
+                                                            Style="{StaticResource ToolButton}" ToolTip="{loc:Tr Tip_Export}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xEDE1;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_Export}"/>
+                                                        </StackPanel>
+                                                    </Button>
+
+                                                    <Button Margin="0,0,6,0" Command="{Binding ReloadCommand}"
+                                                            Style="{StaticResource ToolButton}" ToolTip="{loc:Tr Btn_Reload}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_Reload}"/>
+                                                        </StackPanel>
+                                                    </Button>
+
+                                                    <Button ToolBar.OverflowMode="Never" Margin="0,0,0,0"
+                                                            Style="{StaticResource AccentButton}"
+                                                            Command="{Binding SaveChangesCommand}"
+                                                            IsEnabled="{Binding HasUnsavedChanges}"
+                                                            ToolTip="{loc:Tr Btn_SaveChanges}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74E;"/>
+                                                            <TextBlock Style="{StaticResource ToolLabel}" Text="{loc:Tr Btn_SaveChanges}"/>
+                                                        </StackPanel>
+                                                    </Button>
+                                                </ToolBar>
+                                            </ToolBarTray>
+
+                                            <!-- Popups live outside the ToolBar so they anchor to their
+                                                 toggles by name even when items reflow. -->
                                             <Popup PlacementTarget="{Binding ElementName=FilterToggle}" Placement="Bottom"
                                                    StaysOpen="False" AllowsTransparency="True"
                                                    IsOpen="{Binding IsChecked, ElementName=FilterToggle, Mode=TwoWay}">
@@ -313,15 +418,6 @@
                                                 </Border>
                                             </Popup>
 
-                                            <!-- Sort -->
-                                            <ToggleButton x:Name="SortToggle" Style="{StaticResource ToolToggle}" Margin="0,0,16,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8CB;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_Sort}"/>
-                                                    <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
-                                                               Visibility="{Binding HasActiveSort, Converter={StaticResource BoolToVis}}"/>
-                                                </StackPanel>
-                                            </ToggleButton>
                                             <Popup PlacementTarget="{Binding ElementName=SortToggle}" Placement="Bottom"
                                                    StaysOpen="False" AllowsTransparency="True"
                                                    IsOpen="{Binding IsChecked, ElementName=SortToggle, Mode=TwoWay}">
@@ -366,27 +462,6 @@
                                                 </Border>
                                             </Popup>
 
-                                            <Button Margin="0,0,16,0"
-                                                    Command="{Binding PickRowIdentityCommand}"
-                                                    Visibility="{Binding CanPickRowIdentity, Converter={StaticResource BoolToVis}}"
-                                                    ToolTip="{loc:Tr Tip_RowIdentity}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8D7;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_RowIdentity}"/>
-                                                </StackPanel>
-                                            </Button>
-                                            <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
-                                                      Margin="0,0,16,0" IsChecked="{Binding ShowClarionTypes}"
-                                                      Visibility="{Binding HasClarionTypes, Converter={StaticResource BoolToVis}}"
-                                                      ToolTip="Show Clarion date (days since 1800-12-28), time (centiseconds since midnight) and ts/sts/dts timestamp (epoch ms) fields in readable form"/>
-                                            <ToggleButton x:Name="ViewToggle" Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
-                                                          IsChecked="{Binding ViewMenuOpen, Mode=TwoWay}"
-                                                          ToolTip="{loc:Tr Tip_View}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE890;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_View}"/>
-                                                </StackPanel>
-                                            </ToggleButton>
                                             <Popup PlacementTarget="{Binding ElementName=ViewToggle}" Placement="Bottom"
                                                    StaysOpen="False" AllowsTransparency="True"
                                                    IsOpen="{Binding ViewMenuOpen, Mode=TwoWay}">
@@ -412,48 +487,7 @@
                                                     </StackPanel>
                                                 </Border>
                                             </Popup>
-                                            <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,8,0"
-                                                          IsChecked="{Binding ShowSqlPanel}"
-                                                          ToolTip="{loc:Tr Tip_SQL}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE943;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_SQL}"/>
-                                                </StackPanel>
-                                            </ToggleButton>
-                                            <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
-                                                          IsChecked="{Binding ShowInspector}"
-                                                          ToolTip="{loc:Tr Tip_Structure}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8A5;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_Structure}"/>
-                                                </StackPanel>
-                                            </ToggleButton>
-                                            <TextBlock Text="{loc:Tr Lbl_RowLimit}" VerticalAlignment="Center" FontSize="12"
-                                                       Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
-                                            <TextBox Width="72" VerticalAlignment="Center"
-                                                     Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"/>
-                                            <Button Margin="10,0,0,0" Command="{Binding ExportCommand}"
-                                                    ToolTip="{loc:Tr Tip_Export}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xEDE1;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_Export}"/>
-                                                </StackPanel>
-                                            </Button>
-                                            <Button Margin="10,0,0,0" Command="{Binding ReloadCommand}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_Reload}"/>
-                                                </StackPanel>
-                                            </Button>
-                                            <Button Margin="10,0,0,0" Style="{StaticResource AccentButton}"
-                                                    Command="{Binding SaveChangesCommand}"
-                                                    IsEnabled="{Binding HasUnsavedChanges}">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74E;"/>
-                                                    <TextBlock Text="{loc:Tr Btn_SaveChanges}"/>
-                                                </StackPanel>
-                                            </Button>
-                                        </StackPanel>
+                                        </Grid>
                                     </Grid>
                                 </Border>
 

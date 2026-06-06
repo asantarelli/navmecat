@@ -210,6 +210,92 @@
         </Setter>
     </Style>
 
+    <!-- ===================== ADAPTIVE COMMAND BAR ===================== -->
+    <!-- Toolbar button label: collapses to icon-only when the bar is compact
+         AND the item is still inline (overflow-menu items keep their text). -->
+    <Style x:Key="ToolLabel" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Style.Triggers>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding (ToolBar.IsOverflowItem), RelativeSource={RelativeSource AncestorType=ButtonBase}}" Value="False"/>
+                    <Condition Binding="{Binding IsToolbarCompact}" Value="True"/>
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Visibility" Value="Collapsed"/>
+            </MultiDataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- The » overflow toggle shown when toolbar items don't fit. -->
+    <Style x:Key="OverflowChevron" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="ToolTip" Value="More commands"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6"
+                            Padding="8,7" Margin="4,0,0,0">
+                        <TextBlock Text="»" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"
+                                   Foreground="{StaticResource B.TextMuted}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#FFE7EDF3"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource B.RowHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Transparent command bar with native overflow (» menu). -->
+    <Style x:Key="CommandBar" TargetType="ToolBar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource B.Text}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolBar">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ToolBarPanel x:Name="PART_ToolBarPanel" Grid.Column="0" IsItemsHost="True"
+                                      Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <ToggleButton x:Name="OverflowButton" Grid.Column="1" ClickMode="Press" Focusable="False"
+                                      Style="{StaticResource OverflowChevron}"
+                                      IsChecked="{Binding IsOverflowOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        <Popup x:Name="OverflowPopup" Placement="Bottom" AllowsTransparency="True"
+                               StaysOpen="False" Focusable="False"
+                               PlacementTarget="{Binding ElementName=OverflowButton}"
+                               IsOpen="{Binding IsOverflowOpen, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Border Background="{StaticResource B.Surface}" BorderBrush="{StaticResource B.Border}"
+                                    BorderThickness="1" CornerRadius="8" Margin="0,4,8,8" Padding="4">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.2" Color="#FF1F2933"/>
+                                </Border.Effect>
+                                <ToolBarOverflowPanel x:Name="PART_ToolBarOverflowPanel" Margin="2"
+                                                      WrapWidth="260" Focusable="True"
+                                                      KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasOverflowItems" Value="False">
+                            <Setter TargetName="OverflowButton" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ============================ INPUTS ============================ -->
     <Style TargetType="TextBox">
         <Setter Property="Background" Value="{StaticResource B.Surface}"/>
