@@ -89,6 +89,38 @@ public static class SqlServerService
         return result;
     }
 
+    public record ColumnDetail(string Name, string TypeName, int MaxLength, byte Precision, byte Scale,
+        bool Nullable, bool Identity, string? Default, bool IsPrimaryKey);
+
+    public static async Task<List<ColumnDetail>> GetColumnDetailsAsync(string connectionString, string database, string schema, string table)
+    {
+        var result = new List<ColumnDetail>();
+        await using var conn = new SqlConnection(WithDatabase(connectionString, database));
+        await conn.OpenAsync();
+        const string sql = @"
+            SELECT c.name, t.name, c.max_length, c.precision, c.scale, c.is_nullable, c.is_identity,
+                   dc.definition,
+                   CASE WHEN pk.column_id IS NOT NULL THEN 1 ELSE 0 END
+            FROM sys.columns c
+            JOIN sys.types t ON c.user_type_id = t.user_type_id
+            LEFT JOIN sys.default_constraints dc ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id
+            LEFT JOIN (
+                SELECT ic.object_id, ic.column_id
+                FROM sys.indexes i
+                JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+                WHERE i.is_primary_key = 1
+            ) pk ON pk.object_id = c.object_id AND pk.column_id = c.column_id
+            WHERE c.object_id = OBJECT_ID(@fq)
+            ORDER BY c.column_id";
+        await using var cmd = new SqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@fq", $"[{schema.Replace("]", "]]")}].[{table.Replace("]", "]]")}]");
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            result.Add(new ColumnDetail(r.GetString(0), r.GetString(1), r.GetInt16(2), r.GetByte(3), r.GetByte(4),
+                r.GetBoolean(5), r.GetBoolean(6), r.IsDBNull(7) ? null : r.GetString(7), r.GetInt32(8) == 1));
+        return result;
+    }
+
     /// <summary>The CREATE definition of a programmable object (function/proc/view/trigger), or null.</summary>
     public static async Task<string?> GetObjectDefinitionAsync(string connectionString, string database, string schema, string name)
     {

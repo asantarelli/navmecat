@@ -66,6 +66,9 @@ public partial class MainWindow : Window
         {
             case NodeType.Table:
                 menu.Items.Add(Item("Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(Item("Design", () => Run(Vm.DesignTableCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Drop…", () => Run(Vm.DropTableCommand, node)));
                 break;
 
             case NodeType.View:
@@ -96,6 +99,12 @@ public partial class MainWindow : Window
 
             case NodeType.Category when node.CategoryChildType is NodeType.View:
                 menu.Items.Add(Item("New View…", () => Run(Vm.NewRoutineCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                break;
+
+            case NodeType.Category when node.CategoryChildType is NodeType.Table:
+                menu.Items.Add(Item("New Table…", () => Run(Vm.NewTableCommand, node)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;

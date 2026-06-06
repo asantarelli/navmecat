@@ -207,6 +207,47 @@ public partial class MainViewModel : ObservableObject
     };
 
     [RelayCommand]
+    private void DesignTable(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Table }) return;
+        new Views.TableDesignerWindow(node.Connection, node.Database, node.Schema!, node.Name, isNew: false).Show();
+        StatusText = $"Designing {node.Schema}.{node.Name}.";
+    }
+
+    [RelayCommand]
+    private void NewTable(DbTreeNode? category)
+    {
+        category ??= SelectedNode;
+        // Accept the Tables category or a schema node.
+        var schema = category?.Schema ?? "dbo";
+        var connection = category?.Connection ?? Roots.FirstOrDefault(r => r.Type == NodeType.Server)?.Connection;
+        if (connection is null) { StatusText = "Add a connection first."; return; }
+        new Views.TableDesignerWindow(connection, category?.Database, schema, "NewTable", isNew: true).Show();
+    }
+
+    [RelayCommand]
+    private async Task DropTable(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Table }) return;
+        if (!Dialogs.Confirm("Drop table",
+                $"Permanently drop table {node.Schema}.{node.Name} and all its data?"))
+            return;
+        try
+        {
+            await SqlServerService.ExecuteAsync(node.Connection.BuildConnectionString(), node.Database ?? "",
+                $"DROP TABLE [{node.Schema}].[{node.Name}]");
+            StatusText = $"Dropped table {node.Schema}.{node.Name}.";
+            if (node.Parent is not null) await RefreshNode(node.Parent);
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Drop failed", ex.Message);
+        }
+    }
+
+    [RelayCommand]
     private void EditRoutine(DbTreeNode? node)
     {
         node ??= SelectedNode;
