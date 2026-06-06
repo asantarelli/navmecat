@@ -126,6 +126,38 @@ public static class Strings
         ["Import_Skip"] = "(skip)",
         ["Import_Importing"] = "Importing…",
         ["Import_Button"] = "Import",
+
+        // Structure inspector
+        ["Insp_Structure"] = "Structure",
+        ["Insp_Info"] = "Info",
+        ["Insp_Ddl"] = "DDL",
+        ["Insp_Relationships"] = "Relationships",
+        ["Tip_Pin"] = "Pin / pop out to a floating window",
+        ["Info_Table"] = "Table:",
+        ["Info_Columns"] = "Columns:",
+        ["Info_PrimaryKey"] = "Primary key:",
+        ["Info_Indexes"] = "Indexes:",
+        ["Info_Rows"] = "Rows:",
+        ["Info_Created"] = "Created:",
+        ["Info_Modified"] = "Modified:",
+        ["Info_None"] = "(none)",
+        ["Rel_None"] = "No foreign-key relationships.",
+        ["Rel_References"] = "This table references →",
+        ["Rel_ReferencedBy"] = "← Referenced by",
+        ["Clarion_Fields"] = "Clarion fields",
+
+        // SQL preview pane
+        ["Sql_PreviewTitle"] = "SQL preview",
+        ["Sql_PreviewSubtitle"] = "— statements that Save will run for pending changes",
+        ["Sql_NoPending"] = "-- No pending changes.",
+        ["Sql_PreviewOnly"] = "Preview only — values are sent as parameters at save time.",
+        ["Sql_ExecuteNow"] = "Execute now",
+
+        // Cell detail pane
+        ["Detail_Cell"] = "Cell:",
+        ["Detail_NoneSelected"] = "(none selected)",
+        ["Detail_NotImage"] = "Not a recognized image — try Hex.",
+        ["Detail_ApplyToCell"] = "Apply to cell",
     };
 
     public static readonly Dictionary<string, string> Es = new(StringComparer.Ordinal)
@@ -245,5 +277,37 @@ public static class Strings
         ["Import_Skip"] = "(omitir)",
         ["Import_Importing"] = "Importando…",
         ["Import_Button"] = "Importar",
+
+        // Inspector de estructura
+        ["Insp_Structure"] = "Estructura",
+        ["Insp_Info"] = "Información",
+        ["Insp_Ddl"] = "DDL",
+        ["Insp_Relationships"] = "Relaciones",
+        ["Tip_Pin"] = "Fijar / desacoplar en una ventana flotante",
+        ["Info_Table"] = "Tabla:",
+        ["Info_Columns"] = "Columnas:",
+        ["Info_PrimaryKey"] = "Clave principal:",
+        ["Info_Indexes"] = "Índices:",
+        ["Info_Rows"] = "Filas:",
+        ["Info_Created"] = "Creada:",
+        ["Info_Modified"] = "Modificada:",
+        ["Info_None"] = "(ninguna)",
+        ["Rel_None"] = "Sin relaciones de clave externa.",
+        ["Rel_References"] = "Esta tabla referencia →",
+        ["Rel_ReferencedBy"] = "← Referenciada por",
+        ["Clarion_Fields"] = "Campos Clarion",
+
+        // Panel de vista previa SQL
+        ["Sql_PreviewTitle"] = "Vista previa SQL",
+        ["Sql_PreviewSubtitle"] = "— sentencias que Guardar ejecutará para los cambios pendientes",
+        ["Sql_NoPending"] = "-- Sin cambios pendientes.",
+        ["Sql_PreviewOnly"] = "Solo vista previa: los valores se envían como parámetros al guardar.",
+        ["Sql_ExecuteNow"] = "Ejecutar ahora",
+
+        // Panel de detalle de celda
+        ["Detail_Cell"] = "Celda:",
+        ["Detail_NoneSelected"] = "(ninguna seleccionada)",
+        ["Detail_NotImage"] = "No es una imagen reconocida — pruebe Hex.",
+        ["Detail_ApplyToCell"] = "Aplicar a la celda",
     };
 }

@@ -58,7 +58,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     public bool IsHexMode => _effectiveViewMode == CellViewMode.Hex;
     public bool IsImageMode => _effectiveViewMode == CellViewMode.Image;
     public bool IsWebMode => _effectiveViewMode == CellViewMode.Web;
-    public string ViewModeLabel => _effectiveViewMode.ToString();
+    public string ViewModeLabel => LocalizationManager.Instance["View_" + _effectiveViewMode];
     /// <summary>Apply is only meaningful for editable text on a string column.</summary>
     public bool CanApplyDetail => IsTextMode && _detailIsString;
 
@@ -137,7 +137,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     }
 
     public string ClarionToggleLabel =>
-        HasClarionTypes ? $"Clarion fields ({ClarionColumns.Count})" : "Clarion fields";
+        HasClarionTypes
+            ? $"{LocalizationManager.Instance["Clarion_Fields"]} ({ClarionColumns.Count})"
+            : LocalizationManager.Instance["Clarion_Fields"];
 
     public event Action<TableTabViewModel>? CloseRequested;
 
@@ -343,7 +345,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         {
             var list = _session.BuildChangePreview();
             SqlPreview = list.Count == 0
-                ? "-- No pending changes."
+                ? LocalizationManager.Instance["Sql_NoPending"]
                 : string.Join(";\n\n", list) + ";";
         }
         catch (Exception ex)

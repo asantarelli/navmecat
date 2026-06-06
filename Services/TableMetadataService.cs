@@ -250,17 +250,18 @@ public static class TableMetadataService
         }
         catch { /* info is best-effort */ }
 
+        var loc = LocalizationManager.Instance;
         var pk = indexes.FirstOrDefault(i => i.IsPrimaryKey);
         var sb = new StringBuilder();
-        sb.AppendLine($"Table:        {schema}.{table}");
-        sb.AppendLine($"Columns:      {columns.Count}");
-        sb.AppendLine($"Primary key:  {(pk is null ? "(none)" : string.Join(", ", pk.Columns.Select(c => c.Col)))}");
-        sb.AppendLine($"Indexes:      {indexes.Count}");
-        if (rows >= 0) sb.AppendLine($"Rows:         {rows:N0}");
-        if (created is not null) sb.AppendLine($"Created:      {created:yyyy-MM-dd HH:mm}");
-        if (modified is not null) sb.AppendLine($"Modified:     {modified:yyyy-MM-dd HH:mm}");
+        sb.AppendLine($"{loc["Info_Table"],-16}{schema}.{table}");
+        sb.AppendLine($"{loc["Info_Columns"],-16}{columns.Count}");
+        sb.AppendLine($"{loc["Info_PrimaryKey"],-16}{(pk is null ? loc["Info_None"] : string.Join(", ", pk.Columns.Select(c => c.Col)))}");
+        sb.AppendLine($"{loc["Info_Indexes"],-16}{indexes.Count}");
+        if (rows >= 0) sb.AppendLine($"{loc["Info_Rows"],-16}{rows:N0}");
+        if (created is not null) sb.AppendLine($"{loc["Info_Created"],-16}{created:yyyy-MM-dd HH:mm}");
+        if (modified is not null) sb.AppendLine($"{loc["Info_Modified"],-16}{modified:yyyy-MM-dd HH:mm}");
         sb.AppendLine();
-        sb.AppendLine("Columns:");
+        sb.AppendLine(loc["Info_Columns"]);
         foreach (var c in columns)
             sb.AppendLine($"  • {c.Name}  {FormatType(c)}  {(c.IsNullable ? "NULL" : "NOT NULL")}");
         return sb.ToString().TrimEnd();
@@ -268,7 +269,8 @@ public static class TableMetadataService
 
     private static string BuildRelationships(string schema, string table, List<FkDef> fks)
     {
-        if (fks.Count == 0) return "No foreign-key relationships.";
+        var loc = LocalizationManager.Instance;
+        if (fks.Count == 0) return loc["Rel_None"];
 
         var sb = new StringBuilder();
         var outgoing = fks.Where(f => f.ParentSchema == schema && f.ParentTable == table).ToList();
@@ -276,7 +278,7 @@ public static class TableMetadataService
 
         if (outgoing.Count > 0)
         {
-            sb.AppendLine("This table references →");
+            sb.AppendLine(loc["Rel_References"]);
             foreach (var fk in outgoing)
             {
                 var pc = string.Join(", ", fk.Columns.Select(c => c.ParentCol));
@@ -287,7 +289,7 @@ public static class TableMetadataService
         }
         if (incoming.Count > 0)
         {
-            sb.AppendLine("← Referenced by");
+            sb.AppendLine(loc["Rel_ReferencedBy"]);
             foreach (var fk in incoming)
             {
                 var pc = string.Join(", ", fk.Columns.Select(c => c.ParentCol));
