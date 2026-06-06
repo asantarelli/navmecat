@@ -17,8 +17,12 @@ public partial class TableDesignerViewModel : ObservableObject
     private string _table;
     private readonly bool _isNew;
     private List<string> _originalColumns = new();
+    private string? _pkName;
+    private List<string> _originalPk = new();
+    private List<string> _originalIndexNames = new();
 
     public ObservableCollection<DesignColumn> Columns { get; } = new();
+    public ObservableCollection<DesignIndex> Indexes { get; } = new();
     public string[] DataTypes { get; } =
     {
         "int", "bigint", "smallint", "tinyint", "bit",
@@ -42,6 +46,7 @@ public partial class TableDesignerViewModel : ObservableObject
         tableName = table;
 
         Columns.CollectionChanged += OnColumnsChanged;
+        Indexes.CollectionChanged += OnColumnsChanged;
 
         if (_isNew)
         {
@@ -74,12 +79,35 @@ public partial class TableDesignerViewModel : ObservableObject
                     Nullable = c.Nullable,
                     Identity = c.Identity,
                     DefaultValue = c.Default,
-                    PrimaryKey = c.IsPrimaryKey
+                    PrimaryKey = c.IsPrimaryKey,
+                    OriginalPrimaryKey = c.IsPrimaryKey,
+                    OriginalDefault = c.Default,
+                    OriginalDefaultName = c.DefaultName
                 };
                 dc.PropertyChanged += OnColumnChanged;
                 Columns.Add(dc);
             }
             _originalColumns = cols.Select(c => c.Name).ToList();
+
+            var (pkName, pkCols) = await SqlServerService.GetPrimaryKeyAsync(_connection.BuildConnectionString(), _database ?? "", _schema, _table);
+            _pkName = pkName;
+            _originalPk = pkCols;
+
+            foreach (var ix in await SqlServerService.GetIndexesAsync(_connection.BuildConnectionString(), _database ?? "", _schema, _table))
+            {
+                var di = new DesignIndex
+                {
+                    OriginalName = ix.Name,
+                    Name = ix.Name,
+                    Columns = string.Join(", ", ix.Columns),
+                    Unique = ix.Unique,
+                    OriginalSpec = IndexSpec(ix.Unique, ix.Columns)
+                };
+                di.PropertyChanged += OnColumnChanged;
+                Indexes.Add(di);
+            }
+            _originalIndexNames = Indexes.Where(i => i.OriginalName is not null).Select(i => i.OriginalName!).ToList();
+
             Generate();
         }
         catch (Exception ex)
@@ -117,6 +145,36 @@ public partial class TableDesignerViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void AddIndex()
+    {
+        var di = new DesignIndex { Name = $"IX_{TableName}_{Indexes.Count + 1}" };
+        di.PropertyChanged += OnColumnChanged;
+        Indexes.Add(di);
+    }
+
+    [RelayCommand]
+    private void RemoveIndex(DesignIndex? i)
+    {
+        if (i is null) return;
+        i.PropertyChanged -= OnColumnChanged;
+        Indexes.Remove(i);
+    }
+
+    [RelayCommand]
+    private void CopyScript()
+    {
+        if (string.IsNullOrWhiteSpace(GeneratedSql)) return;
+        try { System.Windows.Clipboard.SetText(GeneratedSql); Messages = "Script copied to clipboard."; }
+        catch { Messages = "Could not access the clipboard."; }
+    }
+
+    private static string IndexSpec(bool unique, IEnumerable<string> cols) =>
+        $"{unique}|{string.Join(",", cols.Select(c => c.Trim()))}";
+
+    private static string BracketCols(string csv) =>
+        string.Join(", ", csv.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).Select(s => $"[{s}]"));
+
+    [RelayCommand]
     private async Task Save()
     {
         if (string.IsNullOrWhiteSpace(GeneratedSql)) return;
@@ -124,36 +182,14 @@ public partial class TableDesignerViewModel : ObservableObject
         try
         {
             await SqlServerService.ExecuteAsync(_connection.BuildConnectionString(), _database ?? "", GeneratedSql);
-            Messages = "Saved successfully.";
-            if (_isNew)
-            {
-                // Re-target as an existing table so further edits diff correctly.
-                Refresh();
-            }
+            Messages = _isNew
+                ? "Created successfully. Close and re-open Design to make further changes."
+                : "Saved successfully.";
         }
         catch (Exception ex)
         {
             Messages = "Error: " + ex.Message;
         }
-    }
-
-    private async void Refresh()
-    {
-        _table = TableName;
-        foreach (var c in Columns) c.PropertyChanged -= OnColumnChanged;
-        Columns.Clear();
-        await LoadAsyncAsExisting();
-    }
-
-    private async Task LoadAsyncAsExisting()
-    {
-        // Reload after creating a new table so subsequent saves use ALTER diff.
-        try
-        {
-            var cols = await SqlServerService.GetColumnDetailsAsync(_connection.BuildConnectionString(), _database ?? "", _schema, _table);
-            _originalColumns = cols.Select(c => c.Name).ToList();
-        }
-        catch { /* ignore */ }
     }
 
     // ---- SQL generation --------------------------------------------------
@@ -195,6 +231,10 @@ public partial class TableDesignerViewModel : ObservableObject
             lines.Add($"  CONSTRAINT [PK_{TableName}] PRIMARY KEY ({string.Join(", ", pk)})");
 
         sb.Append(string.Join(",\n", lines)).Append("\n)");
+
+        foreach (var ix in Indexes.Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.Columns)))
+            sb.Append($";\nCREATE {(ix.Unique ? "UNIQUE " : "")}INDEX [{ix.Name}] ON [{_schema}].[{TableName}] ({BracketCols(ix.Columns)})");
+
         return sb.ToString();
     }
 
@@ -204,12 +244,33 @@ public partial class TableDesignerViewModel : ObservableObject
         var currentOriginals = cols.Where(c => c.OriginalName is not null)
             .Select(c => c.OriginalName!).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // Dropped columns
+        // 1. Drop changed/removed indexes first (they may reference columns/keys being changed).
+        var keepIndexNames = Indexes.Where(i => i.OriginalName is not null).Select(i => i.OriginalName!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var changedExisting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var i in Indexes.Where(i => i.OriginalName is not null))
+        {
+            var spec = IndexSpec(i.Unique, i.Columns.Split(','));
+            if (!string.Equals(spec, i.OriginalSpec, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(i.Name, i.OriginalName, StringComparison.Ordinal))
+                changedExisting.Add(i.OriginalName!);
+        }
+        // dropped indexes (no longer present) + changed indexes
+        foreach (var orig in _originalIndexNames)
+            if (!keepIndexNames.Contains(orig) || changedExisting.Contains(orig))
+                statements.Add($"DROP INDEX [{orig}] ON {Fq}");
+
+        // 2. PK change: drop old PK if the set differs.
+        var currentPk = cols.Where(c => c.PrimaryKey).Select(c => c.Name).ToList();
+        var pkChanged = !currentPk.SequenceEqual(_originalPk, StringComparer.OrdinalIgnoreCase);
+        if (pkChanged && _pkName is not null)
+            statements.Add($"ALTER TABLE {Fq} DROP CONSTRAINT [{_pkName}]");
+
+        // 3. Drop removed columns.
         foreach (var orig in _originalColumns)
             if (!currentOriginals.Contains(orig))
                 statements.Add($"ALTER TABLE {Fq} DROP COLUMN [{orig}]");
 
-        // Existing columns: rename and/or alter
+        // 4. Rename + alter existing columns.
         foreach (var c in cols.Where(c => c.OriginalName is not null))
         {
             if (!string.Equals(c.Name, c.OriginalName, StringComparison.Ordinal))
@@ -221,7 +282,7 @@ public partial class TableDesignerViewModel : ObservableObject
                 statements.Add($"ALTER TABLE {Fq} ALTER COLUMN [{c.Name}] {newType} {(c.Nullable ? "NULL" : "NOT NULL")}");
         }
 
-        // New columns
+        // 5. Add new columns.
         foreach (var c in cols.Where(c => c.OriginalName is null && !string.IsNullOrWhiteSpace(c.Name)))
         {
             var line = new StringBuilder($"ALTER TABLE {Fq} ADD [{c.Name}] {FullType(c)}");
@@ -231,8 +292,32 @@ public partial class TableDesignerViewModel : ObservableObject
             statements.Add(line.ToString());
         }
 
-        if (statements.Count == 0)
-            return "-- No changes. (Primary-key / identity changes on existing tables aren't applied here.)";
+        // 6. Default-constraint changes on existing columns.
+        foreach (var c in cols.Where(c => c.OriginalName is not null))
+        {
+            var cur = (c.DefaultValue ?? "").Trim();
+            var old = (c.OriginalDefault ?? "").Trim();
+            if (string.Equals(cur, old, StringComparison.Ordinal)) continue;
+            if (!string.IsNullOrEmpty(c.OriginalDefaultName))
+                statements.Add($"ALTER TABLE {Fq} DROP CONSTRAINT [{c.OriginalDefaultName}]");
+            if (cur.Length > 0)
+                statements.Add($"ALTER TABLE {Fq} ADD CONSTRAINT [DF_{TableName}_{c.Name}] DEFAULT {cur} FOR [{c.Name}]");
+        }
+
+        // 7. Add the new PK.
+        if (pkChanged && currentPk.Count > 0)
+            statements.Add($"ALTER TABLE {Fq} ADD CONSTRAINT [PK_{TableName}] PRIMARY KEY ({string.Join(", ", currentPk.Select(n => $"[{n}]"))})");
+
+        // 8. Create new / changed indexes.
+        foreach (var i in Indexes.Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.Columns)))
+        {
+            var isNew = i.OriginalName is null;
+            var isChanged = i.OriginalName is not null && changedExisting.Contains(i.OriginalName);
+            if (isNew || isChanged)
+                statements.Add($"CREATE {(i.Unique ? "UNIQUE " : "")}INDEX [{i.Name}] ON {Fq} ({BracketCols(i.Columns)})");
+        }
+
+        if (statements.Count == 0) return "-- No changes.";
         return string.Join(";\n", statements) + ";";
     }
 

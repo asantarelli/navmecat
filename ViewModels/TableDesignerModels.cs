@@ -18,4 +18,19 @@ public partial class DesignColumn : ObservableObject
     [ObservableProperty] private bool identity;
     [ObservableProperty] private string? defaultValue;
     [ObservableProperty] private bool primaryKey;
+
+    public bool OriginalPrimaryKey { get; set; }
+    public string? OriginalDefault { get; set; }
+    public string? OriginalDefaultName { get; set; }
+}
+
+/// <summary>One index row in the table designer.</summary>
+public partial class DesignIndex : ObservableObject
+{
+    public string? OriginalName { get; set; }
+    public string? OriginalSpec { get; set; } // "unique|col1,col2" snapshot for diff
+
+    [ObservableProperty] private string name = "";
+    [ObservableProperty] private string columns = "";  // comma-separated column names
+    [ObservableProperty] private bool unique;
 }

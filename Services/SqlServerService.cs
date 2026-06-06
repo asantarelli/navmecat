@@ -90,7 +90,10 @@ public static class SqlServerService
     }
 
     public record ColumnDetail(string Name, string TypeName, int MaxLength, byte Precision, byte Scale,
-        bool Nullable, bool Identity, string? Default, bool IsPrimaryKey);
+        bool Nullable, bool Identity, string? Default, string? DefaultName, bool IsPrimaryKey);
+
+    private static string Bracketed(string schema, string name) =>
+        $"[{schema.Replace("]", "]]")}].[{name.Replace("]", "]]")}]";
 
     public static async Task<List<ColumnDetail>> GetColumnDetailsAsync(string connectionString, string database, string schema, string table)
     {
@@ -99,7 +102,7 @@ public static class SqlServerService
         await conn.OpenAsync();
         const string sql = @"
             SELECT c.name, t.name, c.max_length, c.precision, c.scale, c.is_nullable, c.is_identity,
-                   dc.definition,
+                   dc.definition, dc.name,
                    CASE WHEN pk.column_id IS NOT NULL THEN 1 ELSE 0 END
             FROM sys.columns c
             JOIN sys.types t ON c.user_type_id = t.user_type_id
@@ -113,12 +116,65 @@ public static class SqlServerService
             WHERE c.object_id = OBJECT_ID(@fq)
             ORDER BY c.column_id";
         await using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@fq", $"[{schema.Replace("]", "]]")}].[{table.Replace("]", "]]")}]");
+        cmd.Parameters.AddWithValue("@fq", Bracketed(schema, table));
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
             result.Add(new ColumnDetail(r.GetString(0), r.GetString(1), r.GetInt16(2), r.GetByte(3), r.GetByte(4),
-                r.GetBoolean(5), r.GetBoolean(6), r.IsDBNull(7) ? null : r.GetString(7), r.GetInt32(8) == 1));
+                r.GetBoolean(5), r.GetBoolean(6),
+                r.IsDBNull(7) ? null : r.GetString(7), r.IsDBNull(8) ? null : r.GetString(8),
+                r.GetInt32(9) == 1));
         return result;
+    }
+
+    /// <summary>Primary key constraint name and its columns (in order).</summary>
+    public static async Task<(string? Name, List<string> Columns)> GetPrimaryKeyAsync(
+        string connectionString, string database, string schema, string table)
+    {
+        await using var conn = new SqlConnection(WithDatabase(connectionString, database));
+        await conn.OpenAsync();
+        const string sql = @"
+            SELECT i.name, c.name
+            FROM sys.indexes i
+            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
+            JOIN sys.columns c ON c.object_id = i.object_id AND c.column_id = ic.column_id
+            WHERE i.object_id = OBJECT_ID(@fq) AND i.is_primary_key = 1
+            ORDER BY ic.key_ordinal";
+        await using var cmd = new SqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@fq", Bracketed(schema, table));
+        string? name = null;
+        var cols = new List<string>();
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync()) { name = r.GetString(0); cols.Add(r.GetString(1)); }
+        return (name, cols);
+    }
+
+    public record IndexDetail(string Name, bool Unique, List<string> Columns);
+
+    /// <summary>Secondary indexes (not the primary key or unique constraints).</summary>
+    public static async Task<List<IndexDetail>> GetIndexesAsync(
+        string connectionString, string database, string schema, string table)
+    {
+        await using var conn = new SqlConnection(WithDatabase(connectionString, database));
+        await conn.OpenAsync();
+        const string sql = @"
+            SELECT i.name, i.is_unique, c.name
+            FROM sys.indexes i
+            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id AND ic.is_included_column = 0
+            JOIN sys.columns c ON c.object_id = i.object_id AND c.column_id = ic.column_id
+            WHERE i.object_id = OBJECT_ID(@fq) AND i.type > 0 AND i.is_primary_key = 0 AND i.is_unique_constraint = 0
+            ORDER BY i.index_id, ic.key_ordinal";
+        await using var cmd = new SqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@fq", Bracketed(schema, table));
+        var map = new Dictionary<string, IndexDetail>();
+        var order = new List<string>();
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            var n = r.GetString(0);
+            if (!map.TryGetValue(n, out var d)) { d = new IndexDetail(n, r.GetBoolean(1), new()); map[n] = d; order.Add(n); }
+            d.Columns.Add(r.GetString(2));
+        }
+        return order.Select(n => map[n]).ToList();
     }
 
     /// <summary>The CREATE definition of a programmable object (function/proc/view/trigger), or null.</summary>
