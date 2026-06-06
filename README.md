@@ -32,7 +32,8 @@ Grab the latest **portable `.exe`** from the
   and can be closed individually.
   - **In-place editing** of cells.
   - **Add** new rows and **delete** rows.
-  - **Save changes** writes everything back via `SqlDataAdapter` (requires a primary key).
+  - **Save changes** writes everything back. Tables **without a primary key** are supported too —
+    pick a **row identity** (the columns that identify a row) for safe updates and deletes.
   - **Filter** and multi-column **Sort** builders (Navicat-style) per tab.
   - **Spreadsheet-friendly copy & paste** — select rows/cells and **Ctrl+C** (or right-click →
     Copy / Copy with headers); pastes cleanly into Excel/Sheets with each value in its own cell.
@@ -57,7 +58,20 @@ Grab the latest **portable `.exe`** from the
   auto-detect, filters, sort) with live SQL.
 - **Export** — export the current grid to **CSV, TSV, JSON, XML, HTML or Excel (.xlsx)**, with
   column selection.
-- **Settings** — defaults for row limit and which panels open with a table.
+- **Import data** — load a **CSV or Excel (.xlsx)** file into a table, with first-row-header
+  detection and a source-to-column mapping that auto-maps by name. The whole import runs in a
+  single transaction (all-or-nothing).
+- **Generate INSERT script** — right-click a table to produce a ready-to-run `INSERT` script for
+  its rows (wrapped in `SET IDENTITY_INSERT` when needed), viewable, copyable and savable as `.sql`.
+- **Table designer** — create and alter tables: columns, types, nullability, defaults, primary
+  key and indexes, with a copyable generated script.
+- **Edit routines & views** — open and edit **functions, stored procedures and views**; create
+  new ones from templates; execute or drop them.
+- **Safe drop** — dropping a table/view/routine first checks `sys.sql_expression_dependencies`
+  and warns you about objects that reference it.
+- **Localization** — the interface is fully translatable; ships with **English and Spanish**.
+  Switch language in **Settings** and the UI updates live (no restart).
+- **Settings** — defaults for row limit, which panels open with a table, and the UI language.
 - **Professional UI** — clean blue/slate theme, dark sidebar, button icons, styled modal dialogs.
 
 ## Clarion dates & times
@@ -103,8 +117,8 @@ Then:
 3. **Double-click a table** to load its records.
 4. Edit cells directly, add or delete rows, then click **Save changes**.
 
-> In-place editing requires the table to have a **primary key** so updates and deletes can be
-> generated automatically.
+> In-place editing uses the table's **primary key** to generate updates and deletes. For tables
+> without one, use the **Row identity…** picker in the toolbar to choose the identifying columns.
 
 ## Tech stack
 

@@ -189,6 +189,30 @@ public static class SqlServerService
         return result as string;
     }
 
+    /// <summary>Objects that reference the given object (dependents), as "schema.name (type)".</summary>
+    public static async Task<List<string>> GetDependentsAsync(string connectionString, string database, string schema, string name)
+    {
+        var result = new List<string>();
+        await using var conn = new SqlConnection(WithDatabase(connectionString, database));
+        await conn.OpenAsync();
+        const string sql = @"
+            SELECT DISTINCT OBJECT_SCHEMA_NAME(d.referencing_id), OBJECT_NAME(d.referencing_id), o.type_desc
+            FROM sys.sql_expression_dependencies d
+            JOIN sys.objects o ON o.object_id = d.referencing_id
+            WHERE d.referenced_id = OBJECT_ID(@fq)";
+        await using var cmd = new SqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("@fq", $"[{schema.Replace("]", "]]")}].[{name.Replace("]", "]]")}]");
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            var s = r.IsDBNull(0) ? "" : r.GetString(0);
+            var n = r.IsDBNull(1) ? "?" : r.GetString(1);
+            var t = r.IsDBNull(2) ? "" : r.GetString(2).Replace("_", " ").ToLowerInvariant();
+            result.Add($"{(s.Length > 0 ? s + "." : "")}{n} ({t})");
+        }
+        return result;
+    }
+
     /// <summary>Runs a DDL/script batch (no result set). Returns rows affected.</summary>
     public static async Task<int> ExecuteAsync(string connectionString, string database, string sql)
     {

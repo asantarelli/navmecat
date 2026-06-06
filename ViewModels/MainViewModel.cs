@@ -216,6 +216,34 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task GenerateInserts(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Table or NodeType.View }) return;
+        StatusText = $"Generating INSERT script for {node.Schema}.{node.Name}…";
+        try
+        {
+            var script = await ScriptService.GenerateInsertsAsync(
+                node.Connection.BuildConnectionString(), node.Database ?? "", node.Schema!, node.Name,
+                SettingsStore.Current.DefaultRowLimit);
+            new Views.ScriptViewerWindow($"INSERT script — {node.Schema}.{node.Name}", script, $"{node.Name}_inserts").Show();
+            StatusText = $"Generated INSERT script for {node.Schema}.{node.Name}.";
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Generate INSERT failed", ex.Message);
+        }
+    }
+
+    [RelayCommand]
+    private void ImportData(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Table }) return;
+        new Views.ImportDialog(node.Connection, node.Database ?? "", node.Schema!, node.Name).ShowDialog();
+    }
+
+    [RelayCommand]
     private void NewTable(DbTreeNode? category)
     {
         category ??= SelectedNode;
@@ -226,13 +254,29 @@ public partial class MainViewModel : ObservableObject
         new Views.TableDesignerWindow(connection, category?.Database, schema, "NewTable", isNew: true).Show();
     }
 
+    private static async Task<bool> ConfirmDrop(DbTreeNode node, string keyword, string extra = "")
+    {
+        var dependents = new List<string>();
+        try
+        {
+            dependents = await SqlServerService.GetDependentsAsync(
+                node.Connection.BuildConnectionString(), node.Database ?? "", node.Schema!, node.Name);
+        }
+        catch { /* dependency check is best-effort */ }
+
+        var msg = $"Permanently drop {keyword.ToLowerInvariant()} {node.Schema}.{node.Name}?{extra}";
+        if (dependents.Count > 0)
+            msg += "\n\n⚠ These objects reference it:\n• " + string.Join("\n• ", dependents.Take(15)) +
+                   (dependents.Count > 15 ? $"\n…and {dependents.Count - 15} more" : "");
+        return Dialogs.Confirm("Drop " + keyword.ToLowerInvariant(), msg);
+    }
+
     [RelayCommand]
     private async Task DropTable(DbTreeNode? node)
     {
         node ??= SelectedNode;
         if (node is not { Type: NodeType.Table }) return;
-        if (!Dialogs.Confirm("Drop table",
-                $"Permanently drop table {node.Schema}.{node.Name} and all its data?"))
+        if (!await ConfirmDrop(node, "TABLE", " All its data will be lost."))
             return;
         try
         {
@@ -294,8 +338,7 @@ public partial class MainViewModel : ObservableObject
         node ??= SelectedNode;
         if (node is not { Type: NodeType.Function or NodeType.Procedure or NodeType.View }) return;
         var keyword = RoutineKeyword(node.Type);
-        if (!Dialogs.Confirm("Drop " + keyword.ToLowerInvariant(),
-                $"Permanently drop {keyword.ToLowerInvariant()} {node.Schema}.{node.Name}?"))
+        if (!await ConfirmDrop(node, keyword))
             return;
         try
         {

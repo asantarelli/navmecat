@@ -22,7 +22,17 @@ public partial class SettingsDialog : Window
 
         SectionCombo.ItemsSource = Enum.GetValues(typeof(InspectorSection));
         SectionCombo.SelectedItem = s.DefaultStructureSection;
+
+        LanguageCombo.ItemsSource = new[]
+        {
+            new LanguageOption("en", "English"),
+            new LanguageOption("es", "Español"),
+        };
+        LanguageCombo.SelectedValue = s.Language;
+        if (LanguageCombo.SelectedItem is null) LanguageCombo.SelectedIndex = 0;
     }
+
+    public record LanguageOption(string Code, string Name);
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
@@ -35,8 +45,11 @@ public partial class SettingsDialog : Window
         s.ShowClarionTypesByDefault = ClarionCheck.IsChecked == true;
         if (SectionCombo.SelectedItem is InspectorSection section)
             s.DefaultStructureSection = section;
+        if (LanguageCombo.SelectedValue is string lang)
+            s.Language = lang;
 
         SettingsStore.Save(s);
+        LocalizationManager.Instance.Language = s.Language;
         DialogResult = true;
         Close();
     }

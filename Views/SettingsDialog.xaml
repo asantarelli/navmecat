@@ -1,6 +1,7 @@
 <Window x:Class="NavMeCat.Views.SettingsDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:NavMeCat.Services"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" SizeToContent="Height"
@@ -13,40 +14,52 @@
         <StackPanel>
             <Border Background="{StaticResource B.Sidebar}" CornerRadius="12,12,0,0" Padding="20,16"
                     MouseLeftButtonDown="Header_MouseDown">
-                <TextBlock Text="Settings" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                <TextBlock Text="{loc:Tr Settings_Title}" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
             </Border>
 
             <StackPanel Margin="22,18,22,8">
-                <TextBlock Text="When opening a table" FontWeight="SemiBold" FontSize="12"
+                <TextBlock Text="{loc:Tr Settings_Interface}" FontWeight="SemiBold" FontSize="12"
+                           Foreground="{StaticResource B.TextMuted}" Margin="0,0,0,8"/>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Column="0" Content="{loc:Tr Settings_Language}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="LanguageCombo" Grid.Column="1" Width="200" HorizontalAlignment="Left"
+                              DisplayMemberPath="Name" SelectedValuePath="Code"/>
+                </Grid>
+
+                <TextBlock Text="{loc:Tr Settings_WhenOpening}" FontWeight="SemiBold" FontSize="12"
                            Foreground="{StaticResource B.TextMuted}" Margin="0,0,0,8"/>
 
-                <Label Content="Default row limit"/>
+                <Label Content="{loc:Tr Settings_DefaultRowLimit}"/>
                 <TextBox x:Name="RowLimitBox" Width="120" HorizontalAlignment="Left" Margin="0,0,0,14"/>
 
-                <CheckBox x:Name="StructureCheck" Content="Open the Structure panel by default" Margin="0,0,0,8"/>
+                <CheckBox x:Name="StructureCheck" Content="{loc:Tr Settings_OpenStructure}" Margin="0,0,0,8"/>
                 <Grid Margin="22,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0" Content="Default section" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Label Grid.Column="0" Content="{loc:Tr Settings_DefaultSection}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <ComboBox x:Name="SectionCombo" Grid.Column="1" Width="160" HorizontalAlignment="Left"/>
                 </Grid>
 
-                <CheckBox x:Name="SqlCheck" Content="Open the SQL preview panel by default" Margin="0,0,0,8"/>
-                <CheckBox x:Name="DetailCheck" Content="Open the Cell detail panel by default" Margin="0,0,0,14"/>
+                <CheckBox x:Name="SqlCheck" Content="{loc:Tr Settings_OpenSql}" Margin="0,0,0,8"/>
+                <CheckBox x:Name="DetailCheck" Content="{loc:Tr Settings_OpenDetail}" Margin="0,0,0,14"/>
 
-                <CheckBox x:Name="ClarionCheck" Content="Convert Clarion date / time / timestamp columns by default" Margin="0,0,0,4"/>
+                <CheckBox x:Name="ClarionCheck" Content="{loc:Tr Settings_ConvertClarion}" Margin="0,0,0,4"/>
 
-                <TextBlock Text="Changes apply to tables opened from now on." FontSize="11" FontStyle="Italic"
+                <TextBlock Text="{loc:Tr Settings_ApplyNote}" FontSize="11" FontStyle="Italic"
                            Foreground="{StaticResource B.TextMuted}" Margin="0,10,0,0"/>
             </StackPanel>
 
             <Border Background="{StaticResource B.SurfaceAlt}" CornerRadius="0,0,12,12"
                     BorderBrush="{StaticResource B.Border}" BorderThickness="0,1,0,0" Padding="16,14">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Cancel" MinWidth="90" Margin="0,0,10,0" Click="Cancel_Click"/>
-                    <Button Content="Save" MinWidth="90" Style="{StaticResource AccentButton}"
+                    <Button Content="{loc:Tr Btn_Cancel}" MinWidth="90" Margin="0,0,10,0" Click="Cancel_Click"/>
+                    <Button Content="{loc:Tr Btn_Save}" MinWidth="90" Style="{StaticResource AccentButton}"
                             Click="Save_Click" IsDefault="True"/>
                 </StackPanel>
             </Border>

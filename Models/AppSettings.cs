@@ -12,5 +12,8 @@ public class AppSettings
     public InspectorSection DefaultStructureSection { get; set; } = InspectorSection.Ddl;
     public bool ShowClarionTypesByDefault { get; set; } = true;
 
+    /// <summary>UI language code: "en" or "es".</summary>
+    public string Language { get; set; } = "en";
+
     public AppSettings Clone() => (AppSettings)MemberwiseClone();
 }

@@ -7,6 +7,7 @@
         xmlns:beh="clr-namespace:NavMeCat.Behaviors"
         xmlns:vm="clr-namespace:NavMeCat.ViewModels"
         xmlns:v="clr-namespace:NavMeCat.Views"
+        xmlns:loc="clr-namespace:NavMeCat.Services"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         mc:Ignorable="d"
         Title="NavMeCat — SQL Server Manager" Height="720" Width="1180"
@@ -65,44 +66,44 @@
                                Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
 
                     <Menu Background="Transparent" VerticalAlignment="Center" Margin="18,0,0,0" FontSize="13">
-                        <MenuItem Header="_File">
-                            <MenuItem Header="New Connection" Command="{Binding AddConnectionCommand}" InputGestureText="Ctrl+N"/>
-                            <MenuItem Header="New Query" Command="{Binding OpenQueryCommand}" InputGestureText="Ctrl+Q"/>
-                            <MenuItem Header="Query Builder" Command="{Binding OpenQueryBuilderCommand}" InputGestureText="Ctrl+B"/>
+                        <MenuItem Header="{loc:Tr Menu_File}">
+                            <MenuItem Header="{loc:Tr Menu_NewConnection}" Command="{Binding AddConnectionCommand}" InputGestureText="Ctrl+N"/>
+                            <MenuItem Header="{loc:Tr Menu_NewQuery}" Command="{Binding OpenQueryCommand}" InputGestureText="Ctrl+Q"/>
+                            <MenuItem Header="{loc:Tr Menu_QueryBuilder}" Command="{Binding OpenQueryBuilderCommand}" InputGestureText="Ctrl+B"/>
                             <Separator/>
-                            <MenuItem Header="Export current table…" Command="{Binding SelectedTab.ExportCommand}"
+                            <MenuItem Header="{loc:Tr Menu_ExportTable}" Command="{Binding SelectedTab.ExportCommand}"
                                       IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
                             <Separator/>
-                            <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}"/>
+                            <MenuItem Header="{loc:Tr Menu_Settings}" Command="{Binding OpenSettingsCommand}"/>
                             <Separator/>
-                            <MenuItem Header="Exit" Command="{Binding ExitAppCommand}" InputGestureText="Alt+F4"/>
+                            <MenuItem Header="{loc:Tr Menu_Exit}" Command="{Binding ExitAppCommand}" InputGestureText="Alt+F4"/>
                         </MenuItem>
-                        <MenuItem Header="_Connection">
-                            <MenuItem Header="Add Connection" Command="{Binding AddConnectionCommand}"/>
-                            <MenuItem Header="Edit Connection" Command="{Binding EditConnectionCommand}"/>
-                            <MenuItem Header="Remove Connection" Command="{Binding RemoveConnectionCommand}"/>
+                        <MenuItem Header="{loc:Tr Menu_Connection}">
+                            <MenuItem Header="{loc:Tr Menu_AddConnection}" Command="{Binding AddConnectionCommand}"/>
+                            <MenuItem Header="{loc:Tr Menu_EditConnection}" Command="{Binding EditConnectionCommand}"/>
+                            <MenuItem Header="{loc:Tr Menu_RemoveConnection}" Command="{Binding RemoveConnectionCommand}"/>
                             <Separator/>
-                            <MenuItem Header="Refresh" Command="{Binding RefreshNodeCommand}" InputGestureText="F5"/>
+                            <MenuItem Header="{loc:Tr Menu_Refresh}" Command="{Binding RefreshNodeCommand}" InputGestureText="F5"/>
                         </MenuItem>
-                        <MenuItem Header="_View">
-                            <MenuItem Header="Refresh" Command="{Binding RefreshNodeCommand}" InputGestureText="F5"/>
+                        <MenuItem Header="{loc:Tr Menu_View}">
+                            <MenuItem Header="{loc:Tr Menu_Refresh}" Command="{Binding RefreshNodeCommand}" InputGestureText="F5"/>
                             <Separator/>
-                            <MenuItem Header="Structure panel" IsCheckable="True"
+                            <MenuItem Header="{loc:Tr Menu_StructurePanel}" IsCheckable="True"
                                       IsChecked="{Binding SelectedTab.ShowInspector, Mode=TwoWay}"
                                       IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
-                            <MenuItem Header="SQL preview panel" IsCheckable="True"
+                            <MenuItem Header="{loc:Tr Menu_SqlPanel}" IsCheckable="True"
                                       IsChecked="{Binding SelectedTab.ShowSqlPanel, Mode=TwoWay}"
                                       IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
-                            <MenuItem Header="Cell detail panel" IsCheckable="True"
+                            <MenuItem Header="{loc:Tr Menu_CellDetailPanel}" IsCheckable="True"
                                       IsChecked="{Binding SelectedTab.ShowDetailPanel, Mode=TwoWay}"
                                       IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
                         </MenuItem>
-                        <MenuItem Header="_Help">
-                            <MenuItem Header="Documentation" Command="{Binding OpenDocsCommand}"/>
-                            <MenuItem Header="GitHub Repository" Command="{Binding OpenGitHubCommand}"/>
-                            <MenuItem Header="Latest Release" Command="{Binding OpenReleasesCommand}"/>
+                        <MenuItem Header="{loc:Tr Menu_Help}">
+                            <MenuItem Header="{loc:Tr Menu_Documentation}" Command="{Binding OpenDocsCommand}"/>
+                            <MenuItem Header="{loc:Tr Menu_GitHub}" Command="{Binding OpenGitHubCommand}"/>
+                            <MenuItem Header="{loc:Tr Menu_LatestRelease}" Command="{Binding OpenReleasesCommand}"/>
                             <Separator/>
-                            <MenuItem Header="About NavMeCat" Command="{Binding ShowAboutCommand}"/>
+                            <MenuItem Header="{loc:Tr Menu_About}" Command="{Binding ShowAboutCommand}"/>
                         </MenuItem>
                     </Menu>
                 </StackPanel>
@@ -127,7 +128,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="CONNECTIONS" Margin="16,16,16,8"
+                    <TextBlock Grid.Row="0" Text="{loc:Tr Sidebar_Connections}" Margin="16,16,16,8"
                                FontSize="11" FontWeight="SemiBold" Opacity="0.7"
                                Foreground="{StaticResource B.SidebarText}"/>
 
@@ -136,8 +137,8 @@
                         <TextBox Text="{Binding TreeFilter, UpdateSourceTrigger=PropertyChanged}"
                                  Background="#FF2B3845" Foreground="{StaticResource B.SidebarText}"
                                  BorderBrush="#FF3A4A57" CaretBrush="White" Padding="8,5"
-                                 ToolTip="Type to filter tables (and schemas/databases) by name"/>
-                        <TextBlock Text="Filter tables…" Margin="11,0,0,0" VerticalAlignment="Center"
+                                 ToolTip="{loc:Tr Filter_TablesTooltip}"/>
+                        <TextBlock Text="{loc:Tr Filter_TablesPlaceholder}" Margin="11,0,0,0" VerticalAlignment="Center"
                                    Foreground="{StaticResource B.SidebarMuted}" IsHitTestVisible="False">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
@@ -156,25 +157,25 @@
                         <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
                                 Command="{Binding AddConnectionCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="Add"/>
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="{loc:Tr Btn_Add}"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
                                 Command="{Binding EditConnectionCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE70F;"/><TextBlock Text="Edit"/>
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE70F;"/><TextBlock Text="{loc:Tr Btn_Edit}"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
                                 Command="{Binding RemoveConnectionCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74D;"/><TextBlock Text="Remove"/>
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74D;"/><TextBlock Text="{loc:Tr Btn_Remove}"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource ToolButton}" Foreground="{StaticResource B.SidebarText}"
                                 Command="{Binding RefreshNodeCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/><TextBlock Text="Refresh"/>
+                                <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/><TextBlock Text="{loc:Tr Btn_Refresh}"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -244,7 +245,7 @@
                                                        Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
                                             <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="4" Background="#FFFDEAEA"
                                                     Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}">
-                                                <TextBlock Text="● Unsaved changes" FontSize="11"
+                                                <TextBlock Text="{loc:Tr Toolbar_Unsaved}" FontSize="11"
                                                            Foreground="{StaticResource B.Danger}"/>
                                             </Border>
                                         </StackPanel>
@@ -254,7 +255,7 @@
                                             <ToggleButton x:Name="FilterToggle" Style="{StaticResource ToolToggle}" Margin="0,0,8,0">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE71C;"/>
-                                                    <TextBlock Text="Filter"/>
+                                                    <TextBlock Text="{loc:Tr Btn_Filter}"/>
                                                     <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
                                                                Visibility="{Binding HasActiveFilter, Converter={StaticResource BoolToVis}}"/>
                                                 </StackPanel>
@@ -268,11 +269,11 @@
                                                         <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.2" Color="#FF1F2933"/>
                                                     </Border.Effect>
                                                     <StackPanel Margin="14">
-                                                        <TextBlock Text="Filter" Style="{StaticResource H1}" Margin="0,0,0,8"/>
+                                                        <TextBlock Text="{loc:Tr Filter_Title}" Style="{StaticResource H1}" Margin="0,0,0,8"/>
                                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                            <RadioButton Content="Match all (AND)" GroupName="Match"
+                                                            <RadioButton Content="{loc:Tr Filter_MatchAll}" GroupName="Match"
                                                                          IsChecked="{Binding FilterMatchAll}"/>
-                                                            <RadioButton Content="Match any (OR)" GroupName="Match"/>
+                                                            <RadioButton Content="{loc:Tr Filter_MatchAny}" GroupName="Match"/>
                                                         </StackPanel>
                                                         <ItemsControl ItemsSource="{Binding FilterConditions}">
                                                             <ItemsControl.ItemTemplate>
@@ -300,11 +301,11 @@
                                                             </ItemsControl.ItemTemplate>
                                                         </ItemsControl>
                                                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                                            <Button Content="＋ Add condition" Command="{Binding AddFilterConditionCommand}"/>
+                                                            <Button Content="{loc:Tr Filter_AddCondition}" Command="{Binding AddFilterConditionCommand}"/>
                                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
                                                                         FlowDirection="LeftToRight" Margin="0">
-                                                                <Button Content="Clear" Margin="8,0,0,0" Command="{Binding ClearFilterCommand}"/>
-                                                                <Button Content="Apply" Margin="8,0,0,0" Style="{StaticResource AccentButton}"
+                                                                <Button Content="{loc:Tr Btn_Clear}" Margin="8,0,0,0" Command="{Binding ClearFilterCommand}"/>
+                                                                <Button Content="{loc:Tr Btn_Apply}" Margin="8,0,0,0" Style="{StaticResource AccentButton}"
                                                                         Command="{Binding ApplyFilterCommand}"/>
                                                             </StackPanel>
                                                         </StackPanel>
@@ -316,7 +317,7 @@
                                             <ToggleButton x:Name="SortToggle" Style="{StaticResource ToolToggle}" Margin="0,0,16,0">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8CB;"/>
-                                                    <TextBlock Text="Sort"/>
+                                                    <TextBlock Text="{loc:Tr Btn_Sort}"/>
                                                     <TextBlock Text=" ●" Foreground="{StaticResource B.Accent}"
                                                                Visibility="{Binding HasActiveSort, Converter={StaticResource BoolToVis}}"/>
                                                 </StackPanel>
@@ -330,7 +331,7 @@
                                                         <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.2" Color="#FF1F2933"/>
                                                     </Border.Effect>
                                                     <StackPanel Margin="14">
-                                                        <TextBlock Text="Sort" Style="{StaticResource H1}" Margin="0,0,0,8"/>
+                                                        <TextBlock Text="{loc:Tr Sort_Title}" Style="{StaticResource H1}" Margin="0,0,0,8"/>
                                                         <ItemsControl ItemsSource="{Binding SortLevels}">
                                                             <ItemsControl.ItemTemplate>
                                                                 <DataTemplate>
@@ -354,10 +355,10 @@
                                                             </ItemsControl.ItemTemplate>
                                                         </ItemsControl>
                                                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                                            <Button Content="＋ Add level" Command="{Binding AddSortLevelCommand}"/>
+                                                            <Button Content="{loc:Tr Sort_AddLevel}" Command="{Binding AddSortLevelCommand}"/>
                                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                                                <Button Content="Clear" Margin="8,0,0,0" Command="{Binding ClearSortCommand}"/>
-                                                                <Button Content="Apply" Margin="8,0,0,0" Style="{StaticResource AccentButton}"
+                                                                <Button Content="{loc:Tr Btn_Clear}" Margin="8,0,0,0" Command="{Binding ClearSortCommand}"/>
+                                                                <Button Content="{loc:Tr Btn_Apply}" Margin="8,0,0,0" Style="{StaticResource AccentButton}"
                                                                         Command="{Binding ApplySortCommand}"/>
                                                             </StackPanel>
                                                         </StackPanel>
@@ -368,10 +369,10 @@
                                             <Button Margin="0,0,16,0"
                                                     Command="{Binding PickRowIdentityCommand}"
                                                     Visibility="{Binding CanPickRowIdentity, Converter={StaticResource BoolToVis}}"
-                                                    ToolTip="No primary key — choose which columns identify a row for edits/deletes">
+                                                    ToolTip="{loc:Tr Tip_RowIdentity}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8D7;"/>
-                                                    <TextBlock Text="Row identity…"/>
+                                                    <TextBlock Text="{loc:Tr Btn_RowIdentity}"/>
                                                 </StackPanel>
                                             </Button>
                                             <CheckBox Content="{Binding ClarionToggleLabel}" VerticalAlignment="Center"
@@ -380,10 +381,10 @@
                                                       ToolTip="Show Clarion date (days since 1800-12-28), time (centiseconds since midnight) and ts/sts/dts timestamp (epoch ms) fields in readable form"/>
                                             <ToggleButton x:Name="ViewToggle" Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
                                                           IsChecked="{Binding ViewMenuOpen, Mode=TwoWay}"
-                                                          ToolTip="View the selected cell's content as Text, Hex, Image or Web">
+                                                          ToolTip="{loc:Tr Tip_View}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE890;"/>
-                                                    <TextBlock Text="View  ▾"/>
+                                                    <TextBlock Text="{loc:Tr Btn_View}"/>
                                                 </StackPanel>
                                             </ToggleButton>
                                             <Popup PlacementTarget="{Binding ElementName=ViewToggle}" Placement="Bottom"
@@ -395,53 +396,53 @@
                                                         <DropShadowEffect BlurRadius="20" ShadowDepth="3" Opacity="0.2" Color="#FF1F2933"/>
                                                     </Border.Effect>
                                                     <StackPanel Margin="4">
-                                                        <Button Style="{StaticResource MenuItemButton}" Content="Auto-detect"
+                                                        <Button Style="{StaticResource MenuItemButton}" Content="{loc:Tr View_Auto}"
                                                                 Command="{Binding SetViewModeCommand}" CommandParameter="{x:Static vm:CellViewMode.Auto}"/>
-                                                        <Button Style="{StaticResource MenuItemButton}" Content="Text"
+                                                        <Button Style="{StaticResource MenuItemButton}" Content="{loc:Tr View_Text}"
                                                                 Command="{Binding SetViewModeCommand}" CommandParameter="{x:Static vm:CellViewMode.Text}"/>
-                                                        <Button Style="{StaticResource MenuItemButton}" Content="Hex"
+                                                        <Button Style="{StaticResource MenuItemButton}" Content="{loc:Tr View_Hex}"
                                                                 Command="{Binding SetViewModeCommand}" CommandParameter="{x:Static vm:CellViewMode.Hex}"/>
-                                                        <Button Style="{StaticResource MenuItemButton}" Content="Image"
+                                                        <Button Style="{StaticResource MenuItemButton}" Content="{loc:Tr View_Image}"
                                                                 Command="{Binding SetViewModeCommand}" CommandParameter="{x:Static vm:CellViewMode.Image}"/>
-                                                        <Button Style="{StaticResource MenuItemButton}" Content="Web"
+                                                        <Button Style="{StaticResource MenuItemButton}" Content="{loc:Tr View_Web}"
                                                                 Command="{Binding SetViewModeCommand}" CommandParameter="{x:Static vm:CellViewMode.Web}"/>
                                                         <Separator Margin="6,4"/>
-                                                        <Button Style="{StaticResource MenuItemButton}" Content="Hide panel"
+                                                        <Button Style="{StaticResource MenuItemButton}" Content="{loc:Tr View_HidePanel}"
                                                                 Command="{Binding HideDetailPanelCommand}"/>
                                                     </StackPanel>
                                                 </Border>
                                             </Popup>
                                             <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,8,0"
                                                           IsChecked="{Binding ShowSqlPanel}"
-                                                          ToolTip="Show the SQL that Save will run for pending changes">
+                                                          ToolTip="{loc:Tr Tip_SQL}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE943;"/>
-                                                    <TextBlock Text="SQL"/>
+                                                    <TextBlock Text="{loc:Tr Btn_SQL}"/>
                                                 </StackPanel>
                                             </ToggleButton>
                                             <ToggleButton Style="{StaticResource ToolToggle}" Margin="0,0,16,0"
                                                           IsChecked="{Binding ShowInspector}"
-                                                          ToolTip="Show the table structure: Info, DDL and Relationships">
+                                                          ToolTip="{loc:Tr Tip_Structure}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8A5;"/>
-                                                    <TextBlock Text="Structure"/>
+                                                    <TextBlock Text="{loc:Tr Btn_Structure}"/>
                                                 </StackPanel>
                                             </ToggleButton>
-                                            <TextBlock Text="Row limit" VerticalAlignment="Center" FontSize="12"
+                                            <TextBlock Text="{loc:Tr Lbl_RowLimit}" VerticalAlignment="Center" FontSize="12"
                                                        Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
                                             <TextBox Width="72" VerticalAlignment="Center"
                                                      Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"/>
                                             <Button Margin="10,0,0,0" Command="{Binding ExportCommand}"
-                                                    ToolTip="Export the current rows to CSV, JSON, XML, HTML or Excel">
+                                                    ToolTip="{loc:Tr Tip_Export}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xEDE1;"/>
-                                                    <TextBlock Text="Export"/>
+                                                    <TextBlock Text="{loc:Tr Btn_Export}"/>
                                                 </StackPanel>
                                             </Button>
                                             <Button Margin="10,0,0,0" Command="{Binding ReloadCommand}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/>
-                                                    <TextBlock Text="Reload"/>
+                                                    <TextBlock Text="{loc:Tr Btn_Reload}"/>
                                                 </StackPanel>
                                             </Button>
                                             <Button Margin="10,0,0,0" Style="{StaticResource AccentButton}"
@@ -449,7 +450,7 @@
                                                     IsEnabled="{Binding HasUnsavedChanges}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74E;"/>
-                                                    <TextBlock Text="Save changes"/>
+                                                    <TextBlock Text="{loc:Tr Btn_SaveChanges}"/>
                                                 </StackPanel>
                                             </Button>
                                         </StackPanel>
@@ -540,9 +541,9 @@
                         <Path Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
                               Width="48" Height="48" Stretch="Uniform"
                               Stroke="{StaticResource B.BorderStrong}" StrokeThickness="0.7"/>
-                        <TextBlock Text="No table open" FontSize="16" FontWeight="SemiBold"
+                        <TextBlock Text="{loc:Tr Empty_NoTable}" FontSize="16" FontWeight="SemiBold"
                                    Foreground="{StaticResource B.Text}" HorizontalAlignment="Center" Margin="0,16,0,4"/>
-                        <TextBlock Text="Double-click a table in the tree to open it in a new tab."
+                        <TextBlock Text="{loc:Tr Empty_Hint}"
                                    FontSize="13" Foreground="{StaticResource B.TextMuted}"
                                    HorizontalAlignment="Center"/>
                     </StackPanel>

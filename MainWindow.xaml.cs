@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using NavMeCat.Services;
 using NavMeCat.ViewModels;
 
 namespace NavMeCat;
@@ -55,9 +56,11 @@ public partial class MainWindow : Window
     {
         var menu = new ContextMenu();
 
-        MenuItem Item(string header, Action action)
+        static string T(string key) => LocalizationManager.Instance[key];
+
+        MenuItem Item(string headerKey, Action action)
         {
-            var mi = new MenuItem { Header = header };
+            var mi = new MenuItem { Header = T(headerKey) };
             mi.Click += (_, _) => action();
             return mi;
         }
@@ -65,52 +68,55 @@ public partial class MainWindow : Window
         switch (node.Type)
         {
             case NodeType.Table:
-                menu.Items.Add(Item("Open", () => Run(Vm.OpenTableCommand, node)));
-                menu.Items.Add(Item("Design", () => Run(Vm.DesignTableCommand, node)));
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
                 menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Drop…", () => Run(Vm.DropTableCommand, node)));
+                menu.Items.Add(Item("Ctx_GenerateInsert", () => Run(Vm.GenerateInsertsCommand, node)));
+                menu.Items.Add(Item("Ctx_ImportData", () => Run(Vm.ImportDataCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
                 break;
 
             case NodeType.View:
-                menu.Items.Add(Item("Open", () => Run(Vm.OpenTableCommand, node)));
-                menu.Items.Add(Item("Edit", () => Run(Vm.EditRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(Item("Ctx_Edit", () => Run(Vm.EditRoutineCommand, node)));
                 menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Drop…", () => Run(Vm.DropRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
                 break;
 
             case NodeType.Function or NodeType.Procedure:
-                menu.Items.Add(Item("Edit", () => Run(Vm.EditRoutineCommand, node)));
-                menu.Items.Add(Item("Execute…", () => Run(Vm.ExecuteRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_Edit", () => Run(Vm.EditRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_Execute", () => Run(Vm.ExecuteRoutineCommand, node)));
                 menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Drop…", () => Run(Vm.DropRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
                 break;
 
             case NodeType.Category when node.CategoryChildType is NodeType.Function:
-                menu.Items.Add(Item("New Function…", () => Run(Vm.NewRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_NewFunction", () => Run(Vm.NewRoutineCommand, node)));
                 menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Category when node.CategoryChildType is NodeType.Procedure:
-                menu.Items.Add(Item("New Procedure…", () => Run(Vm.NewRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_NewProcedure", () => Run(Vm.NewRoutineCommand, node)));
                 menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Category when node.CategoryChildType is NodeType.View:
-                menu.Items.Add(Item("New View…", () => Run(Vm.NewRoutineCommand, node)));
+                menu.Items.Add(Item("Ctx_NewView", () => Run(Vm.NewRoutineCommand, node)));
                 menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Category when node.CategoryChildType is NodeType.Table:
-                menu.Items.Add(Item("New Table…", () => Run(Vm.NewTableCommand, node)));
+                menu.Items.Add(Item("Ctx_NewTable", () => Run(Vm.NewTableCommand, node)));
                 menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Server or NodeType.Database or NodeType.Schema or NodeType.Category:
-                menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             default:
