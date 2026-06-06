@@ -192,29 +192,47 @@ public partial class MainViewModel : ObservableObject
             CloseTab(tab); // load failed — don't leave an empty tab behind
     }
 
+    private static string RoutineKind(NodeType type) => type switch
+    {
+        NodeType.Procedure => "Procedure",
+        NodeType.View => "View",
+        _ => "Function"
+    };
+
+    private static string RoutineKeyword(NodeType type) => type switch
+    {
+        NodeType.Procedure => "PROCEDURE",
+        NodeType.View => "VIEW",
+        _ => "FUNCTION"
+    };
+
     [RelayCommand]
     private void EditRoutine(DbTreeNode? node)
     {
         node ??= SelectedNode;
-        if (node is not { Type: NodeType.Function or NodeType.Procedure }) return;
-        var kind = node.Type == NodeType.Procedure ? "Procedure" : "Function";
+        if (node is not { Type: NodeType.Function or NodeType.Procedure or NodeType.View }) return;
+        var kind = RoutineKind(node.Type);
         new Views.RoutineEditorWindow(node.Connection, node.Database, node.Schema!, node.Name, kind).Show();
         StatusText = $"Editing {kind.ToLowerInvariant()} {node.Schema}.{node.Name}.";
     }
 
-    /// <summary>Opens the routine editor with a template (node is the Functions/Procedures category).</summary>
+    /// <summary>Opens the routine editor with a template (node is a Functions/Procedures/Views category).</summary>
     [RelayCommand]
     private void NewRoutine(DbTreeNode? category)
     {
         category ??= SelectedNode;
         if (category is not { Type: NodeType.Category } c) return;
         var schema = c.Schema ?? "dbo";
-        var isProc = c.CategoryChildType == NodeType.Procedure;
-        var template = isProc
-            ? $"CREATE PROCEDURE [{schema}].[NewProcedure]\n    @Param1 int = 0\nAS\nBEGIN\n    SET NOCOUNT ON;\n    SELECT @Param1 AS Result;\nEND"
-            : $"CREATE FUNCTION [{schema}].[NewFunction] (@Param1 int)\nRETURNS int\nAS\nBEGIN\n    RETURN @Param1;\nEND";
-        new Views.RoutineEditorWindow(c.Connection, c.Database, schema, isProc ? "NewProcedure" : "NewFunction",
-            isProc ? "Procedure" : "Function", template).Show();
+        var (name, kind, template) = c.CategoryChildType switch
+        {
+            NodeType.Procedure => ("NewProcedure", "Procedure",
+                $"CREATE PROCEDURE [{schema}].[NewProcedure]\n    @Param1 int = 0\nAS\nBEGIN\n    SET NOCOUNT ON;\n    SELECT @Param1 AS Result;\nEND"),
+            NodeType.View => ("NewView", "View",
+                $"CREATE VIEW [{schema}].[NewView]\nAS\nSELECT 1 AS Col1"),
+            _ => ("NewFunction", "Function",
+                $"CREATE FUNCTION [{schema}].[NewFunction] (@Param1 int)\nRETURNS int\nAS\nBEGIN\n    RETURN @Param1;\nEND")
+        };
+        new Views.RoutineEditorWindow(c.Connection, c.Database, schema, name, kind, template).Show();
     }
 
     [RelayCommand]
@@ -233,8 +251,8 @@ public partial class MainViewModel : ObservableObject
     private async Task DropRoutine(DbTreeNode? node)
     {
         node ??= SelectedNode;
-        if (node is not { Type: NodeType.Function or NodeType.Procedure }) return;
-        var keyword = node.Type == NodeType.Procedure ? "PROCEDURE" : "FUNCTION";
+        if (node is not { Type: NodeType.Function or NodeType.Procedure or NodeType.View }) return;
+        var keyword = RoutineKeyword(node.Type);
         if (!Dialogs.Confirm("Drop " + keyword.ToLowerInvariant(),
                 $"Permanently drop {keyword.ToLowerInvariant()} {node.Schema}.{node.Name}?"))
             return;

@@ -64,8 +64,15 @@ public partial class MainWindow : Window
 
         switch (node.Type)
         {
-            case NodeType.Table or NodeType.View:
+            case NodeType.Table:
                 menu.Items.Add(Item("Open", () => Run(Vm.OpenTableCommand, node)));
+                break;
+
+            case NodeType.View:
+                menu.Items.Add(Item("Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(Item("Edit", () => Run(Vm.EditRoutineCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Drop…", () => Run(Vm.DropRoutineCommand, node)));
                 break;
 
             case NodeType.Function or NodeType.Procedure:
@@ -83,6 +90,12 @@ public partial class MainWindow : Window
 
             case NodeType.Category when node.CategoryChildType is NodeType.Procedure:
                 menu.Items.Add(Item("New Procedure…", () => Run(Vm.NewRoutineCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                break;
+
+            case NodeType.Category when node.CategoryChildType is NodeType.View:
+                menu.Items.Add(Item("New View…", () => Run(Vm.NewRoutineCommand, node)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
