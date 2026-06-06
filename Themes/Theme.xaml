@@ -262,15 +262,15 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ToolBar">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <ToolBarPanel x:Name="PART_ToolBarPanel" Grid.Column="0" IsItemsHost="True"
-                                      Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                        <ToggleButton x:Name="OverflowButton" Grid.Column="1" ClickMode="Press" Focusable="False"
-                                      Style="{StaticResource OverflowChevron}"
-                                      IsChecked="{Binding IsOverflowOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        <!-- DockPanel reserves the chevron's width on the right FIRST, so it
+                             can never be squeezed off the edge by pinned items. -->
+                        <DockPanel LastChildFill="True">
+                            <ToggleButton x:Name="OverflowButton" DockPanel.Dock="Right" ClickMode="Press"
+                                          Focusable="False" Style="{StaticResource OverflowChevron}"
+                                          IsChecked="{Binding IsOverflowOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <ToolBarPanel x:Name="PART_ToolBarPanel" IsItemsHost="True"
+                                          Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </DockPanel>
                         <Popup x:Name="OverflowPopup" Placement="Bottom" AllowsTransparency="True"
                                StaysOpen="False" Focusable="False"
                                PlacementTarget="{Binding ElementName=OverflowButton}"

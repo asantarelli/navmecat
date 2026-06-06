@@ -247,7 +247,9 @@
 
                                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Identifier}" FontSize="14" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource B.Text}" VerticalAlignment="Center"/>
+                                                       Foreground="{StaticResource B.Text}" VerticalAlignment="Center"
+                                                       MaxWidth="240" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Identifier}"/>
                                             <Border Margin="12,0,0,0" Padding="8,3" CornerRadius="4" Background="#FFFDEAEA"
                                                     Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}">
                                                 <TextBlock Text="{loc:Tr Toolbar_Unsaved}" FontSize="11"
@@ -261,7 +263,7 @@
                                             <ToolBarTray Background="Transparent" IsLocked="True" VerticalAlignment="Center">
                                                 <ToolBar Style="{StaticResource CommandBar}">
                                                     <!-- Filter -->
-                                                    <ToggleButton x:Name="FilterToggle" ToolBar.OverflowMode="Never"
+                                                    <ToggleButton x:Name="FilterToggle"
                                                                   Style="{StaticResource ToolToggle}" Margin="0,0,6,0">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE71C;"/>
@@ -272,7 +274,7 @@
                                                     </ToggleButton>
 
                                                     <!-- Sort -->
-                                                    <ToggleButton x:Name="SortToggle" ToolBar.OverflowMode="Never"
+                                                    <ToggleButton x:Name="SortToggle"
                                                                   Style="{StaticResource ToolToggle}" Margin="0,0,6,0">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8CB;"/>
@@ -299,7 +301,7 @@
                                                               ToolTip="Show Clarion date (days since 1800-12-28), time (centiseconds since midnight) and ts/sts/dts timestamp (epoch ms) fields in readable form"/>
 
                                                     <!-- View -->
-                                                    <ToggleButton x:Name="ViewToggle" ToolBar.OverflowMode="Never"
+                                                    <ToggleButton x:Name="ViewToggle"
                                                                   Style="{StaticResource ToolToggle}" Margin="0,0,6,0"
                                                                   IsChecked="{Binding ViewMenuOpen, Mode=TwoWay}"
                                                                   ToolTip="{loc:Tr Tip_View}">
