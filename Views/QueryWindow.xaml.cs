@@ -13,7 +13,7 @@ public partial class QueryWindow : Window
     private readonly ConnectionProfile _connection;
     private readonly string? _database;
 
-    public QueryWindow(ConnectionProfile connection, string? database)
+    public QueryWindow(ConnectionProfile connection, string? database, string? initialSql = null)
     {
         InitializeComponent();
         _connection = connection;
@@ -22,6 +22,7 @@ public partial class QueryWindow : Window
 
         Title = $"Query — {connection.Name}" + (string.IsNullOrEmpty(database) ? "" : " / " + database);
         TargetLabel.Text = Title;
+        if (!string.IsNullOrEmpty(initialSql)) Editor.Text = initialSql;
 
         PreviewKeyDown += async (_, e) =>
         {

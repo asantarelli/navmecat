@@ -202,6 +202,55 @@ public partial class MainViewModel : ObservableObject
         StatusText = $"Editing {kind.ToLowerInvariant()} {node.Schema}.{node.Name}.";
     }
 
+    /// <summary>Opens the routine editor with a template (node is the Functions/Procedures category).</summary>
+    [RelayCommand]
+    private void NewRoutine(DbTreeNode? category)
+    {
+        category ??= SelectedNode;
+        if (category is not { Type: NodeType.Category } c) return;
+        var schema = c.Schema ?? "dbo";
+        var isProc = c.CategoryChildType == NodeType.Procedure;
+        var template = isProc
+            ? $"CREATE PROCEDURE [{schema}].[NewProcedure]\n    @Param1 int = 0\nAS\nBEGIN\n    SET NOCOUNT ON;\n    SELECT @Param1 AS Result;\nEND"
+            : $"CREATE FUNCTION [{schema}].[NewFunction] (@Param1 int)\nRETURNS int\nAS\nBEGIN\n    RETURN @Param1;\nEND";
+        new Views.RoutineEditorWindow(c.Connection, c.Database, schema, isProc ? "NewProcedure" : "NewFunction",
+            isProc ? "Procedure" : "Function", template).Show();
+    }
+
+    [RelayCommand]
+    private void ExecuteRoutine(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Function or NodeType.Procedure }) return;
+        var qualified = $"[{node.Schema}].[{node.Name}]";
+        var sql = node.Type == NodeType.Procedure
+            ? $"EXEC {qualified} "
+            : $"-- Scalar function: SELECT {qualified}(/* args */)\n-- Table function: SELECT * FROM {qualified}(/* args */)\nSELECT {qualified}()";
+        new Views.QueryWindow(node.Connection, node.Database, sql).Show();
+    }
+
+    [RelayCommand]
+    private async Task DropRoutine(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Function or NodeType.Procedure }) return;
+        var keyword = node.Type == NodeType.Procedure ? "PROCEDURE" : "FUNCTION";
+        if (!Dialogs.Confirm("Drop " + keyword.ToLowerInvariant(),
+                $"Permanently drop {keyword.ToLowerInvariant()} {node.Schema}.{node.Name}?"))
+            return;
+        try
+        {
+            await SqlServerService.ExecuteAsync(node.Connection.BuildConnectionString(), node.Database ?? "",
+                $"DROP {keyword} [{node.Schema}].[{node.Name}]");
+            StatusText = $"Dropped {keyword.ToLowerInvariant()} {node.Schema}.{node.Name}.";
+            if (node.Parent is not null) await RefreshNode(node.Parent);
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Drop failed", ex.Message);
+        }
+    }
+
     private void CloseTab(TableTabViewModel tab)
     {
         if (tab.HasUnsavedChangesNow &&

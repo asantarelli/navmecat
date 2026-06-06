@@ -12,17 +12,20 @@ public partial class RoutineEditorWindow : Window
     private readonly string? _database;
     private readonly string _schema;
     private readonly string _name;
+    private readonly bool _isNew;
 
-    public RoutineEditorWindow(ConnectionProfile connection, string? database, string schema, string name, string kind)
+    public RoutineEditorWindow(ConnectionProfile connection, string? database, string schema, string name, string kind,
+        string? template = null)
     {
         InitializeComponent();
         _connection = connection;
         _database = database;
         _schema = schema;
         _name = name;
+        _isNew = template is not null;
         Owner = Application.Current?.MainWindow is { IsLoaded: true } w ? w : null;
 
-        Title = $"Edit {kind} — {schema}.{name}";
+        Title = _isNew ? $"New {kind}" : $"Edit {kind} — {schema}.{name}";
         TitleLabel.Text = Title;
 
         PreviewKeyDown += async (_, e) =>
@@ -30,7 +33,15 @@ public partial class RoutineEditorWindow : Window
             if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { e.Handled = true; await SaveAsync(); }
         };
 
-        _ = LoadAsync();
+        if (_isNew)
+        {
+            Editor.Text = template!;
+            Messages.Text = "New object — edit the definition and press Ctrl+S to create it.";
+        }
+        else
+        {
+            _ = LoadAsync();
+        }
     }
 
     private async Task LoadAsync()
@@ -69,7 +80,9 @@ public partial class RoutineEditorWindow : Window
         Messages.Text = "Saving…";
         try
         {
-            await SqlServerService.ExecuteAsync(_connection.BuildConnectionString(), _database ?? "", MakeAlterable(text));
+            // New object: run CREATE as-is. Existing: run as ALTER (works on SQL Server 2005+).
+            var sql = _isNew ? text : MakeAlter(text);
+            await SqlServerService.ExecuteAsync(_connection.BuildConnectionString(), _database ?? "", sql);
             Messages.Text = "Saved successfully.";
         }
         catch (Exception ex)
@@ -82,12 +95,12 @@ public partial class RoutineEditorWindow : Window
         }
     }
 
-    /// <summary>Turns a leading CREATE into CREATE OR ALTER so the routine updates in place.</summary>
-    private static string MakeAlterable(string text)
+    /// <summary>Turns a leading CREATE (or CREATE OR ALTER) into ALTER so an existing routine updates in place.</summary>
+    private static string MakeAlter(string text)
     {
-        if (Regex.IsMatch(text, @"\bCREATE\s+OR\s+ALTER\b", RegexOptions.IgnoreCase))
-            return text;
-        var rx = new Regex(@"\bCREATE\b(\s+)(PROCEDURE|PROC|FUNCTION|VIEW|TRIGGER)\b", RegexOptions.IgnoreCase);
-        return rx.Replace(text, "CREATE OR ALTER$1$2", 1);
+        var orAlter = new Regex(@"\bCREATE\s+OR\s+ALTER\b", RegexOptions.IgnoreCase);
+        if (orAlter.IsMatch(text)) return orAlter.Replace(text, "ALTER", 1);
+        var createKw = new Regex(@"\bCREATE\b(\s+)(PROCEDURE|PROC|FUNCTION|VIEW|TRIGGER)\b", RegexOptions.IgnoreCase);
+        return createKw.Replace(text, "ALTER$1$2", 1);
     }
 }

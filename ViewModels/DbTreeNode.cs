@@ -20,6 +20,8 @@ public partial class DbTreeNode : ObservableObject
     public string? Schema { get; private init; }
     /// <summary>For Category nodes: the object type its children are.</summary>
     public NodeType CategoryChildType { get; private init; }
+    /// <summary>Parent node (set when children are loaded).</summary>
+    public DbTreeNode? Parent { get; private set; }
 
     public ObservableCollection<DbTreeNode> Children { get; } = new();
 
@@ -159,7 +161,7 @@ public partial class DbTreeNode : ObservableObject
             if (items.Count == 0)
                 Children.Add(Message("(empty)"));
             else
-                foreach (var n in items) Children.Add(n);
+                foreach (var n in items) { n.Parent = this; Children.Add(n); }
 
             // Apply the active filter to freshly-loaded children.
             if (!string.IsNullOrWhiteSpace(ActiveFilter))
