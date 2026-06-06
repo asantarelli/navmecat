@@ -192,6 +192,16 @@ public partial class MainViewModel : ObservableObject
             CloseTab(tab); // load failed — don't leave an empty tab behind
     }
 
+    [RelayCommand]
+    private void EditRoutine(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Function or NodeType.Procedure }) return;
+        var kind = node.Type == NodeType.Procedure ? "Procedure" : "Function";
+        new Views.RoutineEditorWindow(node.Connection, node.Database, node.Schema!, node.Name, kind).Show();
+        StatusText = $"Editing {kind.ToLowerInvariant()} {node.Schema}.{node.Name}.";
+    }
+
     private void CloseTab(TableTabViewModel tab)
     {
         if (tab.HasUnsavedChangesNow &&

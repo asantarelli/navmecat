@@ -25,11 +25,13 @@ public partial class MainWindow : Window
 
     private void Tree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (Vm.SelectedNode is { IsOpenable: true } node &&
-            Vm.OpenTableCommand.CanExecute(node))
-        {
+        var node = Vm.SelectedNode;
+        if (node is null) return;
+
+        if (node.IsOpenable && Vm.OpenTableCommand.CanExecute(node))
             Vm.OpenTableCommand.Execute(node);
-        }
+        else if (node.Type is NodeType.Function or NodeType.Procedure && Vm.EditRoutineCommand.CanExecute(node))
+            Vm.EditRoutineCommand.Execute(node);
     }
 
     /// <summary>Drag handle above a docked pane resizes it (dragging up makes it taller).</summary>

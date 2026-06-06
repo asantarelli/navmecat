@@ -89,6 +89,27 @@ public static class SqlServerService
         return result;
     }
 
+    /// <summary>The CREATE definition of a programmable object (function/proc/view/trigger), or null.</summary>
+    public static async Task<string?> GetObjectDefinitionAsync(string connectionString, string database, string schema, string name)
+    {
+        await using var conn = new SqlConnection(WithDatabase(connectionString, database));
+        await conn.OpenAsync();
+        await using var cmd = new SqlCommand("SELECT OBJECT_DEFINITION(OBJECT_ID(@fq))", conn);
+        var fq = $"[{schema.Replace("]", "]]")}].[{name.Replace("]", "]]")}]";
+        cmd.Parameters.AddWithValue("@fq", fq);
+        var result = await cmd.ExecuteScalarAsync();
+        return result as string;
+    }
+
+    /// <summary>Runs a DDL/script batch (no result set). Returns rows affected.</summary>
+    public static async Task<int> ExecuteAsync(string connectionString, string database, string sql)
+    {
+        await using var conn = new SqlConnection(WithDatabase(connectionString, database));
+        await conn.OpenAsync();
+        await using var cmd = new SqlCommand(sql, conn) { CommandTimeout = 0 };
+        return await cmd.ExecuteNonQueryAsync();
+    }
+
     public static async Task<List<string>> GetColumnNamesAsync(string connectionString, string database, string schema, string table)
     {
         var result = new List<string>();
