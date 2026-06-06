@@ -607,6 +607,44 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     private async Task Reload() => await LoadAsync();
 
     [RelayCommand]
+    private void Export()
+    {
+        if (GridData is null) return;
+        new ExportDialog(GridData, Identifier, DisplayOverride).ShowDialog();
+    }
+
+    /// <summary>Readable export value for Clarion date/time/timestamp columns; null = use raw.</summary>
+    public string? DisplayOverride(string column, object? raw)
+    {
+        if (raw is null) return null;
+        var kind = GetEffectiveKind(column);
+        if (kind is null) return null;
+        if (!TryLong(raw, out var n)) return null;
+        return kind switch
+        {
+            ClarionKind.Date => ClarionDate.FromClarion(n)?.ToString("yyyy-MM-dd") ?? "",
+            ClarionKind.Time => ClarionTime.Format(n) ?? "",
+            ClarionKind.Timestamp => n <= 0 ? "" :
+                DateTimeOffset.FromUnixTimeMilliseconds(n).LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+            _ => null
+        };
+    }
+
+    private static bool TryLong(object value, out long result)
+    {
+        switch (value)
+        {
+            case int i: result = i; return true;
+            case long l: result = l; return true;
+            case short s: result = s; return true;
+            case decimal d: result = (long)d; return true;
+            case double db: result = (long)db; return true;
+            case float f: result = (long)f; return true;
+            default: result = 0; return false;
+        }
+    }
+
+    [RelayCommand]
     private async Task SaveChanges()
     {
         if (_session is null || !_session.HasChanges) return;

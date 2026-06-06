@@ -70,6 +70,9 @@
                             <MenuItem Header="New Query" Command="{Binding OpenQueryCommand}" InputGestureText="Ctrl+Q"/>
                             <MenuItem Header="Query Builder" Command="{Binding OpenQueryBuilderCommand}" InputGestureText="Ctrl+B"/>
                             <Separator/>
+                            <MenuItem Header="Export current table…" Command="{Binding SelectedTab.ExportCommand}"
+                                      IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
+                            <Separator/>
                             <MenuItem Header="Settings…" Command="{Binding OpenSettingsCommand}"/>
                             <Separator/>
                             <MenuItem Header="Exit" Command="{Binding ExitAppCommand}" InputGestureText="Alt+F4"/>
@@ -427,6 +430,13 @@
                                                        Foreground="{StaticResource B.TextMuted}" Margin="0,0,8,0"/>
                                             <TextBox Width="72" VerticalAlignment="Center"
                                                      Text="{Binding RowLimit, UpdateSourceTrigger=LostFocus}"/>
+                                            <Button Margin="10,0,0,0" Command="{Binding ExportCommand}"
+                                                    ToolTip="Export the current rows to CSV, JSON, XML, HTML or Excel">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource ToolIcon}" Text="&#xEDE1;"/>
+                                                    <TextBlock Text="Export"/>
+                                                </StackPanel>
+                                            </Button>
                                             <Button Margin="10,0,0,0" Command="{Binding ReloadCommand}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/>
