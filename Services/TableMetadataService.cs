@@ -13,6 +13,15 @@ public static class TableMetadataService
 {
     private static string Quote(string id) => "[" + id.Replace("]", "]]") + "]";
 
+    /// <summary>Formats a size given in KB as KB / MB / GB.</summary>
+    private static string FormatSize(long kb)
+    {
+        if (kb < 1024) return $"{kb:N0} KB";
+        var mb = kb / 1024.0;
+        if (mb < 1024) return $"{mb:N1} MB";
+        return $"{mb / 1024.0:N2} GB";
+    }
+
     public static Task<TableStructure> GetAsync(
         DatabaseEngine engine, string connectionString, string database, string schema, string table,
         string connectionName = "")
@@ -292,15 +301,18 @@ public static class TableMetadataService
     {
         long rows = -1, oid = -1;
         DateTime? created = null, modified = null;
-        string? comment = null;
+        string? comment = null, owner = null, collation = null;
         try
         {
             const string sql = @"
                 SELECT t.object_id,
                     (SELECT SUM(p.rows) FROM sys.partitions p WHERE p.object_id = t.object_id AND p.index_id IN (0,1)),
                     t.create_date, t.modify_date,
-                    CAST(ep.value AS nvarchar(4000))
+                    CAST(ep.value AS nvarchar(4000)),
+                    (SELECT dp.name FROM sys.database_principals dp WHERE dp.principal_id = s.principal_id),
+                    CONVERT(nvarchar(128), DATABASEPROPERTYEX(DB_NAME(), 'Collation'))
                 FROM sys.tables t
+                JOIN sys.schemas s ON s.schema_id = t.schema_id
                 LEFT JOIN sys.extended_properties ep
                        ON ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
                 WHERE t.object_id = OBJECT_ID(@fq)";
@@ -314,9 +326,37 @@ public static class TableMetadataService
                 created = r.IsDBNull(2) ? null : r.GetDateTime(2);
                 modified = r.IsDBNull(3) ? null : r.GetDateTime(3);
                 comment = r.IsDBNull(4) ? null : r.GetString(4);
+                owner = r.IsDBNull(5) ? null : r.GetString(5);
+                collation = r.IsDBNull(6) ? null : r.GetString(6);
             }
         }
         catch { /* info is best-effort */ }
+
+        // Storage sizes (sp_spaceused-style, in KB).
+        long dataKb = -1, indexKb = -1, totalKb = -1;
+        try
+        {
+            const string sizeSql = @"
+                SELECT
+                    SUM(ps.reserved_page_count) * 8 AS reserved_kb,
+                    SUM(ps.used_page_count) * 8 AS used_kb,
+                    SUM(CASE WHEN ps.index_id < 2
+                             THEN ps.in_row_data_page_count + ps.lob_used_page_count + ps.row_overflow_used_page_count
+                             ELSE ps.lob_used_page_count + ps.row_overflow_used_page_count END) * 8 AS data_kb
+                FROM sys.dm_db_partition_stats ps
+                WHERE ps.object_id = OBJECT_ID(@fq)";
+            await using var cmd = new SqlCommand(sizeSql, conn);
+            cmd.Parameters.AddWithValue("@fq", fq);
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync() && !r.IsDBNull(0))
+            {
+                totalKb = Convert.ToInt64(r.GetValue(0));
+                var usedKb = Convert.ToInt64(r.GetValue(1));
+                dataKb = Convert.ToInt64(r.GetValue(2));
+                indexKb = usedKb - dataKb;
+            }
+        }
+        catch { /* sizes are best-effort */ }
 
         var loc = LocalizationManager.Instance;
         var pk = indexes.FirstOrDefault(i => i.IsPrimaryKey);
@@ -325,8 +365,13 @@ public static class TableMetadataService
         if (!string.IsNullOrEmpty(connectionName)) sb.AppendLine($"{loc["Info_Connection"],w}{connectionName}");
         sb.AppendLine($"{loc["Info_Database"],w}{database}");
         sb.AppendLine($"{loc["Info_Schema"],w}{schema}");
+        if (!string.IsNullOrEmpty(owner)) sb.AppendLine($"{loc["Info_Owner"],w}{owner}");
         if (oid >= 0) sb.AppendLine($"{loc["Info_Oid"],w}{oid}");
         if (rows >= 0) sb.AppendLine($"{loc["Info_Rows"],w}{rows:N0}");
+        if (dataKb >= 0) sb.AppendLine($"{loc["Info_DataSize"],w}{FormatSize(dataKb)}");
+        if (indexKb >= 0) sb.AppendLine($"{loc["Info_IndexSize"],w}{FormatSize(indexKb)}");
+        if (totalKb >= 0) sb.AppendLine($"{loc["Info_TotalSize"],w}{FormatSize(totalKb)}");
+        if (!string.IsNullOrEmpty(collation)) sb.AppendLine($"{loc["Info_Collation"],w}{collation}");
         if (created is not null) sb.AppendLine($"{loc["Info_Created"],w}{created:yyyy-MM-dd HH:mm:ss.fff}");
         if (modified is not null) sb.AppendLine($"{loc["Info_Modified"],w}{modified:yyyy-MM-dd HH:mm:ss.fff}");
         sb.AppendLine($"{loc["Info_Comment"],w}{(string.IsNullOrWhiteSpace(comment) ? "--" : comment)}");

@@ -121,6 +121,12 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
 
     private TableStructure? _structure;
 
+    /// <summary>Object name + type shown as a header above the structure inspector.</summary>
+    public string StructureName => Node.Name;
+    public bool IsStructureView => Node.Type == NodeType.View;
+    public string StructureType =>
+        LocalizationManager.Instance[IsStructureView ? "Hdr_View" : "Hdr_Table"];
+
     public bool IsInfoSection => InspectorSection == InspectorSection.Info;
     public bool IsDdlSection => InspectorSection == InspectorSection.Ddl;
     public bool IsRelSection => InspectorSection == InspectorSection.Relationships;

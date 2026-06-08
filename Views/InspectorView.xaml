@@ -8,6 +8,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -21,7 +22,21 @@
             </StackPanel>
         </Grid>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+        <!-- Object header (icon + name + type), Navicat-style -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,2,0,10" VerticalAlignment="Center">
+            <Border Width="34" Height="34" CornerRadius="6" Background="{StaticResource B.RowHover}" VerticalAlignment="Center">
+                <Path Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"
+                      Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
+                      Stroke="{StaticResource B.Accent}" StrokeThickness="1.3" Fill="Transparent"/>
+            </Border>
+            <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StructureName}" FontSize="15" FontWeight="SemiBold"
+                           Foreground="{StaticResource B.Text}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding StructureType}" FontSize="12" Foreground="{StaticResource B.TextMuted}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
             <ToggleButton Content="{loc:Tr Insp_Info}" Style="{StaticResource ToolToggle}" Margin="0,0,6,0"
                           IsChecked="{Binding IsInfoSection, Mode=OneWay}"
                           Command="{Binding SetInspectorSectionCommand}"
@@ -36,7 +51,7 @@
                           CommandParameter="{x:Static vm:InspectorSection.Relationships}"/>
         </StackPanel>
 
-        <Border Grid.Row="2" BorderBrush="{StaticResource B.Border}" BorderThickness="1" CornerRadius="6">
+        <Border Grid.Row="3" BorderBrush="{StaticResource B.Border}" BorderThickness="1" CornerRadius="6">
             <TextBox Text="{Binding InspectorContent, Mode=OneWay}" IsReadOnly="True" TextWrapping="NoWrap"
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                      VerticalContentAlignment="Top"
