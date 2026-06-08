@@ -25,6 +25,9 @@ public class ConnectionProfile
     /// <summary>TCP port (Firebird; 0 = engine default 3050).</summary>
     public int Port { get; set; }
 
+    /// <summary>Firebird embedded mode (no server; loads the engine from native DLLs next to the app).</summary>
+    public bool FirebirdEmbedded { get; set; }
+
     /// <summary>True = Windows Authentication, False = SQL Server login.</summary>
     public bool IntegratedSecurity { get; set; } = true;
     public string? Username { get; set; }
@@ -49,16 +52,26 @@ public class ConnectionProfile
             case DatabaseEngine.Firebird:
                 var fb = new FbConnectionStringBuilder
                 {
-                    DataSource = string.IsNullOrWhiteSpace(Server) ? "localhost" : Server,
-                    Port = Port > 0 ? Port : 3050,
                     Database = FilePath ?? "",
                     UserID = string.IsNullOrWhiteSpace(Username) ? "SYSDBA" : Username,
-                    Password = Password ?? "",
+                    Password = string.IsNullOrEmpty(Password) ? "masterkey" : Password,
                     Charset = "UTF8",
                     Dialect = 3,
-                    ServerType = FbServerType.Default,
                     Pooling = false
                 };
+                if (FirebirdEmbedded)
+                {
+                    // No server: the Firebird engine is loaded in-process from fbclient.dll
+                    // (and plugins) placed next to the application.
+                    fb.ServerType = FbServerType.Embedded;
+                    fb.ClientLibrary = "fbclient.dll";
+                }
+                else
+                {
+                    fb.ServerType = FbServerType.Default;
+                    fb.DataSource = string.IsNullOrWhiteSpace(Server) ? "localhost" : Server;
+                    fb.Port = Port > 0 ? Port : 3050;
+                }
                 return fb.ToString();
             case DatabaseEngine.SqlServer:
                 break; // built below

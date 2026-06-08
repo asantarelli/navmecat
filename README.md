@@ -30,7 +30,10 @@ Grab the latest **portable `.exe`** from the
     table-rebuild), and inspect structure/DDL.
   - **Firebird**: connect to a server (host / port / database path or alias / user / password) —
     browse tables & views, view and edit rows (primary-key keyed), and inspect structure (Info,
-    a reconstructed DDL, and foreign-key relationships).
+    a reconstructed DDL, and foreign-key relationships). Tick **Embedded (no server)** to open a
+    local `.fdb` directly — this needs Firebird's native engine DLLs (`fbclient.dll` + `plugins\`,
+    `intl\`, `tzdata\`, `firebird.conf`/`firebird.msg`, `ib_util.dll`) from the official Firebird
+    **ZIP kit** (64-bit) placed next to `NavMeCat.exe`.
 - **Connection manager** — add, edit, and remove connections.
   - SQL Server: Windows Authentication or SQL Server login.
   - Field-based builder *or* a raw connection string.

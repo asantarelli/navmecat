@@ -44,6 +44,7 @@ public partial class ConnectionDialog : Window
             FbFileBox.Text = _profile.FilePath ?? "";
             FbUserBox.Text = string.IsNullOrWhiteSpace(_profile.Username) ? "SYSDBA" : _profile.Username;
             FbPassBox.Password = _profile.Password ?? "";
+            FbEmbeddedCheck.IsChecked = _profile.FirebirdEmbedded;
         }
         FbPortBox.Text = (_profile.Port > 0 ? _profile.Port : 3050).ToString();
 
@@ -75,6 +76,7 @@ public partial class ConnectionDialog : Window
             p.Username = string.IsNullOrWhiteSpace(FbUserBox.Text) ? "SYSDBA" : FbUserBox.Text.Trim();
             p.Password = string.IsNullOrEmpty(FbPassBox.Password) ? null : FbPassBox.Password;
             p.Port = int.TryParse(FbPortBox.Text, out var port) ? port : 0;
+            p.FirebirdEmbedded = FbEmbeddedCheck.IsChecked == true;
             p.UseRawConnectionString = false;
             return;
         }
@@ -118,6 +120,7 @@ public partial class ConnectionDialog : Window
         SqlServerPanel.Visibility = isSql ? Visibility.Visible : Visibility.Collapsed;
         SqlitePanel.Visibility = isSqlite ? Visibility.Visible : Visibility.Collapsed;
         FirebirdPanel.Visibility = isFirebird ? Visibility.Visible : Visibility.Collapsed;
+        if (isFirebird) ApplyFirebirdState();
         ComingSoonPanel.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
         if (!supported)
             ComingSoonText.Text = $"{_engine.DisplayName()} support is coming soon. " +
@@ -157,6 +160,18 @@ public partial class ConnectionDialog : Window
             if (string.IsNullOrWhiteSpace(NameBox.Text) || NameBox.Text == "New Connection")
                 NameBox.Text = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
         }
+    }
+
+    private void FbEmbedded_Changed(object sender, RoutedEventArgs e) => ApplyFirebirdState();
+
+    private void ApplyFirebirdState()
+    {
+        if (FbServerRow is null) return;
+        var embedded = FbEmbeddedCheck.IsChecked == true;
+        FbServerRow.Visibility = embedded ? Visibility.Collapsed : Visibility.Visible;
+        FbFileLabel.Content = embedded
+            ? @"Database file  (local .fdb)"
+            : @"Database  (server path or alias, e.g. C:\data\app.fdb)";
     }
 
     private void FbBrowse_Click(object sender, RoutedEventArgs e)

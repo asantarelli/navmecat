@@ -149,7 +149,10 @@
 
                 <!-- ===== Firebird ===== -->
                 <StackPanel x:Name="FirebirdPanel" Visibility="Collapsed">
-                    <Grid Margin="0,0,0,12">
+                    <CheckBox x:Name="FbEmbeddedCheck" Content="Embedded (no server — uses fbclient.dll next to the app)"
+                              Margin="0,0,0,12" Click="FbEmbedded_Changed"/>
+
+                    <Grid x:Name="FbServerRow" Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="12"/>
@@ -165,7 +168,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <Label Content="Database  (server path or alias, e.g. C:\data\app.fdb)"/>
+                    <Label x:Name="FbFileLabel" Content="Database  (server path or alias, e.g. C:\data\app.fdb)"/>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>

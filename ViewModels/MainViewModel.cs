@@ -390,6 +390,7 @@ public partial class MainViewModel : ObservableObject
         to.Server = from.Server;
         to.FilePath = from.FilePath;
         to.Port = from.Port;
+        to.FirebirdEmbedded = from.FirebirdEmbedded;
         to.Database = from.Database;
         to.IntegratedSecurity = from.IntegratedSecurity;
         to.Username = from.Username;
