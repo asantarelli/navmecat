@@ -43,7 +43,6 @@ public static class DataGridClarion
 
             grid.PreviewTextInput += OnPreviewTextInput;
             grid.BeginningEdit += OnBeginningEdit;
-            grid.PreparingCellForEdit += OnPreparingCellForEdit;
             grid.CellEditEnding += OnCellEditEnding;
 
             // Spreadsheet-friendly copy/paste: replace the built-in copy and add a context menu.
@@ -61,7 +60,6 @@ public static class DataGridClarion
             grid.CurrentCellChanged -= OnCurrentCellChanged;
             grid.PreviewTextInput -= OnPreviewTextInput;
             grid.BeginningEdit -= OnBeginningEdit;
-            grid.PreparingCellForEdit -= OnPreparingCellForEdit;
             grid.CellEditEnding -= OnCellEditEnding;
         }
     }
@@ -152,48 +150,14 @@ public static class DataGridClarion
             _fillSnapshot = SnapshotSelection(grid);
     }
 
-    // Live type-fill: while editing one cell of a multi-cell selection, mirror each keystroke
-    // into the other selected cells so they all change at the same time.
-    private static DataGrid? _liveGrid;
-    private static TextBox? _liveBox;
-    private static List<(DataRowView Row, DataGridColumn Col)>? _liveOthers;
-
-    private static void OnPreparingCellForEdit(object? sender, DataGridPreparingCellForEditEventArgs e)
-    {
-        if (sender is not DataGrid grid) return;
-        if (_fillSnapshot is null || _fillSnapshot.Count <= 1) return;
-        if (e.EditingElement is not TextBox box) return;
-
-        var editRow = e.Row?.Item as DataRowView;
-        var editCol = e.Column;
-        _liveGrid = grid;
-        _liveBox = box;
-        _liveOthers = _fillSnapshot
-            .Where(c => !(editRow is not null && ReferenceEquals(c.Row.Row, editRow.Row) && c.Col == editCol))
-            .ToList();
-
-        box.TextChanged += OnLiveTextChanged;
-    }
-
-    private static void OnLiveTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (_liveGrid is not null && _liveBox is not null && _liveOthers is { Count: > 0 })
-            GridClipboard.FillCells(_liveGrid, _liveOthers, _liveBox.Text);
-    }
-
-    /// <summary>Commit-time fill (also covers F2/paste edits) and teardown of the live mirror.</summary>
+    /// <summary>
+    /// When a cell of a multi-cell selection is committed, fill every selected cell with the
+    /// typed value and force the grid to repaint them (and keep the selection).
+    /// </summary>
     private static void OnCellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
     {
         var snapshot = _fillSnapshot;
         _fillSnapshot = null;
-
-        if (_liveBox is not null)
-        {
-            _liveBox.TextChanged -= OnLiveTextChanged;
-            _liveBox = null;
-            _liveOthers = null;
-            _liveGrid = null;
-        }
 
         if (e.EditAction != DataGridEditAction.Commit) return;
         if (sender is not DataGrid grid) return;
@@ -201,9 +165,29 @@ public static class DataGridClarion
         if (e.EditingElement is not TextBox box) return;
 
         var value = box.Text;
-        grid.Dispatcher.BeginInvoke(
-            new Action(() => GridClipboard.FillCells(grid, snapshot, value)),
-            System.Windows.Threading.DispatcherPriority.Background);
+        var editedRow = e.Row?.Item as DataRowView;
+        var editedCol = e.Column;
+
+        // Run after the grid finishes committing the edited cell itself.
+        grid.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            GridClipboard.FillCells(grid, snapshot, value);
+
+            // The DataGrid doesn't always repaint sibling cells whose source changed during
+            // an edit — refresh so every filled cell shows the new value immediately.
+            try { grid.Items.Refresh(); } catch { /* not refreshable right now */ }
+
+            // Restore the selection block and the active cell.
+            try
+            {
+                grid.SelectedCells.Clear();
+                foreach (var (row, col) in snapshot)
+                    grid.SelectedCells.Add(new DataGridCellInfo(row, col));
+                if (editedRow is not null)
+                    grid.CurrentCell = new DataGridCellInfo(editedRow, editedCol);
+            }
+            catch { /* selection couldn't be restored — harmless */ }
+        }), System.Windows.Threading.DispatcherPriority.Background);
     }
 
     // ---- current cell -> detail panel -----------------------------------
