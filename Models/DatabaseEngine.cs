@@ -25,5 +25,6 @@ public static class DatabaseEngineInfo
 
     /// <summary>True for engines that are fully implemented today.</summary>
     public static bool IsSupported(this DatabaseEngine e) =>
-        e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite or DatabaseEngine.Firebird;
+        e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite
+            or DatabaseEngine.Firebird or DatabaseEngine.MongoDb;
 }

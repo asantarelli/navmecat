@@ -19,6 +19,7 @@ public static class TableMetadataService
         {
             DatabaseEngine.Sqlite => GetSqliteAsync(connectionString, table),
             DatabaseEngine.Firebird => GetFirebirdAsync(connectionString, table),
+            DatabaseEngine.MongoDb => MongoService.GetStructureAsync(connectionString, database, table),
             _ => GetSqlServerAsync(connectionString, database, schema, table)
         };
 

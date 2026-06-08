@@ -16,6 +16,8 @@ namespace NavMeCat.ViewModels;
 public partial class TableTabViewModel : ObservableObject, IDisposable
 {
     private EditableTableSession? _session;
+    /// <summary>The grid's backing table — the editable session's data, or a read-only table (MongoDB).</summary>
+    private DataTable? _sourceData;
     private readonly Action<string> _setStatus;
     private readonly Action<bool> _setBusy;
 
@@ -29,6 +31,10 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private DataView? gridData;
     [ObservableProperty] private bool hasUnsavedChanges;
+    /// <summary>Read-only grid (e.g. MongoDB document viewer) — disables editing/add/delete.</summary>
+    [ObservableProperty] private bool gridReadOnly;
+    public bool GridEditable => !GridReadOnly;
+    partial void OnGridReadOnlyChanged(bool value) => OnPropertyChanged(nameof(GridEditable));
     /// <summary>True when the toolbar is too narrow for labels — buttons collapse to icons.</summary>
     [ObservableProperty] private bool isToolbarCompact;
     [ObservableProperty] private int rowLimit;
@@ -158,8 +164,8 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     /// <summary>Builds the bound DataView from the session, applying the current filter and sort.</summary>
     private void ProjectView()
     {
-        if (_session is null) return;
-        var view = new DataView(_session.Data);
+        if (_sourceData is null) return;
+        var view = new DataView(_sourceData);
         if (!string.IsNullOrEmpty(_filterExpression))
         {
             try { view.RowFilter = _filterExpression; } catch { /* keep unfiltered */ }
@@ -476,7 +482,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         try
         {
             // Validate against a throwaway view first so a bad expression doesn't blank the grid.
-            var rows = new DataView(_session!.Data) { RowFilter = expr }.Count;
+            var rows = new DataView(_sourceData!) { RowFilter = expr }.Count;
             _filterExpression = expr;
             HasActiveFilter = expr.Length > 0;
             ProjectView();
@@ -513,9 +519,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
     private string BuildClause(FilterCondition c)
     {
         var col = Bracket(c.Column!);
-        var isString = _session is not null
-            && _session.Data.Columns.Contains(c.Column!)
-            && _session.Data.Columns[c.Column!]!.DataType == typeof(string);
+        var isString = _sourceData is not null
+            && _sourceData.Columns.Contains(c.Column!)
+            && _sourceData.Columns[c.Column!]!.DataType == typeof(string);
         var raw = c.Value ?? "";
 
         string Literal(string v) => isString ? $"'{v.Replace("'", "''")}'" : v;
@@ -548,9 +554,12 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         _setStatus = setStatus;
         _setBusy = setBusy;
         Key = MakeKey(node);
-        Identifier = node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird
-            ? node.Name
-            : $"{node.Database}.{node.Schema}.{node.Name}";
+        Identifier = node.Connection.Engine switch
+        {
+            DatabaseEngine.Sqlite or DatabaseEngine.Firebird => node.Name,
+            DatabaseEngine.MongoDb => $"{node.Database}.{node.Name}",
+            _ => $"{node.Database}.{node.Schema}.{node.Name}"
+        };
         Header = node.Name;
     }
 
@@ -564,9 +573,14 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         try
         {
             Detach();
+
+            if (Node.Connection.Engine == DatabaseEngine.MongoDb)
+                return await LoadMongoAsync();
+
             _session = await EditableTableSession.OpenAsync(
                 Node.Connection.Engine, Node.Connection.BuildConnectionString(),
                 Node.Database!, Node.Schema!, Node.Name, RowLimit);
+            _sourceData = _session.Data;
 
             _session.Data.RowChanged += OnDataChanged;
             _session.Data.RowDeleted += OnDataChanged;
@@ -603,6 +617,44 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         {
             Dialogs.ShowError("Could not open table", ex.Message);
             _setStatus("Failed to open table.");
+            return false;
+        }
+        finally
+        {
+            _setBusy(false);
+        }
+    }
+
+    /// <summary>Loads a MongoDB collection into a read-only grid (documents flattened to columns).</summary>
+    private async Task<bool> LoadMongoAsync()
+    {
+        try
+        {
+            var uri = Node.Connection.BuildConnectionString();
+            _sourceData = await MongoService.LoadCollectionAsync(uri, Node.Database!, Node.Name, RowLimit);
+
+            GridReadOnly = true;
+            ClarionColumns = new(StringComparer.OrdinalIgnoreCase);
+            OnPropertyChanged(nameof(HasClarionTypes));
+            OnPropertyChanged(nameof(ClarionToggleLabel));
+
+            ColumnNames.Clear();
+            foreach (DataColumn c in _sourceData.Columns)
+                ColumnNames.Add(c.ColumnName);
+            OnPropertyChanged(nameof(CanPickRowIdentity));
+
+            ProjectView();
+            HasUnsavedChanges = false;
+            ApplyDefaults();
+
+            _setStatus($"Loaded {_sourceData.Rows.Count} document(s) from {Identifier} (limit {RowLimit}). " +
+                       LocalizationManager.Instance["Mongo_ReadOnly"]);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Could not open collection", ex.Message);
+            _setStatus("Failed to open collection.");
             return false;
         }
         finally
@@ -689,6 +741,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
 
     private void Detach()
     {
+        _sourceData = null;
         if (_session is null) return;
         _session.Data.RowChanged -= OnDataChanged;
         _session.Data.RowDeleted -= OnDataChanged;

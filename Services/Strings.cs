@@ -158,6 +158,14 @@ public static class Strings
         ["Detail_NoneSelected"] = "(none selected)",
         ["Detail_NotImage"] = "Not a recognized image — try Hex.",
         ["Detail_ApplyToCell"] = "Apply to cell",
+
+        // MongoDB
+        ["Info_Collection"] = "Collection:",
+        ["Info_Documents"] = "Documents:",
+        ["Info_SampledFields"] = "Fields:",
+        ["Info_Fields"] = "Fields (sampled):",
+        ["Mongo_NoRelationships"] = "MongoDB collections have no foreign-key relationships.",
+        ["Mongo_ReadOnly"] = "Read-only view — MongoDB editing isn't supported yet.",
     };
 
     public static readonly Dictionary<string, string> Es = new(StringComparer.Ordinal)
@@ -309,5 +317,13 @@ public static class Strings
         ["Detail_NoneSelected"] = "(ninguna seleccionada)",
         ["Detail_NotImage"] = "No es una imagen reconocida — pruebe Hex.",
         ["Detail_ApplyToCell"] = "Aplicar a la celda",
+
+        // MongoDB
+        ["Info_Collection"] = "Colección:",
+        ["Info_Documents"] = "Documentos:",
+        ["Info_SampledFields"] = "Campos:",
+        ["Info_Fields"] = "Campos (muestra):",
+        ["Mongo_NoRelationships"] = "Las colecciones de MongoDB no tienen relaciones de clave externa.",
+        ["Mongo_ReadOnly"] = "Vista de solo lectura — la edición de MongoDB aún no es compatible.",
     };
 }

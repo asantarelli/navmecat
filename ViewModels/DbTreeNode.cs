@@ -136,6 +136,7 @@ public partial class DbTreeNode : ObservableObject
             {
                 DatabaseEngine.Sqlite => await LoadSqliteChildrenAsync(connStr),
                 DatabaseEngine.Firebird => await LoadFirebirdChildrenAsync(connStr),
+                DatabaseEngine.MongoDb => await LoadMongoChildrenAsync(connStr),
                 _ => await LoadSqlServerChildrenAsync(connStr)
             };
 
@@ -242,6 +243,24 @@ public partial class DbTreeNode : ObservableObject
                 };
                 foreach (var n in names)
                     items.Add(ObjectNode(CategoryChildType, Connection, fb, fb, n));
+                break;
+        }
+        return items;
+    }
+
+    /// <summary>MongoDB: Server → databases → collections (shown as table nodes).</summary>
+    private async Task<List<DbTreeNode>> LoadMongoChildrenAsync(string uri)
+    {
+        var items = new List<DbTreeNode>();
+        switch (Type)
+        {
+            case NodeType.Server:
+                foreach (var db in await MongoService.ListDatabasesAsync(uri))
+                    items.Add(DatabaseNode(Connection, db));
+                break;
+            case NodeType.Database:
+                foreach (var c in await MongoService.ListCollectionsAsync(uri, Database!))
+                    items.Add(ObjectNode(NodeType.Table, Connection, Database!, Database!, c));
                 break;
         }
         return items;

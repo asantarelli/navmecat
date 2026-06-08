@@ -49,6 +49,9 @@ public class ConnectionProfile
         {
             case DatabaseEngine.Sqlite:
                 return new SqliteConnectionStringBuilder { DataSource = FilePath ?? "" }.ToString();
+            case DatabaseEngine.MongoDb:
+                // The MongoDB URI is stored verbatim in Server (e.g. mongodb://localhost:27017).
+                return string.IsNullOrWhiteSpace(Server) ? "mongodb://localhost:27017" : Server.Trim();
             case DatabaseEngine.Firebird:
                 var fb = new FbConnectionStringBuilder
                 {

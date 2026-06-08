@@ -497,8 +497,8 @@
 
                                 <DataGrid Grid.Row="1" Margin="16,16,16,8"
                                           ItemsSource="{Binding GridData}"
-                                          IsReadOnly="False"
-                                          CanUserAddRows="True" CanUserDeleteRows="True"
+                                          IsReadOnly="{Binding GridReadOnly}"
+                                          CanUserAddRows="{Binding GridEditable}" CanUserDeleteRows="{Binding GridEditable}"
                                           AutoGenerateColumns="True"
                                           beh:DataGridClarion.Enabled="True"/>
 

@@ -23,11 +23,15 @@ Grab the latest **portable `.exe`** from the
 
 - **Multiple database engines** — pick the engine when creating a connection. Each connection is
   tagged with an engine icon in the tree so you can tell them apart at a glance.
-  - **SQL Server**, **SQLite** and **Firebird** are supported today; **PostgreSQL** and **MongoDB**
-    are selectable now and being wired up next.
+  - **SQL Server**, **SQLite**, **Firebird** and **MongoDB** are supported today; **PostgreSQL**
+    is selectable now and being wired up next.
   - **SQLite**: just point to a `.db` / `.sqlite` file — browse tables & views, view and edit rows
     (primary-key or rowid-safe), **design tables** (create new, or alter existing via a safe
     table-rebuild), and inspect structure/DDL.
+  - **MongoDB**: connect with a connection string (`mongodb://…` or `mongodb+srv://…`) and browse
+    **databases → collections → documents**. Documents are flattened into a **read-only** grid
+    (top-level fields become columns; nested objects/arrays show as JSON), with filter, sort and
+    export. The structure panel samples the collection and lists its fields & types.
   - **Firebird**: connect to a server (host / port / database path or alias / user / password) —
     browse tables & views, view and edit rows (primary-key keyed), and inspect structure (Info,
     a reconstructed DDL, and foreign-key relationships). Tick **Embedded (no server)** to open a

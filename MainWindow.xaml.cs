@@ -73,7 +73,7 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
                 break;
 
-            case NodeType.Table when node.Connection.Engine == DatabaseEngine.Firebird:
+            case NodeType.Table when node.Connection.Engine is DatabaseEngine.Firebird or DatabaseEngine.MongoDb:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 break;
 

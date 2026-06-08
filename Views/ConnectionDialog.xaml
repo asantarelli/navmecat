@@ -196,6 +196,19 @@
                     </Grid>
                 </StackPanel>
 
+                <!-- ===== MongoDB ===== -->
+                <StackPanel x:Name="MongoPanel" Visibility="Collapsed">
+                    <Label Content="Connection string"/>
+                    <TextBox x:Name="MongoUriBox" Margin="0,0,0,8" AcceptsReturn="True" TextWrapping="Wrap"
+                             Height="60" VerticalContentAlignment="Top"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic"
+                               Foreground="{StaticResource B.TextMuted}"
+                               Text="e.g. mongodb://localhost:27017  or  mongodb+srv://user:pass@cluster.mongodb.net"/>
+                    <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="11"
+                               Foreground="{StaticResource B.TextMuted}"
+                               Text="Read-only viewer: browse databases, collections and documents."/>
+                </StackPanel>
+
                 <!-- ===== Not-yet-supported engines ===== -->
                 <Border x:Name="ComingSoonPanel" Visibility="Collapsed" Margin="0,4,0,4"
                         Background="{StaticResource B.SurfaceAlt}" CornerRadius="8"

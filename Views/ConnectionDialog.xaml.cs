@@ -48,6 +48,9 @@ public partial class ConnectionDialog : Window
         }
         FbPortBox.Text = (_profile.Port > 0 ? _profile.Port : 3050).ToString();
 
+        if (_profile.Engine == DatabaseEngine.MongoDb)
+            MongoUriBox.Text = string.IsNullOrWhiteSpace(_profile.Server) ? "mongodb://localhost:27017" : _profile.Server;
+
         _engine = _profile.Engine;
         (_engine switch
         {
@@ -77,6 +80,13 @@ public partial class ConnectionDialog : Window
             p.Password = string.IsNullOrEmpty(FbPassBox.Password) ? null : FbPassBox.Password;
             p.Port = int.TryParse(FbPortBox.Text, out var port) ? port : 0;
             p.FirebirdEmbedded = FbEmbeddedCheck.IsChecked == true;
+            p.UseRawConnectionString = false;
+            return;
+        }
+
+        if (_engine == DatabaseEngine.MongoDb)
+        {
+            p.Server = MongoUriBox.Text.Trim();
             p.UseRawConnectionString = false;
             return;
         }
@@ -115,11 +125,13 @@ public partial class ConnectionDialog : Window
         var isSql = _engine == DatabaseEngine.SqlServer;
         var isSqlite = _engine == DatabaseEngine.Sqlite;
         var isFirebird = _engine == DatabaseEngine.Firebird;
+        var isMongo = _engine == DatabaseEngine.MongoDb;
         var supported = _engine.IsSupported();
 
         SqlServerPanel.Visibility = isSql ? Visibility.Visible : Visibility.Collapsed;
         SqlitePanel.Visibility = isSqlite ? Visibility.Visible : Visibility.Collapsed;
         FirebirdPanel.Visibility = isFirebird ? Visibility.Visible : Visibility.Collapsed;
+        MongoPanel.Visibility = isMongo ? Visibility.Visible : Visibility.Collapsed;
         if (isFirebird) ApplyFirebirdState();
         ComingSoonPanel.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
         if (!supported)
@@ -215,6 +227,8 @@ public partial class ConnectionDialog : Window
                 await SqliteService.TestConnectionAsync(temp.BuildConnectionString());
             else if (_engine == DatabaseEngine.Firebird)
                 await FirebirdService.TestConnectionAsync(temp.BuildConnectionString());
+            else if (_engine == DatabaseEngine.MongoDb)
+                await MongoService.TestConnectionAsync(temp.BuildConnectionString());
             else
                 await SqlServerService.TestConnectionAsync(temp.BuildConnectionString());
             TestStatus.Text = "Connection succeeded.";
@@ -243,6 +257,14 @@ public partial class ConnectionDialog : Window
             if (string.IsNullOrWhiteSpace(FbFileBox.Text))
             {
                 Dialogs.ShowError("Missing database", "Please enter the Firebird database path or alias.");
+                return;
+            }
+        }
+        else if (_engine == DatabaseEngine.MongoDb)
+        {
+            if (string.IsNullOrWhiteSpace(MongoUriBox.Text))
+            {
+                Dialogs.ShowError("Missing connection string", "Please enter a MongoDB connection string.");
                 return;
             }
         }
