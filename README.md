@@ -68,6 +68,9 @@ Grab the latest **portable `.exe`** from the
 - **Object tree (Navicat-style)** — Server → Database → Schema → **Tables / Views / Functions /
   Procedures** folders, with a **filter/locator** box to jump to a table by name. Open tables or
   views to browse rows.
+- **Object list** — click a **Tables** folder (or a MongoDB database) to see all its tables in the
+  content area, Navicat-style: **Name, Rows, Modified Date, Comment**, with a toolbar (Open / Design
+  / New / Delete / Refresh). Double-click a row to open it.
 - **Structure inspector** — a dockable/pinnable side panel showing **Info**, **DDL**
   (`CREATE TABLE` + indexes + foreign keys), and **Relationships**.
 - **SQL query window** — **New Query** opens a window to run arbitrary SQL (Run / F5) with a

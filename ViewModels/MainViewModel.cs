@@ -20,6 +20,60 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string statusText = "Ready";
     [ObservableProperty] private bool isBusy;
 
+    /// <summary>Navicat-style object list shown when a Tables folder (or Mongo database) is selected.</summary>
+    [ObservableProperty] private ObjectListViewModel? objectList;
+    [ObservableProperty] private bool showObjects;
+
+    public bool ShowTabs => !ShowObjects && SelectedTab is not null;
+    public bool ShowEmpty => !ShowObjects && SelectedTab is null;
+
+    partial void OnShowObjectsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowTabs));
+        OnPropertyChanged(nameof(ShowEmpty));
+    }
+
+    partial void OnSelectedTabChanged(TableTabViewModel? value)
+    {
+        OnPropertyChanged(nameof(ShowTabs));
+        OnPropertyChanged(nameof(ShowEmpty));
+    }
+
+    partial void OnSelectedNodeChanged(DbTreeNode? value) => UpdateObjectList(value);
+
+    private void UpdateObjectList(DbTreeNode? node)
+    {
+        var isTablesFolder = node is { Type: NodeType.Category, CategoryChildType: NodeType.Table };
+        var isMongoDb = node is { Type: NodeType.Database } && node.Connection.Engine == DatabaseEngine.MongoDb;
+        if (!isTablesFolder && !isMongoDb)
+        {
+            ShowObjects = false;
+            return;
+        }
+
+        var container = node!;
+        var vm = new ObjectListViewModel(container,
+            open: name => OpenFromList(container, name),
+            design: name => DesignTableCommand.Execute(container.MakeObjectChild(NodeType.Table, name)),
+            delete: name => DeleteFromListAsync(container, name),
+            @new: () => NewTableCommand.Execute(container));
+        ObjectList = vm;
+        ShowObjects = true;
+        _ = vm.LoadAsync();
+    }
+
+    private void OpenFromList(DbTreeNode container, string name)
+    {
+        ShowObjects = false;
+        OpenTableCommand.Execute(container.MakeObjectChild(NodeType.Table, name));
+    }
+
+    private async void DeleteFromListAsync(DbTreeNode container, string name)
+    {
+        await DropTable(container.MakeObjectChild(NodeType.Table, name));
+        if (ObjectList is not null) await ObjectList.LoadAsync();
+    }
+
     /// <summary>Row limit applied when opening a new tab.</summary>
 
     public MainViewModel()

@@ -203,10 +203,14 @@
 
             <!-- Content -->
             <Grid Grid.Column="2">
+                <!-- Navicat-style object list (a Tables folder / Mongo database is selected) -->
+                <v:ObjectListView DataContext="{Binding ObjectList}"
+                                  Visibility="{Binding DataContext.ShowObjects, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource BoolToVis}}"/>
+
                 <!-- One tab per open table -->
                 <TabControl ItemsSource="{Binding OpenTabs}"
                             SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
-                            Visibility="{Binding SelectedTab, Converter={StaticResource NullToVis}, ConverterParameter=inv}">
+                            Visibility="{Binding ShowTabs, Converter={StaticResource BoolToVis}}">
                     <TabControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -575,7 +579,7 @@
                 <!-- Empty state (no tabs open) -->
                 <Border Margin="16" Background="{StaticResource B.Surface}" CornerRadius="10"
                         BorderBrush="{StaticResource B.Border}" BorderThickness="1"
-                        Visibility="{Binding SelectedTab, Converter={StaticResource NullToVis}}">
+                        Visibility="{Binding ShowEmpty, Converter={StaticResource BoolToVis}}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Path Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
                               Width="48" Height="48" Stretch="Uniform"
