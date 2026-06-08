@@ -256,16 +256,16 @@ public partial class MainViewModel : ObservableObject
         var db = node.Database ?? _copied.Database;
         var schema = node.Schema ?? _copied.Schema;
 
-        if (conn.Id != _copied.Connection.Id)
+        if (conn.Engine != _copied.Connection.Engine)
         {
-            Dialogs.ShowError("Paste table", "Paste into the same connection the table was copied from.");
+            Dialogs.ShowError("Paste table",
+                $"Paste only works into the same database type — the copied table is {_copied.Connection.Engine.DisplayName()}.");
             return;
         }
-        if (!string.Equals(db, _copied.Database, StringComparison.OrdinalIgnoreCase))
-        {
-            Dialogs.ShowError("Paste table", "Paste into the same database the table was copied from.");
-            return;
-        }
+
+        var sameConn = conn.Id == _copied.Connection.Id;
+        var sameDb = string.Equals(db, _copied.Database, StringComparison.OrdinalIgnoreCase);
+        var inPlace = sameConn && sameDb;
 
         try
         {
@@ -274,12 +274,20 @@ public partial class MainViewModel : ObservableObject
 
             var mode = Dialogs.ChooseCopyMode(_copied.Name, newName);
             if (mode == Dialogs.CopyMode.Cancel) return;
+            var withData = mode == Dialogs.CopyMode.StructureAndData;
 
             IsBusy = true;
-            StatusText = $"Copying '{_copied.Name}' → '{newName}'…";
-            await TableCopyService.CopyAsync(conn,
-                _copied.Database ?? "", _copied.Schema ?? "", _copied.Name,
-                db ?? "", schema ?? "", newName, mode == Dialogs.CopyMode.StructureAndData);
+            var where = inPlace ? "" : $" into '{conn.Name}'";
+            StatusText = $"Copying '{_copied.Name}' → '{newName}'{where}…";
+
+            if (inPlace)
+                await TableCopyService.CopyAsync(conn,
+                    _copied.Database ?? "", _copied.Schema ?? "", _copied.Name,
+                    db ?? "", schema ?? "", newName, withData);
+            else
+                await TableCopyService.CopyCrossAsync(
+                    _copied.Connection, _copied.Database ?? "", _copied.Schema ?? "", _copied.Name,
+                    conn, db ?? "", schema ?? "", newName, withData);
 
             // Refresh the folder that now contains the copy.
             var folder = node.Type == NodeType.Category ? node
