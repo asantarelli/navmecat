@@ -295,6 +295,11 @@ public static class GridClipboard
         return -1;
     }
 
+    /// <summary>Public entry for live type-fill (writes one cell's value).</summary>
+    public static void SetCellValuePublic(DataTable table, TableTabViewModel? tab,
+        DataRowView? row, DataGridColumn? column, string text)
+        => SetCellValue(table, tab, row, column, text);
+
     private static void SetCellValue(DataTable table, TableTabViewModel? tab,
         DataRowView? row, DataGridColumn? column, string text)
     {

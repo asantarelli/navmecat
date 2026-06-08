@@ -43,6 +43,7 @@ public static class DataGridClarion
 
             grid.PreviewTextInput += OnPreviewTextInput;
             grid.BeginningEdit += OnBeginningEdit;
+            grid.PreparingCellForEdit += OnPreparingCellForEdit;
             grid.CellEditEnding += OnCellEditEnding;
 
             // Spreadsheet-friendly copy/paste: replace the built-in copy and add a context menu.
@@ -60,6 +61,7 @@ public static class DataGridClarion
             grid.CurrentCellChanged -= OnCurrentCellChanged;
             grid.PreviewTextInput -= OnPreviewTextInput;
             grid.BeginningEdit -= OnBeginningEdit;
+            grid.PreparingCellForEdit -= OnPreparingCellForEdit;
             grid.CellEditEnding -= OnCellEditEnding;
         }
     }
@@ -150,6 +152,51 @@ public static class DataGridClarion
             _fillSnapshot = SnapshotSelection(grid);
     }
 
+    // Live type-fill: while editing one cell of a multi-cell selection, mirror each keystroke
+    // into the other selected cells (data) and into their on-screen cells (visual) so the whole
+    // block changes as you type. Commit then reconciles everything (incl. off-screen rows).
+    private static DataGrid? _liveGrid;
+    private static TextBox? _liveBox;
+    private static List<(DataRowView Row, DataGridColumn Col)>? _liveOthers;
+
+    private static void OnPreparingCellForEdit(object? sender, DataGridPreparingCellForEditEventArgs e)
+    {
+        if (sender is not DataGrid grid) return;
+        if (_fillSnapshot is null || _fillSnapshot.Count <= 1) return;
+        if (e.EditingElement is not TextBox box) return;
+
+        var editRow = e.Row?.Item as DataRowView;
+        var editCol = e.Column;
+        _liveGrid = grid;
+        _liveBox = box;
+        _liveOthers = _fillSnapshot
+            .Where(c => !(editRow is not null && ReferenceEquals(c.Row.Row, editRow.Row) && c.Col == editCol))
+            .ToList();
+
+        box.TextChanged += OnLiveTextChanged;
+    }
+
+    private static void OnLiveTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_liveGrid is null || _liveBox is null || _liveOthers is not { Count: > 0 }) return;
+        if (_liveGrid.ItemsSource is not DataView view || view.Table is not { } table) return;
+
+        var text = _liveBox.Text;
+        var tab = _liveGrid.DataContext as TableTabViewModel;
+        foreach (var (row, col) in _liveOthers)
+        {
+            GridClipboard.SetCellValuePublic(table, tab, row, col, text); // update the data
+            SetVisibleCellText(_liveGrid, row, col, text);                 // repaint on-screen cell now
+        }
+    }
+
+    /// <summary>Pushes text straight into an on-screen cell's TextBlock so it updates mid-edit.</summary>
+    private static void SetVisibleCellText(DataGrid grid, DataRowView row, DataGridColumn col, string text)
+    {
+        if (grid.ItemContainerGenerator.ContainerFromItem(row) is not DataGridRow dgr) return; // off-screen
+        if (col.GetCellContent(dgr) is TextBlock tb) tb.Text = text;
+    }
+
     /// <summary>
     /// When a cell of a multi-cell selection is committed, fill every selected cell with the
     /// typed value and force the grid to repaint them (and keep the selection).
@@ -158,6 +205,14 @@ public static class DataGridClarion
     {
         var snapshot = _fillSnapshot;
         _fillSnapshot = null;
+
+        if (_liveBox is not null)
+        {
+            _liveBox.TextChanged -= OnLiveTextChanged;
+            _liveBox = null;
+            _liveOthers = null;
+            _liveGrid = null;
+        }
 
         if (e.EditAction != DataGridEditAction.Commit) return;
         if (sender is not DataGrid grid) return;
