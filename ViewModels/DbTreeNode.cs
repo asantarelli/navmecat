@@ -124,38 +124,17 @@ public partial class DbTreeNode : ObservableObject
         HasError = false;
         try
         {
-            var connStr = Connection.BuildConnectionString();
-            var items = new List<DbTreeNode>();
-
-            switch (Type)
+            if (!Connection.Engine.IsSupported())
             {
-                case NodeType.Server:
-                    foreach (var db in await SqlServerService.GetDatabasesAsync(connStr))
-                        items.Add(DatabaseNode(Connection, db));
-                    break;
-                case NodeType.Database:
-                    foreach (var schema in await SqlServerService.GetSchemasAsync(connStr, Database!))
-                        items.Add(SchemaNode(Connection, Database!, schema));
-                    break;
-                case NodeType.Schema:
-                    items.Add(CategoryNode(Connection, Database!, Schema!, "Tables", NodeType.Table));
-                    items.Add(CategoryNode(Connection, Database!, Schema!, "Views", NodeType.View));
-                    items.Add(CategoryNode(Connection, Database!, Schema!, "Functions", NodeType.Function));
-                    items.Add(CategoryNode(Connection, Database!, Schema!, "Procedures", NodeType.Procedure));
-                    break;
-                case NodeType.Category:
-                    var names = CategoryChildType switch
-                    {
-                        NodeType.Table => await SqlServerService.GetTablesAsync(connStr, Database!, Schema!),
-                        NodeType.View => await SqlServerService.GetViewsAsync(connStr, Database!, Schema!),
-                        NodeType.Function => await SqlServerService.GetFunctionsAsync(connStr, Database!, Schema!),
-                        NodeType.Procedure => await SqlServerService.GetProceduresAsync(connStr, Database!, Schema!),
-                        _ => new List<string>()
-                    };
-                    foreach (var n in names)
-                        items.Add(ObjectNode(CategoryChildType, Connection, Database!, Schema!, n));
-                    break;
+                Children.Clear();
+                Children.Add(Message($"{Connection.Engine.DisplayName()} support is coming soon."));
+                return;
             }
+
+            var connStr = Connection.BuildConnectionString();
+            var items = Connection.Engine == DatabaseEngine.Sqlite
+                ? await LoadSqliteChildrenAsync(connStr)
+                : await LoadSqlServerChildrenAsync(connStr);
 
             Children.Clear();
             if (items.Count == 0)
@@ -178,5 +157,65 @@ public partial class DbTreeNode : ObservableObject
         {
             IsLoading = false;
         }
+    }
+
+    private async Task<List<DbTreeNode>> LoadSqlServerChildrenAsync(string connStr)
+    {
+        var items = new List<DbTreeNode>();
+        switch (Type)
+        {
+            case NodeType.Server:
+                foreach (var db in await SqlServerService.GetDatabasesAsync(connStr))
+                    items.Add(DatabaseNode(Connection, db));
+                break;
+            case NodeType.Database:
+                foreach (var schema in await SqlServerService.GetSchemasAsync(connStr, Database!))
+                    items.Add(SchemaNode(Connection, Database!, schema));
+                break;
+            case NodeType.Schema:
+                items.Add(CategoryNode(Connection, Database!, Schema!, "Tables", NodeType.Table));
+                items.Add(CategoryNode(Connection, Database!, Schema!, "Views", NodeType.View));
+                items.Add(CategoryNode(Connection, Database!, Schema!, "Functions", NodeType.Function));
+                items.Add(CategoryNode(Connection, Database!, Schema!, "Procedures", NodeType.Procedure));
+                break;
+            case NodeType.Category:
+                var names = CategoryChildType switch
+                {
+                    NodeType.Table => await SqlServerService.GetTablesAsync(connStr, Database!, Schema!),
+                    NodeType.View => await SqlServerService.GetViewsAsync(connStr, Database!, Schema!),
+                    NodeType.Function => await SqlServerService.GetFunctionsAsync(connStr, Database!, Schema!),
+                    NodeType.Procedure => await SqlServerService.GetProceduresAsync(connStr, Database!, Schema!),
+                    _ => new List<string>()
+                };
+                foreach (var n in names)
+                    items.Add(ObjectNode(CategoryChildType, Connection, Database!, Schema!, n));
+                break;
+        }
+        return items;
+    }
+
+    /// <summary>SQLite has a single database file with no schemas — show Tables/Views directly.</summary>
+    private async Task<List<DbTreeNode>> LoadSqliteChildrenAsync(string connStr)
+    {
+        const string main = "main";
+        var items = new List<DbTreeNode>();
+        switch (Type)
+        {
+            case NodeType.Server:
+                items.Add(CategoryNode(Connection, main, main, "Tables", NodeType.Table));
+                items.Add(CategoryNode(Connection, main, main, "Views", NodeType.View));
+                break;
+            case NodeType.Category:
+                var names = CategoryChildType switch
+                {
+                    NodeType.Table => await SqliteService.GetTablesAsync(connStr),
+                    NodeType.View => await SqliteService.GetViewsAsync(connStr),
+                    _ => new List<string>()
+                };
+                foreach (var n in names)
+                    items.Add(ObjectNode(CategoryChildType, Connection, main, main, n));
+                break;
+        }
+        return items;
     }
 }

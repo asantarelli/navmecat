@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Connection"
+        xmlns:loc="clr-namespace:NavMeCat.Services"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" SizeToContent="Height"
@@ -16,10 +17,10 @@
             <Border Background="{StaticResource B.Sidebar}" CornerRadius="12,12,0,0"
                     Padding="20,16" MouseLeftButtonDown="Header_MouseDown">
                 <StackPanel Orientation="Horizontal">
-                    <Path Data="M2,3 H14 V6.5 H2 Z M2,9.5 H14 V13 H2 Z" Width="18" Height="18"
+                    <Path x:Name="HeaderIcon" Data="M2,3 H14 V6.5 H2 Z M2,9.5 H14 V13 H2 Z" Width="18" Height="18"
                           Stretch="Uniform" Stroke="#FF2D7FE0" StrokeThickness="1.4"
                           VerticalAlignment="Center"/>
-                    <TextBlock Text="SQL Server Connection" Margin="12,0,0,0"
+                    <TextBlock x:Name="HeaderTitle" Text="Connection" Margin="12,0,0,0"
                                FontSize="16" FontWeight="SemiBold" Foreground="White"
                                VerticalAlignment="Center"/>
                 </StackPanel>
@@ -30,53 +31,120 @@
                 <Label Content="Connection name"/>
                 <TextBox x:Name="NameBox" Margin="0,0,0,14"/>
 
-                <CheckBox x:Name="RawModeCheck" Content="Use a raw connection string"
-                          Margin="0,0,0,12" Checked="RawMode_Changed" Unchecked="RawMode_Changed"/>
+                <Label Content="Database type"/>
+                <UniformGrid Columns="4" Margin="0,2,0,14">
+                    <RadioButton x:Name="EngSqlServer" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="SqlServer" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M2,3 H14 V6.5 H2 Z M2,9.5 H14 V13 H2 Z M4,4.75 H4.01 M4,11.25 H4.01"/>
+                            <TextBlock Text="SQL Server" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="EngSqlite" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="Sqlite" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M8,2 C10.8,2 13,2.7 13,3.6 C13,4.5 10.8,5.2 8,5.2 C5.2,5.2 3,4.5 3,3.6 C3,2.7 5.2,2 8,2 Z M3,3.6 L3,12.4 C3,13.3 5.2,14 8,14 C10.8,14 13,13.3 13,12.4 L13,3.6"/>
+                            <TextBlock Text="SQLite" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="EngPostgres" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="PostgreSql" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M8,1.5 C4.4,1.5 2.5,3.5 2.5,7.5 C2.5,11 4,14.5 6,14.5 C6.9,14.5 6.8,13 7,11.5 M8,1.5 C11.6,1.5 13.5,3.5 13.5,7 C13.5,10 12,12.5 10.3,12.5 C9.2,12.5 9.3,10.8 9.5,9 M6,6.2 A0.6,0.6 0 1 0 6,6.21 M10,6 A0.6,0.6 0 1 0 10,6.01"/>
+                            <TextBlock Text="PostgreSQL" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="EngMongo" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="MongoDb" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M8,1.5 C5,5 5,11.5 8,14.5 C11,11.5 11,5 8,1.5 Z M8,1.5 V14.5"/>
+                            <TextBlock Text="MongoDB" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                </UniformGrid>
 
-                <!-- Raw connection string -->
-                <StackPanel x:Name="RawPanel" Visibility="Collapsed">
-                    <Label Content="Connection string"/>
-                    <TextBox x:Name="RawBox" Margin="0,0,0,8" AcceptsReturn="True"
-                             TextWrapping="Wrap" Height="80" VerticalContentAlignment="Top"/>
-                </StackPanel>
+                <!-- ===== SQL Server ===== -->
+                <StackPanel x:Name="SqlServerPanel">
+                    <CheckBox x:Name="RawModeCheck" Content="Use a raw connection string"
+                              Margin="0,0,0,12" Checked="RawMode_Changed" Unchecked="RawMode_Changed"/>
 
-                <!-- Field-based builder -->
-                <StackPanel x:Name="FieldPanel">
-                    <Label Content="Server  (e.g. localhost\SQLEXPRESS  or  tcp:host,1433)"/>
-                    <TextBox x:Name="ServerBox" Margin="0,0,0,14"/>
-
-                    <Label Content="Authentication"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,14">
-                        <RadioButton x:Name="WinAuthRadio" Content="Windows" GroupName="Auth"
-                                     IsChecked="True" Checked="Auth_Changed"/>
-                        <RadioButton x:Name="SqlAuthRadio" Content="SQL Server login" GroupName="Auth"
-                                     Checked="Auth_Changed"/>
+                    <!-- Raw connection string -->
+                    <StackPanel x:Name="RawPanel" Visibility="Collapsed">
+                        <Label Content="Connection string"/>
+                        <TextBox x:Name="RawBox" Margin="0,0,0,8" AcceptsReturn="True"
+                                 TextWrapping="Wrap" Height="80" VerticalContentAlignment="Top"/>
                     </StackPanel>
 
-                    <Grid x:Name="CredentialsGrid" Margin="0,0,0,14">
+                    <!-- Field-based builder -->
+                    <StackPanel x:Name="FieldPanel">
+                        <Label Content="Server  (e.g. localhost\SQLEXPRESS  or  tcp:host,1433)"/>
+                        <TextBox x:Name="ServerBox" Margin="0,0,0,14"/>
+
+                        <Label Content="Authentication"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,14">
+                            <RadioButton x:Name="WinAuthRadio" Content="Windows" GroupName="Auth"
+                                         IsChecked="True" Checked="Auth_Changed"/>
+                            <RadioButton x:Name="SqlAuthRadio" Content="SQL Server login" GroupName="Auth"
+                                         Checked="Auth_Changed"/>
+                        </StackPanel>
+
+                        <Grid x:Name="CredentialsGrid" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <Label Content="Username"/>
+                                <TextBox x:Name="UserBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <Label Content="Password"/>
+                                <PasswordBox x:Name="PassBox"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Label Content="Default database  (optional)"/>
+                        <TextBox x:Name="DatabaseBox" Margin="0,0,0,14"/>
+
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox x:Name="EncryptCheck" Content="Encrypt" IsChecked="True" Margin="0,0,20,0"/>
+                            <CheckBox x:Name="TrustCertCheck" Content="Trust server certificate" IsChecked="True"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ===== SQLite ===== -->
+                <StackPanel x:Name="SqlitePanel" Visibility="Collapsed">
+                    <Label Content="Database file  (.db / .sqlite)"/>
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="14"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <Label Content="Username"/>
-                            <TextBox x:Name="UserBox"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <Label Content="Password"/>
-                            <PasswordBox x:Name="PassBox"/>
-                        </StackPanel>
+                        <TextBox x:Name="FileBox" Grid.Column="0" VerticalContentAlignment="Center"/>
+                        <Button x:Name="BrowseButton" Grid.Column="1" Content="Browse…" MinWidth="90"
+                                Margin="8,0,0,0" Click="Browse_Click"/>
                     </Grid>
-
-                    <Label Content="Default database  (optional)"/>
-                    <TextBox x:Name="DatabaseBox" Margin="0,0,0,14"/>
-
-                    <StackPanel Orientation="Horizontal">
-                        <CheckBox x:Name="EncryptCheck" Content="Encrypt" IsChecked="True" Margin="0,0,20,0"/>
-                        <CheckBox x:Name="TrustCertCheck" Content="Trust server certificate" IsChecked="True"/>
-                    </StackPanel>
+                    <TextBlock Text="Point to an existing SQLite database file." FontSize="11" FontStyle="Italic"
+                               Foreground="{StaticResource B.TextMuted}"/>
                 </StackPanel>
+
+                <!-- ===== Not-yet-supported engines ===== -->
+                <Border x:Name="ComingSoonPanel" Visibility="Collapsed" Margin="0,4,0,4"
+                        Background="{StaticResource B.SurfaceAlt}" CornerRadius="8"
+                        BorderBrush="{StaticResource B.Border}" BorderThickness="1" Padding="14,12">
+                    <TextBlock x:Name="ComingSoonText" TextWrapping="Wrap" Foreground="{StaticResource B.TextMuted}"
+                               Text="Support for this database is coming soon."/>
+                </Border>
             </StackPanel>
 
             <!-- Footer -->

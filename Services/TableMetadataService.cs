@@ -1,6 +1,8 @@
 using System.Data;
 using System.Text;
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
+using NavMeCat.Models;
 
 namespace NavMeCat.Services;
 
@@ -11,7 +13,13 @@ public static class TableMetadataService
 {
     private static string Quote(string id) => "[" + id.Replace("]", "]]") + "]";
 
-    public static async Task<TableStructure> GetAsync(string connectionString, string database, string schema, string table)
+    public static Task<TableStructure> GetAsync(
+        DatabaseEngine engine, string connectionString, string database, string schema, string table)
+        => engine == DatabaseEngine.Sqlite
+            ? GetSqliteAsync(connectionString, table)
+            : GetSqlServerAsync(connectionString, database, schema, table);
+
+    private static async Task<TableStructure> GetSqlServerAsync(string connectionString, string database, string schema, string table)
     {
         await using var conn = new SqlConnection(SqlServerService.WithDatabase(connectionString, database));
         await conn.OpenAsync();
@@ -298,5 +306,86 @@ public static class TableMetadataService
             }
         }
         return sb.ToString().TrimEnd();
+    }
+
+    // ---- SQLite ----------------------------------------------------------
+
+    private static async Task<TableStructure> GetSqliteAsync(string connectionString, string table)
+    {
+        await using var conn = new SqliteConnection(connectionString);
+        await conn.OpenAsync();
+
+        var ddl = await SqliteScalarAsync(conn,
+            "SELECT sql FROM sqlite_master WHERE name = $t", table) ?? "-- (definition not available)";
+
+        var columns = new List<(string Name, string Type, bool NotNull, int Pk, string? Default)>();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = $"PRAGMA table_info('{table.Replace("'", "''")}')";
+            await using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+                columns.Add((r.GetString(1), r.IsDBNull(2) ? "" : r.GetString(2),
+                    r.GetInt32(3) != 0, r.GetInt32(5), r.IsDBNull(4) ? null : r.GetValue(4)?.ToString()));
+        }
+
+        var indexes = new List<string>();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = $"PRAGMA index_list('{table.Replace("'", "''")}')";
+            await using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+                indexes.Add(r.GetString(1)); // name
+        }
+
+        long rows = -1;
+        try { rows = Convert.ToInt64(await SqliteScalarObjAsync(conn, $"SELECT COUNT(*) FROM {Quote(table)}")); }
+        catch { /* best effort */ }
+
+        var loc = LocalizationManager.Instance;
+        var pk = columns.Where(c => c.Pk > 0).OrderBy(c => c.Pk).Select(c => c.Name).ToList();
+        var info = new StringBuilder();
+        info.AppendLine($"{loc["Info_Table"],-16}{table}");
+        info.AppendLine($"{loc["Info_Columns"],-16}{columns.Count}");
+        info.AppendLine($"{loc["Info_PrimaryKey"],-16}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
+        info.AppendLine($"{loc["Info_Indexes"],-16}{indexes.Count}");
+        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],-16}{rows:N0}");
+        info.AppendLine();
+        info.AppendLine(loc["Info_Columns"]);
+        foreach (var c in columns)
+            info.AppendLine($"  • {c.Name}  {(string.IsNullOrEmpty(c.Type) ? "" : c.Type)}  {(c.NotNull ? "NOT NULL" : "NULL")}".TrimEnd());
+
+        // Relationships via foreign_key_list.
+        var rels = new StringBuilder();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = $"PRAGMA foreign_key_list('{table.Replace("'", "''")}')";
+            await using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+            {
+                var refTable = r.GetString(2);
+                var from = r.GetString(3);
+                var to = r.IsDBNull(4) ? "" : r.GetString(4);
+                if (rels.Length == 0) rels.AppendLine(loc["Rel_References"]);
+                rels.AppendLine($"  ({from}) → {refTable} ({to})");
+            }
+        }
+        var relationships = rels.Length == 0 ? loc["Rel_None"] : rels.ToString().TrimEnd();
+
+        return new TableStructure(ddl.TrimEnd() + (ddl.TrimEnd().EndsWith(";") ? "" : ";"), info.ToString().TrimEnd(), relationships);
+    }
+
+    private static async Task<string?> SqliteScalarAsync(SqliteConnection conn, string sql, string tableParam)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.Parameters.AddWithValue("$t", tableParam);
+        return (await cmd.ExecuteScalarAsync()) as string;
+    }
+
+    private static async Task<object?> SqliteScalarObjAsync(SqliteConnection conn, string sql)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        return await cmd.ExecuteScalarAsync();
     }
 }

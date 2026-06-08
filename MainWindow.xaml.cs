@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using NavMeCat.Models;
 using NavMeCat.Services;
 using NavMeCat.ViewModels;
 
@@ -67,6 +68,10 @@ public partial class MainWindow : Window
 
         switch (node.Type)
         {
+            case NodeType.Table when node.Connection.Engine == DatabaseEngine.Sqlite:
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                break;
+
             case NodeType.Table:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
@@ -75,6 +80,10 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_ImportData", () => Run(Vm.ImportDataCommand, node)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
+                break;
+
+            case NodeType.View when node.Connection.Engine == DatabaseEngine.Sqlite:
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 break;
 
             case NodeType.View:
@@ -89,6 +98,10 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Execute", () => Run(Vm.ExecuteRoutineCommand, node)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
+                break;
+
+            case NodeType.Category when node.Connection.Engine == DatabaseEngine.Sqlite:
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Category when node.CategoryChildType is NodeType.Function:

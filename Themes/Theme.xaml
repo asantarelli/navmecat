@@ -296,6 +296,34 @@
         </Setter>
     </Style>
 
+    <!-- Selectable engine card (icon + label) used in the connection dialog.
+         Each card supplies its own Content (Path icon + TextBlock). -->
+    <Style x:Key="EngineCard" TargetType="RadioButton">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Margin" Value="3"/>
+        <Setter Property="Foreground" Value="{StaticResource B.TextMuted}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Background="{StaticResource B.Surface}" CornerRadius="8"
+                            BorderBrush="{StaticResource B.Border}" BorderThickness="1" Padding="6,10">
+                        <ContentPresenter HorizontalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource B.SurfaceAlt}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource B.RowHover}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource B.Accent}"/>
+                            <Setter Property="Foreground" Value="{StaticResource B.Accent}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ============================ INPUTS ============================ -->
     <Style TargetType="TextBox">
         <Setter Property="Background" Value="{StaticResource B.Surface}"/>

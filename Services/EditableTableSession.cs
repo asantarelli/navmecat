@@ -1,23 +1,30 @@
 using System.Data;
+using System.Data.Common;
 using System.Globalization;
 using System.Text;
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
+using NavMeCat.Models;
 
 namespace NavMeCat.Services;
 
 /// <summary>
 /// Holds an open, editable view of a single table. Changes made to <see cref="Data"/>
-/// (in-place edits, new rows, deleted rows) are pushed back to SQL Server on <see cref="SaveAsync"/>.
+/// (in-place edits, new rows, deleted rows) are pushed back to the database on <see cref="SaveAsync"/>.
 ///
-/// Rows are matched for UPDATE/DELETE by, in order of preference: the primary key, a unique
-/// index, or — for keyless tables — every comparable column (with TOP (1) so only one row is
-/// affected). For keyless tables the caller can override which columns identify a row via
-/// <see cref="SetRowIdentity"/>. UPDATEs only set the columns that actually changed.
+/// Works across engines (SQL Server, SQLite). Rows are matched for UPDATE/DELETE by, in order of
+/// preference: the primary key, a unique index, or — for keyless tables — every comparable column.
+/// On SQL Server keyless edits add TOP (1) so only one row is affected; SQLite does not support that,
+/// so a keyless edit there can touch every identical row (the caller is warned). The caller can
+/// override which columns identify a row via <see cref="SetRowIdentity"/>. UPDATEs only set columns
+/// that actually changed.
 /// </summary>
 public sealed class EditableTableSession : IDisposable
 {
-    private readonly SqlConnection _connection;
-    private readonly SqlDataAdapter _adapter;
+    private readonly DbConnection _connection;
+    private readonly IDisposable? _adapter;
+    private readonly DatabaseEngine _engine;
+    private readonly string _fqTable;
     private readonly HashSet<string> _nonComparable;
 
     // Current key (may be a custom row identity); plus the auto-resolved default to revert to.
@@ -39,18 +46,21 @@ public sealed class EditableTableSession : IDisposable
     public bool HasNaturalKey { get; }
     public bool IsCustomIdentity { get; private set; }
 
-    public string Identifier => $"{Database}.{Schema}.{Table}";
+    public string Identifier => _engine == DatabaseEngine.Sqlite ? Table : $"{Database}.{Schema}.{Table}";
     public IReadOnlyList<string> AllColumnNames => Data.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
     public IReadOnlyList<string> KeyColumnNames => _keyColumns.Select(c => c.ColumnName).ToList();
     public IReadOnlyCollection<string> NonComparableColumns => _nonComparable;
 
-    private EditableTableSession(SqlConnection connection, SqlDataAdapter adapter, DataTable data,
+    private EditableTableSession(DbConnection connection, IDisposable? adapter, DataTable data,
+        DatabaseEngine engine, string fqTable,
         string database, string schema, string table, int rowLimit,
         DataColumn[] keyColumns, bool useTopOne, string keyDescription, bool hasNaturalKey,
         HashSet<string> nonComparable)
     {
         _connection = connection;
         _adapter = adapter;
+        _engine = engine;
+        _fqTable = fqTable;
         Data = data;
         Database = database;
         Schema = schema;
@@ -69,7 +79,13 @@ public sealed class EditableTableSession : IDisposable
 
     private static string Quote(string identifier) => "[" + identifier.Replace("]", "]]") + "]";
 
-    public static async Task<EditableTableSession> OpenAsync(
+    public static Task<EditableTableSession> OpenAsync(
+        DatabaseEngine engine, string connectionString, string database, string schema, string table, int rowLimit)
+        => engine == DatabaseEngine.Sqlite
+            ? OpenSqliteAsync(connectionString, table, rowLimit)
+            : OpenSqlServerAsync(connectionString, database, schema, table, rowLimit);
+
+    private static async Task<EditableTableSession> OpenSqlServerAsync(
         string connectionString, string database, string schema, string table, int rowLimit)
     {
         var connection = new SqlConnection(SqlServerService.WithDatabase(connectionString, database));
@@ -85,7 +101,7 @@ public sealed class EditableTableSession : IDisposable
         var data = new DataTable(table);
         await Task.Run(() => adapter.Fill(data));
 
-        var nonComparable = await GetNonComparableColumnsAsync(connection, fq);
+        var nonComparable = await GetSqlServerNonComparableAsync(connection, fq);
 
         DataColumn[] keys;
         bool topOne;
@@ -112,8 +128,58 @@ public sealed class EditableTableSession : IDisposable
             }
         }
 
-        return new EditableTableSession(connection, adapter, data, database, schema, table, rowLimit,
-            keys, topOne, description, naturalKey, nonComparable);
+        return new EditableTableSession(connection, adapter, data, DatabaseEngine.SqlServer, fq,
+            database, schema, table, rowLimit, keys, topOne, description, naturalKey, nonComparable);
+    }
+
+    private static async Task<EditableTableSession> OpenSqliteAsync(
+        string connectionString, string table, int rowLimit)
+    {
+        var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync();
+
+        var fq = Quote(table);
+        var data = new DataTable(table);
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = $"SELECT * FROM {fq} LIMIT {rowLimit}";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            data.Load(reader);
+        }
+
+        var (pkColumns, blobColumns, autoIncrement) = await GetSqliteSchemaAsync(connection, table);
+
+        var nonComparable = new HashSet<string>(blobColumns, StringComparer.OrdinalIgnoreCase);
+        foreach (DataColumn c in data.Columns)
+            if (c.DataType == typeof(byte[])) nonComparable.Add(c.ColumnName);
+
+        if (autoIncrement is not null && data.Columns.Contains(autoIncrement))
+        {
+            var idCol = data.Columns[autoIncrement]!;
+            if (idCol.DataType == typeof(long) || idCol.DataType == typeof(int))
+                idCol.AutoIncrement = true;
+        }
+
+        DataColumn[] keys;
+        string description;
+        bool naturalKey;
+
+        var pk = pkColumns.Where(data.Columns.Contains).Select(n => data.Columns[n]!).ToArray();
+        if (pk.Length > 0)
+        {
+            keys = pk; description = "primary key"; naturalKey = true;
+        }
+        else
+        {
+            keys = data.Columns.Cast<DataColumn>()
+                .Where(c => c.DataType != typeof(byte[]) && !nonComparable.Contains(c.ColumnName))
+                .ToArray();
+            description = "all columns"; naturalKey = false;
+        }
+
+        // SQLite does not support TOP/LIMIT on UPDATE/DELETE, so never emit it.
+        return new EditableTableSession(connection, null, data, DatabaseEngine.Sqlite, fq,
+            "main", "main", table, rowLimit, keys, useTopOne: false, description, naturalKey, nonComparable);
     }
 
     public bool HasChanges => Data.GetChanges() is not null;
@@ -137,7 +203,7 @@ public sealed class EditableTableSession : IDisposable
         if (cols.Length == 0) return;
 
         _keyColumns = cols;
-        _useTopOne = true; // user-chosen identity — keep one-row safety
+        _useTopOne = _engine == DatabaseEngine.SqlServer; // one-row safety where supported
         KeyDescription = "custom (" + string.Join(", ", cols.Select(c => c.ColumnName)) + ")";
         HasReliableKey = true;
         IsCustomIdentity = true;
@@ -156,11 +222,9 @@ public sealed class EditableTableSession : IDisposable
             rows.Select(r => string.Join("¦", cols.Select(c => r[c]?.ToString() ?? "∅")))
                 .Distinct().Count();
 
-        // Any single column that's already unique wins.
         var single = candidates.OrderByDescending(c => Distinct(new[] { c })).First();
         if (Distinct(new[] { single }) == rows.Count) return new() { single.ColumnName };
 
-        // Greedy: keep adding the column that increases distinct combinations the most.
         var chosen = new List<DataColumn> { single };
         while (Distinct(chosen) < rows.Count && chosen.Count < candidates.Count)
         {
@@ -208,7 +272,7 @@ public sealed class EditableTableSession : IDisposable
         return Array.Empty<DataColumn>();
     }
 
-    private static async Task<HashSet<string>> GetNonComparableColumnsAsync(SqlConnection conn, string fq)
+    private static async Task<HashSet<string>> GetSqlServerNonComparableAsync(SqlConnection conn, string fq)
     {
         const string sql = @"
             SELECT c.name
@@ -227,6 +291,41 @@ public sealed class EditableTableSession : IDisposable
         return result;
     }
 
+    /// <summary>Returns (primary-key columns in order, BLOB columns, the auto-increment column or null).</summary>
+    private static async Task<(List<string> Pk, List<string> Blobs, string? AutoIncrement)>
+        GetSqliteSchemaAsync(SqliteConnection conn, string table)
+    {
+        var pk = new List<(int Ord, string Name)>();
+        var blobs = new List<string>();
+        var typeByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = $"PRAGMA table_info('{table.Replace("'", "''")}')";
+            await using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+            {
+                var name = r.GetString(1);
+                var type = r.IsDBNull(2) ? "" : r.GetString(2);
+                var pkOrd = r.GetInt32(5); // 0 = not part of pk, else 1-based position
+                typeByName[name] = type;
+                if (pkOrd > 0) pk.Add((pkOrd, name));
+                if (type.ToUpperInvariant().Contains("BLOB")) blobs.Add(name);
+            }
+        }
+
+        var pkOrdered = pk.OrderBy(p => p.Ord).Select(p => p.Name).ToList();
+
+        // A lone INTEGER PRIMARY KEY is an alias for rowid → auto-assigned on insert.
+        string? autoInc = null;
+        if (pkOrdered.Count == 1 &&
+            typeByName.TryGetValue(pkOrdered[0], out var t) &&
+            t.ToUpperInvariant().Contains("INT"))
+            autoInc = pkOrdered[0];
+
+        return (pkOrdered, blobs, autoInc);
+    }
+
     // ---- change generation ----------------------------------------------
 
     private sealed record ChangeStatement(string Sql, List<object> Values, string Preview);
@@ -234,21 +333,20 @@ public sealed class EditableTableSession : IDisposable
     private List<ChangeStatement> BuildChanges()
     {
         var statements = new List<ChangeStatement>();
-        var fqTable = $"{Quote(Schema)}.{Quote(Table)}";
 
         foreach (DataRow row in Data.Rows)
         {
             switch (row.RowState)
             {
                 case DataRowState.Added:
-                    statements.Add(BuildInsert(row, fqTable));
+                    statements.Add(BuildInsert(row, _fqTable));
                     break;
                 case DataRowState.Modified:
-                    var update = BuildUpdate(row, fqTable);
+                    var update = BuildUpdate(row, _fqTable);
                     if (update is not null) statements.Add(update);
                     break;
                 case DataRowState.Deleted:
-                    statements.Add(BuildDelete(row, fqTable));
+                    statements.Add(BuildDelete(row, _fqTable));
                     break;
             }
         }
@@ -365,9 +463,15 @@ public sealed class EditableTableSession : IDisposable
         var affected = 0;
         foreach (var change in changes)
         {
-            await using var cmd = new SqlCommand(change.Sql, _connection);
+            await using var cmd = _connection.CreateCommand();
+            cmd.CommandText = change.Sql;
             for (var i = 0; i < change.Values.Count; i++)
-                cmd.Parameters.AddWithValue("@p" + i, change.Values[i] ?? DBNull.Value);
+            {
+                var p = cmd.CreateParameter();
+                p.ParameterName = "@p" + i;
+                p.Value = change.Values[i] ?? DBNull.Value;
+                cmd.Parameters.Add(p);
+            }
             affected += await cmd.ExecuteNonQueryAsync();
         }
 
@@ -409,7 +513,7 @@ public sealed class EditableTableSession : IDisposable
 
     public void Dispose()
     {
-        _adapter.Dispose();
+        _adapter?.Dispose();
         _connection.Dispose();
         Data.Dispose();
     }

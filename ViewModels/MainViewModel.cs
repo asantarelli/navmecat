@@ -50,6 +50,12 @@ public partial class MainViewModel : ObservableObject
             StatusText = "Add a connection first.";
             return;
         }
+        if (connection.Engine != DatabaseEngine.SqlServer)
+        {
+            Dialogs.ShowMessage("Not available",
+                $"The query window currently supports SQL Server only — not {connection.Engine.DisplayName()}.");
+            return;
+        }
         new Views.QueryWindow(connection, node?.Database).Show();
         StatusText = $"Opened a query window for '{connection.Name}'.";
     }
@@ -63,6 +69,12 @@ public partial class MainViewModel : ObservableObject
         if (connection is null)
         {
             StatusText = "Add a connection first.";
+            return;
+        }
+        if (connection.Engine != DatabaseEngine.SqlServer)
+        {
+            Dialogs.ShowMessage("Not available",
+                $"The query builder currently supports SQL Server only — not {connection.Engine.DisplayName()}.");
             return;
         }
         new Views.QueryBuilderWindow(connection, node?.Database).Show();
@@ -374,7 +386,9 @@ public partial class MainViewModel : ObservableObject
     private static void CopyInto(ConnectionProfile from, ConnectionProfile to)
     {
         to.Name = from.Name;
+        to.Engine = from.Engine;
         to.Server = from.Server;
+        to.FilePath = from.FilePath;
         to.Database = from.Database;
         to.IntegratedSecurity = from.IntegratedSecurity;
         to.Username = from.Username;

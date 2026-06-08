@@ -1,9 +1,70 @@
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
+using NavMeCat.Models;
 using NavMeCat.ViewModels;
 
 namespace NavMeCat.Converters;
+
+/// <summary>Icon for a node — engine-specific for Server nodes, type-based otherwise.</summary>
+public class NodeIconConverter : IValueConverter
+{
+    private static readonly Dictionary<DatabaseEngine, Geometry> EngineIcons = new()
+    {
+        [DatabaseEngine.SqlServer] = Geometry.Parse(
+            "M2,3 H14 V6.5 H2 Z M2,9.5 H14 V13 H2 Z M4,4.75 H4.01 M4,11.25 H4.01"),
+        [DatabaseEngine.Sqlite] = Geometry.Parse(
+            "M8,2 C10.8,2 13,2.7 13,3.6 C13,4.5 10.8,5.2 8,5.2 C5.2,5.2 3,4.5 3,3.6 C3,2.7 5.2,2 8,2 Z " +
+            "M3,3.6 L3,12.4 C3,13.3 5.2,14 8,14 C10.8,14 13,13.3 13,12.4 L13,3.6"),
+        [DatabaseEngine.PostgreSql] = Geometry.Parse(
+            "M8,1.5 C4.4,1.5 2.5,3.5 2.5,7.5 C2.5,11 4,14.5 6,14.5 C6.9,14.5 6.8,13 7,11.5 " +
+            "M8,1.5 C11.6,1.5 13.5,3.5 13.5,7 C13.5,10 12,12.5 10.3,12.5 C9.2,12.5 9.3,10.8 9.5,9"),
+        [DatabaseEngine.MongoDb] = Geometry.Parse("M8,1.5 C5,5 5,11.5 8,14.5 C11,11.5 11,5 8,1.5 Z M8,1.5 V14.5"),
+    };
+
+    public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not DbTreeNode node) return null;
+        if (node.Type == NodeType.Server && EngineIcons.TryGetValue(node.Connection.Engine, out var eg))
+            return eg;
+        return NodeTypeToGeometryConverter.IconFor(node.Type);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>Stroke color for a node — engine-specific for Server nodes, type-based otherwise.</summary>
+public class NodeIconBrushConverter : IValueConverter
+{
+    private static readonly Brush Sqlite = Frozen("#1B9E8B");
+    private static readonly Brush Postgres = Frozen("#336791");
+    private static readonly Brush Mongo = Frozen("#4DB33D");
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not DbTreeNode node) return NodeTypeToBrushConverter.BrushFor(NodeType.Message);
+        if (node.Type == NodeType.Server)
+            return node.Connection.Engine switch
+            {
+                DatabaseEngine.Sqlite => Sqlite,
+                DatabaseEngine.PostgreSql => Postgres,
+                DatabaseEngine.MongoDb => Mongo,
+                _ => NodeTypeToBrushConverter.BrushFor(NodeType.Server)
+            };
+        return NodeTypeToBrushConverter.BrushFor(node.Type);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+
+    private static Brush Frozen(string hex)
+    {
+        var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        b.Freeze();
+        return b;
+    }
+}
 
 /// <summary>Maps a node type to a small outline icon (16x16 design space).</summary>
 public class NodeTypeToGeometryConverter : IValueConverter
@@ -39,6 +100,8 @@ public class NodeTypeToGeometryConverter : IValueConverter
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
         => value is NodeType t && Icons.TryGetValue(t, out var g) ? g : null;
 
+    public static Geometry? IconFor(NodeType t) => Icons.TryGetValue(t, out var g) ? g : null;
+
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
@@ -57,18 +120,20 @@ public class NodeTypeToBrushConverter : IValueConverter
     private static readonly Brush Default = Freeze("#9AA7B4");
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        => value switch
-        {
-            NodeType.Server => Server,
-            NodeType.Database => Database,
-            NodeType.Schema => Schema,
-            NodeType.Category => Category,
-            NodeType.Table => Table,
-            NodeType.View => View,
-            NodeType.Function => Function,
-            NodeType.Procedure => Procedure,
-            _ => Default,
-        };
+        => value is NodeType t ? BrushFor(t) : Default;
+
+    public static Brush BrushFor(NodeType t) => t switch
+    {
+        NodeType.Server => Server,
+        NodeType.Database => Database,
+        NodeType.Schema => Schema,
+        NodeType.Category => Category,
+        NodeType.Table => Table,
+        NodeType.View => View,
+        NodeType.Function => Function,
+        NodeType.Procedure => Procedure,
+        _ => Default,
+    };
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();

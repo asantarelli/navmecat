@@ -3,6 +3,7 @@ using System.Data;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NavMeCat.Models;
 using NavMeCat.Services;
 using NavMeCat.Views;
 
@@ -290,7 +291,8 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         try
         {
             _structure = await TableMetadataService.GetAsync(
-                Node.Connection.BuildConnectionString(), Node.Database!, Node.Schema!, Node.Name);
+                Node.Connection.Engine, Node.Connection.BuildConnectionString(),
+                Node.Database!, Node.Schema!, Node.Name);
             UpdateInspectorContent();
         }
         catch (Exception ex)
@@ -546,7 +548,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         _setStatus = setStatus;
         _setBusy = setBusy;
         Key = MakeKey(node);
-        Identifier = $"{node.Database}.{node.Schema}.{node.Name}";
+        Identifier = node.Connection.Engine == DatabaseEngine.Sqlite
+            ? node.Name
+            : $"{node.Database}.{node.Schema}.{node.Name}";
         Header = node.Name;
     }
 
@@ -561,7 +565,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         {
             Detach();
             _session = await EditableTableSession.OpenAsync(
-                Node.Connection.BuildConnectionString(),
+                Node.Connection.Engine, Node.Connection.BuildConnectionString(),
                 Node.Database!, Node.Schema!, Node.Name, RowLimit);
 
             _session.Data.RowChanged += OnDataChanged;

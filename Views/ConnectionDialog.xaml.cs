@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Win32;
 using NavMeCat.Models;
 using NavMeCat.Services;
 
@@ -9,6 +10,7 @@ namespace NavMeCat.Views;
 public partial class ConnectionDialog : Window
 {
     private readonly ConnectionProfile _profile;
+    private DatabaseEngine _engine = DatabaseEngine.SqlServer;
 
     public ConnectionDialog(ConnectionProfile profile)
     {
@@ -27,6 +29,7 @@ public partial class ConnectionDialog : Window
         PassBox.Password = _profile.Password ?? "";
         EncryptCheck.IsChecked = _profile.Encrypt;
         TrustCertCheck.IsChecked = _profile.TrustServerCertificate;
+        FileBox.Text = _profile.FilePath ?? "";
 
         WinAuthRadio.IsChecked = _profile.IntegratedSecurity;
         SqlAuthRadio.IsChecked = !_profile.IntegratedSecurity;
@@ -34,14 +37,25 @@ public partial class ConnectionDialog : Window
         RawModeCheck.IsChecked = _profile.UseRawConnectionString;
         RawBox.Text = _profile.RawConnectionString ?? "";
 
+        _engine = _profile.Engine;
+        (_engine switch
+        {
+            DatabaseEngine.Sqlite => EngSqlite,
+            DatabaseEngine.PostgreSql => EngPostgres,
+            DatabaseEngine.MongoDb => EngMongo,
+            _ => EngSqlServer
+        }).IsChecked = true;
+
         ApplyAuthState();
         ApplyRawState();
+        ApplyEngineState();
     }
 
     /// <summary>Writes the current form values into a profile (the edited copy or a temp).</summary>
     private void WriteToProfile(ConnectionProfile p)
     {
         p.Name = string.IsNullOrWhiteSpace(NameBox.Text) ? "Unnamed Connection" : NameBox.Text.Trim();
+        p.Engine = _engine;
         p.Server = ServerBox.Text.Trim();
         p.Database = string.IsNullOrWhiteSpace(DatabaseBox.Text) ? null : DatabaseBox.Text.Trim();
         p.IntegratedSecurity = WinAuthRadio.IsChecked == true;
@@ -51,9 +65,40 @@ public partial class ConnectionDialog : Window
         p.TrustServerCertificate = TrustCertCheck.IsChecked == true;
         p.UseRawConnectionString = RawModeCheck.IsChecked == true;
         p.RawConnectionString = string.IsNullOrWhiteSpace(RawBox.Text) ? null : RawBox.Text.Trim();
+        p.FilePath = string.IsNullOrWhiteSpace(FileBox.Text) ? null : FileBox.Text.Trim();
     }
 
     // ---- UI state --------------------------------------------------------
+
+    private void Engine_Changed(object sender, RoutedEventArgs e)
+    {
+        _engine = sender switch
+        {
+            var s when s == EngSqlite => DatabaseEngine.Sqlite,
+            var s when s == EngPostgres => DatabaseEngine.PostgreSql,
+            var s when s == EngMongo => DatabaseEngine.MongoDb,
+            _ => DatabaseEngine.SqlServer
+        };
+        ApplyEngineState();
+    }
+
+    private void ApplyEngineState()
+    {
+        if (SqlServerPanel is null) return;
+
+        var isSql = _engine == DatabaseEngine.SqlServer;
+        var isSqlite = _engine == DatabaseEngine.Sqlite;
+        var supported = _engine.IsSupported();
+
+        SqlServerPanel.Visibility = isSql ? Visibility.Visible : Visibility.Collapsed;
+        SqlitePanel.Visibility = isSqlite ? Visibility.Visible : Visibility.Collapsed;
+        ComingSoonPanel.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
+        if (!supported)
+            ComingSoonText.Text = $"{_engine.DisplayName()} support is coming soon. " +
+                                  "You can still save this connection and it will be ready once support lands.";
+
+        HeaderTitle.Text = $"{_engine.DisplayName()} Connection";
+    }
 
     private void Auth_Changed(object sender, RoutedEventArgs e) => ApplyAuthState();
 
@@ -73,6 +118,21 @@ public partial class ConnectionDialog : Window
         FieldPanel.Visibility = raw ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    private void Browse_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = "SQLite databases (*.db;*.sqlite;*.sqlite3;*.db3)|*.db;*.sqlite;*.sqlite3;*.db3|All files (*.*)|*.*",
+            CheckFileExists = true
+        };
+        if (dlg.ShowDialog(this) == true)
+        {
+            FileBox.Text = dlg.FileName;
+            if (string.IsNullOrWhiteSpace(NameBox.Text) || NameBox.Text == "New Connection")
+                NameBox.Text = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
+        }
+    }
+
     private void Header_MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
@@ -82,13 +142,23 @@ public partial class ConnectionDialog : Window
 
     private async void Test_Click(object sender, RoutedEventArgs e)
     {
+        if (!_engine.IsSupported())
+        {
+            Dialogs.ShowMessage("Not supported yet",
+                $"{_engine.DisplayName()} connections aren't supported yet — you can still save this one for later.");
+            return;
+        }
+
         var temp = new ConnectionProfile();
         WriteToProfile(temp);
         TestStatus.Text = "Testing…";
         TestStatus.Foreground = (Brush)FindResource("B.TextMuted");
         try
         {
-            await SqlServerService.TestConnectionAsync(temp.BuildConnectionString());
+            if (_engine == DatabaseEngine.Sqlite)
+                await SqliteService.TestConnectionAsync(temp.BuildConnectionString());
+            else
+                await SqlServerService.TestConnectionAsync(temp.BuildConnectionString());
             TestStatus.Text = "Connection succeeded.";
             TestStatus.Foreground = (Brush)FindResource("B.Success");
         }
@@ -102,11 +172,23 @@ public partial class ConnectionDialog : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        if (RawModeCheck.IsChecked != true && string.IsNullOrWhiteSpace(ServerBox.Text))
+        if (_engine == DatabaseEngine.Sqlite)
         {
-            Dialogs.ShowError("Missing server", "Please enter a server name.");
-            return;
+            if (string.IsNullOrWhiteSpace(FileBox.Text))
+            {
+                Dialogs.ShowError("Missing file", "Please choose a SQLite database file.");
+                return;
+            }
         }
+        else if (_engine == DatabaseEngine.SqlServer)
+        {
+            if (RawModeCheck.IsChecked != true && string.IsNullOrWhiteSpace(ServerBox.Text))
+            {
+                Dialogs.ShowError("Missing server", "Please enter a server name.");
+                return;
+            }
+        }
+
         WriteToProfile(_profile);
         DialogResult = true;
         Close();
