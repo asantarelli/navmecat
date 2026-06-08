@@ -174,7 +174,42 @@ public static class TableCopyService
 
         if (!includeData) return;
 
-        // 2. Stream rows source → target with one prepared, parameterized insert.
+        // 2. Move the rows. SQL Server uses fast streaming bulk copy; others a prepared INSERT.
+        if (tgt.Engine == DatabaseEngine.SqlServer)
+            await BulkCopySqlServerAsync(src, srcDb, srcSchema, srcName, tgt, tgtDb, tgtSchema, newName);
+        else
+            await GenericPumpAsync(src, srcDb, srcSchema, srcName, tgt, tgtDb, tgtSchema, newName);
+    }
+
+    /// <summary>Streams source rows into a SQL Server target with SqlBulkCopy (fast, set-based).</summary>
+    private static async Task BulkCopySqlServerAsync(
+        ConnectionProfile src, string srcDb, string srcSchema, string srcName,
+        ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName)
+    {
+        await using var srcConn = await OpenAsync(src, srcDb);
+        await using var readCmd = srcConn.CreateCommand();
+        readCmd.CommandText = $"SELECT * FROM {Fq(src.Engine, srcSchema, srcName)}";
+        readCmd.CommandTimeout = 0;
+        await using var reader = await readCmd.ExecuteReaderAsync();
+
+        await using var tgtConn = (SqlConnection)await OpenAsync(tgt, tgtDb);
+        using var bulk = new SqlBulkCopy(tgtConn)
+        {
+            DestinationTableName = $"{Q(DatabaseEngine.SqlServer, tgtSchema)}.{Q(DatabaseEngine.SqlServer, newName)}",
+            BulkCopyTimeout = 0,
+            BatchSize = 10_000,
+            EnableStreaming = true
+        };
+        for (var i = 0; i < reader.FieldCount; i++)
+            bulk.ColumnMappings.Add(reader.GetName(i), reader.GetName(i));
+        await bulk.WriteToServerAsync(reader);
+    }
+
+    /// <summary>Streams source rows into a non-SQL-Server target via one prepared, parameterized INSERT.</summary>
+    private static async Task GenericPumpAsync(
+        ConnectionProfile src, string srcDb, string srcSchema, string srcName,
+        ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName)
+    {
         await using var srcConn = await OpenAsync(src, srcDb);
         await using var readCmd = srcConn.CreateCommand();
         readCmd.CommandText = $"SELECT * FROM {Fq(src.Engine, srcSchema, srcName)}";

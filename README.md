@@ -86,7 +86,8 @@ Grab the latest **portable `.exe`** from the
   **structure + data**, and auto-names the copy (`name_copy`, `name_copy2`, …) if the name is taken.
   Paste **into the same connection** *or* **into a different connection of the same engine**
   (e.g. copy a table from one SQL Server / SQLite file / Firebird / MongoDB to another). Works for
-  SQL Server, SQLite, Firebird, and MongoDB (collections).
+  SQL Server, SQLite, Firebird, and MongoDB (collections). Cross-connection SQL Server copies use
+  **SqlBulkCopy** (streaming) so large tables move fast.
 - **Table designer** — create and alter tables: columns, types, nullability, defaults, primary
   key and indexes, with a copyable generated script.
 - **Edit routines & views** — open and edit **functions, stored procedures and views**; create
