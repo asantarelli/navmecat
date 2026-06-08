@@ -27,6 +27,9 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
 
     public string Header => LocalizationManager.Instance["Tab_Objects"];
     public bool CanClose => false;
+    public string TabToolTip => Title;
+
+    partial void OnTitleChanged(string value) => OnPropertyChanged(nameof(TabToolTip));
 
     public ObjectListViewModel(
         Action<DbTreeNode, ObjectListItem> open, Action<DbTreeNode, ObjectListItem> design,

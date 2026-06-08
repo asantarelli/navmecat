@@ -560,7 +560,8 @@
                     </TabControl.Resources>
                     <TabControl.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                        ToolTip="{Binding TabToolTip}" ToolTipService.ShowDuration="20000">
                                 <Path Width="14" Height="14" Stretch="Uniform" Margin="0,0,7,0"
                                       Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
                                       Stroke="#FF4C6275" StrokeThickness="1.2" Fill="Transparent"/>

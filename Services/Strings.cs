@@ -91,6 +91,9 @@ public static class Strings
         ["Empty_NoTable"] = "No table open",
         ["Empty_Hint"] = "Double-click a table in the tree to open it in a new tab.",
         ["Tab_Objects"] = "Objects",
+        ["Tip_RowsLoaded"] = "Rows loaded: {0:N0}  (limit {1:N0})",
+        ["Tip_DocsLoaded"] = "Documents loaded: {0:N0}  (limit {1:N0})",
+        ["Tip_Key"] = "Key: {0}",
 
         // Object list (Objects tab)
         ["OL_OpenTable"] = "Open Table",
@@ -279,6 +282,9 @@ public static class Strings
         ["Empty_NoTable"] = "Ninguna tabla abierta",
         ["Empty_Hint"] = "Haga doble clic en una tabla del árbol para abrirla en una nueva pestaña.",
         ["Tab_Objects"] = "Objetos",
+        ["Tip_RowsLoaded"] = "Filas cargadas: {0:N0}  (límite {1:N0})",
+        ["Tip_DocsLoaded"] = "Documentos cargados: {0:N0}  (límite {1:N0})",
+        ["Tip_Key"] = "Clave: {0}",
 
         // Lista de objetos
         ["OL_OpenTable"] = "Abrir tabla",

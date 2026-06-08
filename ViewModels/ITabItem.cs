@@ -5,4 +5,6 @@ public interface ITabItem
 {
     string Header { get; }
     bool CanClose { get; }
+    /// <summary>Hover tooltip describing where the tab's content comes from.</summary>
+    string TabToolTip { get; }
 }

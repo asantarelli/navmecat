@@ -17,6 +17,37 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
 {
     public bool CanClose => true;
 
+    /// <summary>Hover tooltip: connection, engine, full location, and load/key info.</summary>
+    public string TabToolTip
+    {
+        get
+        {
+            var loc = LocalizationManager.Instance;
+            var c = Node.Connection;
+            var location = c.Engine switch
+            {
+                DatabaseEngine.Sqlite or DatabaseEngine.Firebird => Node.Name,
+                DatabaseEngine.MongoDb => $"{Node.Database}.{Node.Name}",
+                _ => $"{Node.Database}.{Node.Schema}.{Node.Name}"
+            };
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"{c.Name}  ({c.Engine.DisplayName()})");
+            sb.Append(location);
+            if (_session is not null)
+            {
+                sb.AppendLine();
+                sb.AppendLine(string.Format(loc["Tip_RowsLoaded"], _session.Data.Rows.Count, RowLimit));
+                sb.Append(string.Format(loc["Tip_Key"], _session.KeyDescription));
+            }
+            else if (_sourceData is not null)
+            {
+                sb.AppendLine();
+                sb.Append(string.Format(loc["Tip_DocsLoaded"], _sourceData.Rows.Count, RowLimit));
+            }
+            return sb.ToString();
+        }
+    }
+
     private EditableTableSession? _session;
     /// <summary>The grid's backing table — the editable session's data, or a read-only table (MongoDB).</summary>
     private DataTable? _sourceData;
@@ -608,6 +639,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
             ProjectView(); // applies any active filter/sort
             HasUnsavedChanges = false;
             ApplyDefaults();
+            OnPropertyChanged(nameof(TabToolTip));
 
             var keyNote = _session.HasReliableKey
                 ? ""
@@ -648,6 +680,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
             ProjectView();
             HasUnsavedChanges = false;
             ApplyDefaults();
+            OnPropertyChanged(nameof(TabToolTip));
 
             _setStatus($"Loaded {_sourceData.Rows.Count} document(s) from {Identifier} (limit {RowLimit}). " +
                        LocalizationManager.Instance["Mongo_ReadOnly"]);
