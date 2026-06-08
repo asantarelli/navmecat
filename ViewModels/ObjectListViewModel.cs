@@ -6,14 +6,15 @@ using NavMeCat.Services;
 
 namespace NavMeCat.ViewModels;
 
-/// <summary>Navicat-style object list for a container (a Tables folder, or a MongoDB database).</summary>
-public partial class ObjectListViewModel : ObservableObject
+/// <summary>The persistent "Objects" tab — lists the tables/collections of the selected container.</summary>
+public partial class ObjectListViewModel : ObservableObject, ITabItem
 {
-    private readonly DbTreeNode _container;
-    private readonly Action<ObjectListItem> _open;
-    private readonly Action<ObjectListItem> _design;
-    private readonly Action<ObjectListItem> _delete;
-    private readonly Action _new;
+    private readonly Action<DbTreeNode, ObjectListItem> _open;
+    private readonly Action<DbTreeNode, ObjectListItem> _design;
+    private readonly Action<DbTreeNode, ObjectListItem> _delete;
+    private readonly Action<DbTreeNode> _new;
+
+    private DbTreeNode? _container;
 
     public ObservableCollection<ObjectListItem> Items { get; } = new();
 
@@ -21,23 +22,30 @@ public partial class ObjectListViewModel : ObservableObject
     [ObservableProperty] private string title = "";
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private string countText = "";
+    [ObservableProperty] private bool canDesign;
+    [ObservableProperty] private bool canCreate;
 
-    private readonly DatabaseEngine _engine;
+    public string Header => LocalizationManager.Instance["Tab_Objects"];
+    public bool CanClose => false;
 
-    /// <summary>Design / New are only meaningful where a designer exists.</summary>
-    public bool CanDesign => _engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
-    public bool CanCreate => _engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
-
-    public ObjectListViewModel(DbTreeNode container,
-        Action<ObjectListItem> open, Action<ObjectListItem> design, Action<ObjectListItem> delete, Action @new)
+    public ObjectListViewModel(
+        Action<DbTreeNode, ObjectListItem> open, Action<DbTreeNode, ObjectListItem> design,
+        Action<DbTreeNode, ObjectListItem> delete, Action<DbTreeNode> @new)
     {
-        _container = container;
-        _engine = container.Connection.Engine;
         _open = open;
         _design = design;
         _delete = delete;
         _new = @new;
-        Title = container.Connection.Engine == DatabaseEngine.MongoDb
+    }
+
+    /// <summary>Points the Objects tab at a new container and reloads it.</summary>
+    public async Task ConfigureAsync(DbTreeNode container)
+    {
+        _container = container;
+        var engine = container.Connection.Engine;
+        CanDesign = engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
+        CanCreate = engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
+        Title = engine == DatabaseEngine.MongoDb
             ? $"{container.Name} — collections"
             : container.Type switch
             {
@@ -45,10 +53,12 @@ public partial class ObjectListViewModel : ObservableObject
                 NodeType.Schema => $"{container.Database}.{container.Name} — tables",
                 _ => $"{container.Database}.{container.Schema} — tables"
             };
+        await LoadAsync();
     }
 
     public async Task LoadAsync()
     {
+        if (_container is null) return;
         IsLoading = true;
         try
         {
@@ -71,23 +81,26 @@ public partial class ObjectListViewModel : ObservableObject
     [RelayCommand]
     private void Open()
     {
-        if (SelectedItem is not null) _open(SelectedItem);
+        if (_container is not null && SelectedItem is not null) _open(_container, SelectedItem);
     }
 
     [RelayCommand]
     private void Design()
     {
-        if (SelectedItem is not null) _design(SelectedItem);
+        if (_container is not null && SelectedItem is not null) _design(_container, SelectedItem);
     }
 
     [RelayCommand]
     private void Delete()
     {
-        if (SelectedItem is not null) _delete(SelectedItem);
+        if (_container is not null && SelectedItem is not null) _delete(_container, SelectedItem);
     }
 
     [RelayCommand]
-    private void New() => _new();
+    private void New()
+    {
+        if (_container is not null) _new(_container);
+    }
 
     [RelayCommand]
     private async Task Refresh() => await LoadAsync();

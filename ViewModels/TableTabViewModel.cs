@@ -13,8 +13,10 @@ namespace NavMeCat.ViewModels;
 /// One open table, shown as a tab. Owns its own editable session and data,
 /// independent of any other open tab.
 /// </summary>
-public partial class TableTabViewModel : ObservableObject, IDisposable
+public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
 {
+    public bool CanClose => true;
+
     private EditableTableSession? _session;
     /// <summary>The grid's backing table — the editable session's data, or a read-only table (MongoDB).</summary>
     private DataTable? _sourceData;

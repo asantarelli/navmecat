@@ -12,71 +12,61 @@ public partial class MainViewModel : ObservableObject
     private readonly ConnectionStore _store = new();
 
     public ObservableCollection<DbTreeNode> Roots { get; } = new();
-    public ObservableCollection<TableTabViewModel> OpenTabs { get; } = new();
+
+    /// <summary>All content tabs: the persistent Objects tab (when present) plus open tables.</summary>
+    public ObservableCollection<object> Tabs { get; } = new();
 
     [ObservableProperty] private DbTreeNode? selectedNode;
-    [ObservableProperty] private TableTabViewModel? selectedTab;
+    [ObservableProperty] private object? activeTab;
     [ObservableProperty] private string treeFilter = "";
     [ObservableProperty] private string statusText = "Ready";
     [ObservableProperty] private bool isBusy;
 
-    /// <summary>Navicat-style object list shown when a Tables folder (or Mongo database) is selected.</summary>
-    [ObservableProperty] private ObjectListViewModel? objectList;
-    [ObservableProperty] private bool showObjects;
+    /// <summary>The currently-selected table tab (null when the Objects tab is active).</summary>
+    public TableTabViewModel? SelectedTab => ActiveTab as TableTabViewModel;
 
-    public bool ShowTabs => !ShowObjects && SelectedTab is not null;
-    public bool ShowEmpty => !ShowObjects && SelectedTab is null;
+    /// <summary>The single, persistent Objects tab (created on first use).</summary>
+    private ObjectListViewModel? _objectsTab;
 
-    partial void OnShowObjectsChanged(bool value)
+    public bool ShowEmpty => Tabs.Count == 0;
+
+    partial void OnActiveTabChanged(object? value) => OnPropertyChanged(nameof(SelectedTab));
+
+    partial void OnSelectedNodeChanged(DbTreeNode? value) => _ = UpdateObjectListAsync(value);
+
+    private async Task UpdateObjectListAsync(DbTreeNode? node)
     {
-        OnPropertyChanged(nameof(ShowTabs));
-        OnPropertyChanged(nameof(ShowEmpty));
-    }
-
-    partial void OnSelectedTabChanged(TableTabViewModel? value)
-    {
-        OnPropertyChanged(nameof(ShowTabs));
-        OnPropertyChanged(nameof(ShowEmpty));
-    }
-
-    partial void OnSelectedNodeChanged(DbTreeNode? value) => UpdateObjectList(value);
-
-    private void UpdateObjectList(DbTreeNode? node)
-    {
-        // Show the object list for a Tables folder, a schema, or a database (Mongo db = collections).
+        // The Objects tab tracks the selected Tables folder, schema, or database.
         var show = node is { Type: NodeType.Category, CategoryChildType: NodeType.Table }
                    or { Type: NodeType.Schema }
                    or { Type: NodeType.Database };
-        if (!show)
-        {
-            ShowObjects = false;
-            return;
-        }
+        if (!show) return;
 
-        var container = node!;
-        var vm = new ObjectListViewModel(container,
-            open: item => OpenFromList(container, item),
-            design: item => DesignTableCommand.Execute(NodeForItem(container, item)),
-            delete: item => DeleteFromListAsync(container, item),
-            @new: () => NewTableCommand.Execute(container));
-        ObjectList = vm;
-        ShowObjects = true;
-        _ = vm.LoadAsync();
+        _objectsTab ??= new ObjectListViewModel(
+            open: OpenFromList,
+            design: (c, item) => DesignTableCommand.Execute(NodeForItem(c, item)),
+            delete: DeleteFromListAsync,
+            @new: c => NewTableCommand.Execute(c));
+
+        if (!Tabs.Contains(_objectsTab))
+        {
+            Tabs.Insert(0, _objectsTab);
+            OnPropertyChanged(nameof(ShowEmpty));
+        }
+        ActiveTab = _objectsTab;
+        await _objectsTab.ConfigureAsync(node!);
     }
 
     private static DbTreeNode NodeForItem(DbTreeNode container, ObjectListItem item) =>
         container.MakeObjectChild(NodeType.Table, item.Name, item.Schema);
 
-    private void OpenFromList(DbTreeNode container, ObjectListItem item)
-    {
-        ShowObjects = false;
+    private void OpenFromList(DbTreeNode container, ObjectListItem item) =>
         OpenTableCommand.Execute(NodeForItem(container, item));
-    }
 
     private async void DeleteFromListAsync(DbTreeNode container, ObjectListItem item)
     {
         await DropTable(NodeForItem(container, item));
-        if (ObjectList is not null) await ObjectList.LoadAsync();
+        if (_objectsTab is not null) await _objectsTab.LoadAsync();
     }
 
     /// <summary>Row limit applied when opening a new tab.</summary>
@@ -245,10 +235,10 @@ public partial class MainViewModel : ObservableObject
 
         // Already open? Just switch to it.
         var key = TableTabViewModel.MakeKey(node);
-        var existing = OpenTabs.FirstOrDefault(t => t.Key == key);
+        var existing = Tabs.OfType<TableTabViewModel>().FirstOrDefault(t => t.Key == key);
         if (existing is not null)
         {
-            SelectedTab = existing;
+            ActiveTab = existing;
             StatusText = $"Switched to {existing.Identifier}.";
             return;
         }
@@ -256,8 +246,9 @@ public partial class MainViewModel : ObservableObject
         var tab = new TableTabViewModel(node, SettingsStore.Current.DefaultRowLimit,
             s => StatusText = s, b => IsBusy = b);
         tab.CloseRequested += CloseTab;
-        OpenTabs.Add(tab);
-        SelectedTab = tab;
+        Tabs.Add(tab);
+        OnPropertyChanged(nameof(ShowEmpty));
+        ActiveTab = tab;
 
         if (!await tab.LoadAsync())
             CloseTab(tab); // load failed — don't leave an empty tab behind
@@ -524,14 +515,14 @@ public partial class MainViewModel : ObservableObject
             return;
 
         tab.CloseRequested -= CloseTab;
-        var index = OpenTabs.IndexOf(tab);
-        OpenTabs.Remove(tab);
+        var index = Tabs.IndexOf(tab);
+        var wasActive = ReferenceEquals(ActiveTab, tab);
+        Tabs.Remove(tab);
         tab.Dispose();
+        OnPropertyChanged(nameof(ShowEmpty));
 
-        if (SelectedTab == tab)
-            SelectedTab = OpenTabs.Count > 0
-                ? OpenTabs[Math.Min(index, OpenTabs.Count - 1)]
-                : null;
+        if (wasActive)
+            ActiveTab = Tabs.Count > 0 ? Tabs[Math.Min(index, Tabs.Count - 1)] : null;
     }
 
     private static void CopyInto(ConnectionProfile from, ConnectionProfile to)

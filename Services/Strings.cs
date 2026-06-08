@@ -90,6 +90,7 @@ public static class Strings
         // Empty state
         ["Empty_NoTable"] = "No table open",
         ["Empty_Hint"] = "Double-click a table in the tree to open it in a new tab.",
+        ["Tab_Objects"] = "Objects",
 
         // Settings dialog
         ["Settings_Title"] = "Settings",
@@ -251,6 +252,7 @@ public static class Strings
         // Estado vacío
         ["Empty_NoTable"] = "Ninguna tabla abierta",
         ["Empty_Hint"] = "Haga doble clic en una tabla del árbol para abrirla en una nueva pestaña.",
+        ["Tab_Objects"] = "Objetos",
 
         // Configuración
         ["Settings_Title"] = "Configuración",

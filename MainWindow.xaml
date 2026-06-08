@@ -203,31 +203,15 @@
 
             <!-- Content -->
             <Grid Grid.Column="2">
-                <!-- Navicat-style object list (a Tables folder / Mongo database is selected) -->
-                <v:ObjectListView DataContext="{Binding ObjectList}"
-                                  Visibility="{Binding DataContext.ShowObjects, RelativeSource={RelativeSource AncestorType=Grid}, Converter={StaticResource BoolToVis}}"/>
-
-                <!-- One tab per open table -->
-                <TabControl ItemsSource="{Binding OpenTabs}"
-                            SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
-                            Visibility="{Binding ShowTabs, Converter={StaticResource BoolToVis}}">
-                    <TabControl.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Width="14" Height="14" Stretch="Uniform" Margin="0,0,7,0"
-                                      Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
-                                      Stroke="#FF4C6275" StrokeThickness="1.2" Fill="Transparent"/>
-                                <TextBlock Text="{Binding Header}" VerticalAlignment="Center"/>
-                                <TextBlock Text="●" Margin="6,0,0,0" FontSize="9" VerticalAlignment="Center"
-                                           Foreground="{StaticResource B.Danger}"
-                                           Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}"/>
-                                <Button Style="{StaticResource TabCloseButton}" Margin="8,0,-4,0"
-                                        Command="{Binding CloseCommand}"/>
-                            </StackPanel>
+                <!-- One tab strip: the persistent Objects tab + one tab per open table -->
+                <TabControl ItemsSource="{Binding Tabs}"
+                            SelectedItem="{Binding ActiveTab, Mode=TwoWay}"
+                            Visibility="{Binding ActiveTab, Converter={StaticResource NullToVis}, ConverterParameter=inv}">
+                    <TabControl.Resources>
+                        <DataTemplate DataType="{x:Type vm:ObjectListViewModel}">
+                            <v:ObjectListView/>
                         </DataTemplate>
-                    </TabControl.ItemTemplate>
-                    <TabControl.ContentTemplate>
-                        <DataTemplate>
+                        <DataTemplate DataType="{x:Type vm:TableTabViewModel}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -573,7 +557,23 @@
                                 </Border>
                             </Grid>
                         </DataTemplate>
-                    </TabControl.ContentTemplate>
+                    </TabControl.Resources>
+                    <TabControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Width="14" Height="14" Stretch="Uniform" Margin="0,0,7,0"
+                                      Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
+                                      Stroke="#FF4C6275" StrokeThickness="1.2" Fill="Transparent"/>
+                                <TextBlock Text="{Binding Header}" VerticalAlignment="Center"/>
+                                <TextBlock Text="●" Margin="6,0,0,0" FontSize="9" VerticalAlignment="Center"
+                                           Foreground="{StaticResource B.Danger}"
+                                           Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"/>
+                                <Button Style="{StaticResource TabCloseButton}" Margin="8,0,-4,0"
+                                        Command="{Binding CloseCommand}"
+                                        Visibility="{Binding CanClose, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </TabControl.ItemTemplate>
                 </TabControl>
 
                 <!-- Empty state (no tabs open) -->
