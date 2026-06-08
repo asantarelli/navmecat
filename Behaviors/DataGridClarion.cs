@@ -171,6 +171,10 @@ public static class DataGridClarion
         // Run after the grid finishes committing the edited cell itself.
         grid.Dispatcher.BeginInvoke(new Action(() =>
         {
+            // End the row edit first; otherwise the edited row stays in edit mode and its other
+            // cells keep showing the edit buffer (still 0) until you leave the row.
+            try { grid.CommitEdit(DataGridEditingUnit.Row, true); } catch { /* ignore */ }
+
             GridClipboard.FillCells(grid, snapshot, value);
 
             // The DataGrid doesn't always repaint sibling cells whose source changed during
