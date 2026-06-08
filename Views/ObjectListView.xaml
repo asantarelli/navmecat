@@ -66,6 +66,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Schema" Binding="{Binding Schema}" Width="100"/>
                 <DataGridTextColumn Header="Rows" Binding="{Binding Rows, StringFormat=N0}" Width="120">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">

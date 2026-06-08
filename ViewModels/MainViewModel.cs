@@ -43,9 +43,11 @@ public partial class MainViewModel : ObservableObject
 
     private void UpdateObjectList(DbTreeNode? node)
     {
-        var isTablesFolder = node is { Type: NodeType.Category, CategoryChildType: NodeType.Table };
-        var isMongoDb = node is { Type: NodeType.Database } && node.Connection.Engine == DatabaseEngine.MongoDb;
-        if (!isTablesFolder && !isMongoDb)
+        // Show the object list for a Tables folder, a schema, or a database (Mongo db = collections).
+        var show = node is { Type: NodeType.Category, CategoryChildType: NodeType.Table }
+                   or { Type: NodeType.Schema }
+                   or { Type: NodeType.Database };
+        if (!show)
         {
             ShowObjects = false;
             return;
@@ -53,24 +55,27 @@ public partial class MainViewModel : ObservableObject
 
         var container = node!;
         var vm = new ObjectListViewModel(container,
-            open: name => OpenFromList(container, name),
-            design: name => DesignTableCommand.Execute(container.MakeObjectChild(NodeType.Table, name)),
-            delete: name => DeleteFromListAsync(container, name),
+            open: item => OpenFromList(container, item),
+            design: item => DesignTableCommand.Execute(NodeForItem(container, item)),
+            delete: item => DeleteFromListAsync(container, item),
             @new: () => NewTableCommand.Execute(container));
         ObjectList = vm;
         ShowObjects = true;
         _ = vm.LoadAsync();
     }
 
-    private void OpenFromList(DbTreeNode container, string name)
+    private static DbTreeNode NodeForItem(DbTreeNode container, ObjectListItem item) =>
+        container.MakeObjectChild(NodeType.Table, item.Name, item.Schema);
+
+    private void OpenFromList(DbTreeNode container, ObjectListItem item)
     {
         ShowObjects = false;
-        OpenTableCommand.Execute(container.MakeObjectChild(NodeType.Table, name));
+        OpenTableCommand.Execute(NodeForItem(container, item));
     }
 
-    private async void DeleteFromListAsync(DbTreeNode container, string name)
+    private async void DeleteFromListAsync(DbTreeNode container, ObjectListItem item)
     {
-        await DropTable(container.MakeObjectChild(NodeType.Table, name));
+        await DropTable(NodeForItem(container, item));
         if (ObjectList is not null) await ObjectList.LoadAsync();
     }
 

@@ -70,9 +70,10 @@ Grab the latest **portable `.exe`** from the
   views to browse rows. For SQL Server, set a connection's **default database** to collapse the
   tree to *connection → schema → Tables* (the database level is skipped); leave it blank to browse
   all databases on the server.
-- **Object list** — click a **Tables** folder (or a MongoDB database) to see all its tables in the
-  content area, Navicat-style: **Name, Rows, Modified Date, Comment**, with a toolbar (Open / Design
-  / New / Delete / Refresh). Double-click a row to open it.
+- **Object list** — click a **database**, a **schema**, or a **Tables** folder (or a MongoDB
+  database) to see its tables in the content area, Navicat-style: **Name, Schema, Rows, Modified
+  Date, Comment**, with a toolbar (Open / Design / New / Delete / Refresh). Double-click a row to
+  open it. Clicking a SQL Server database lists every table across its schemas.
 - **Structure inspector** — a dockable/pinnable side panel showing **Info**, **DDL**
   (`CREATE TABLE` + indexes + foreign keys), and **Relationships**.
 - **SQL query window** — **New Query** opens a window to run arbitrary SQL (Run / F5) with a

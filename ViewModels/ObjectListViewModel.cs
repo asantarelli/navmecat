@@ -10,9 +10,9 @@ namespace NavMeCat.ViewModels;
 public partial class ObjectListViewModel : ObservableObject
 {
     private readonly DbTreeNode _container;
-    private readonly Action<string> _open;
-    private readonly Action<string> _design;
-    private readonly Action<string> _delete;
+    private readonly Action<ObjectListItem> _open;
+    private readonly Action<ObjectListItem> _design;
+    private readonly Action<ObjectListItem> _delete;
     private readonly Action _new;
 
     public ObservableCollection<ObjectListItem> Items { get; } = new();
@@ -29,7 +29,7 @@ public partial class ObjectListViewModel : ObservableObject
     public bool CanCreate => _engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
 
     public ObjectListViewModel(DbTreeNode container,
-        Action<string> open, Action<string> design, Action<string> delete, Action @new)
+        Action<ObjectListItem> open, Action<ObjectListItem> design, Action<ObjectListItem> delete, Action @new)
     {
         _container = container;
         _engine = container.Connection.Engine;
@@ -39,7 +39,12 @@ public partial class ObjectListViewModel : ObservableObject
         _new = @new;
         Title = container.Connection.Engine == DatabaseEngine.MongoDb
             ? $"{container.Name} — collections"
-            : $"{container.Database}.{container.Schema} — tables";
+            : container.Type switch
+            {
+                NodeType.Database => $"{container.Name} — tables",
+                NodeType.Schema => $"{container.Database}.{container.Name} — tables",
+                _ => $"{container.Database}.{container.Schema} — tables"
+            };
     }
 
     public async Task LoadAsync()
@@ -66,19 +71,19 @@ public partial class ObjectListViewModel : ObservableObject
     [RelayCommand]
     private void Open()
     {
-        if (SelectedItem is not null) _open(SelectedItem.Name);
+        if (SelectedItem is not null) _open(SelectedItem);
     }
 
     [RelayCommand]
     private void Design()
     {
-        if (SelectedItem is not null) _design(SelectedItem.Name);
+        if (SelectedItem is not null) _design(SelectedItem);
     }
 
     [RelayCommand]
     private void Delete()
     {
-        if (SelectedItem is not null) _delete(SelectedItem.Name);
+        if (SelectedItem is not null) _delete(SelectedItem);
     }
 
     [RelayCommand]

@@ -91,12 +91,16 @@ public partial class DbTreeNode : ObservableObject
         new() { Type = type, Name = name, Connection = c, Database = db, Schema = schema };
 
     /// <summary>Creates an object child of this container (used by the object-list view).</summary>
-    public DbTreeNode MakeObjectChild(NodeType type, string name)
+    public DbTreeNode MakeObjectChild(NodeType type, string name, string? schemaOverride = null)
     {
         var db = Type == NodeType.Database ? Name : Database;
-        var schema = Type == NodeType.Database
-            ? (Connection.Engine == DatabaseEngine.MongoDb ? Name : Schema)
-            : Schema;
+        string? schema;
+        if (schemaOverride is not null)
+            schema = schemaOverride;
+        else if (Type == NodeType.Database)
+            schema = Connection.Engine == DatabaseEngine.MongoDb ? Name : "dbo";
+        else
+            schema = Schema;
         var node = ObjectNode(type, Connection, db ?? "", schema ?? "", name);
         node.Parent = this;
         return node;

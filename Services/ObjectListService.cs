@@ -7,7 +7,7 @@ using NavMeCat.Models;
 namespace NavMeCat.Services;
 
 /// <summary>One row in the Navicat-style object list.</summary>
-public sealed record ObjectListItem(string Name, long? Rows, DateTime? Modified, string? Comment);
+public sealed record ObjectListItem(string Name, long? Rows, DateTime? Modified, string? Comment, string? Schema = null);
 
 /// <summary>Loads the tables/collections of a container with row counts (and dates/comments where available).</summary>
 public static class ObjectListService
@@ -24,11 +24,12 @@ public static class ObjectListService
 
     private static async Task<List<ObjectListItem>> LoadSqlServerAsync(ConnectionProfile p, string database, string schema)
     {
+        var allSchemas = string.IsNullOrEmpty(schema);
         var result = new List<ObjectListItem>();
         await using var conn = new SqlConnection(SqlServerService.WithDatabase(p.BuildConnectionString(), database));
         await conn.OpenAsync();
-        const string sql = @"
-            SELECT t.name,
+        var sql = @"
+            SELECT s.name AS sch, t.name,
                    (SELECT SUM(pp.rows) FROM sys.partitions pp
                     WHERE pp.object_id = t.object_id AND pp.index_id IN (0,1)) AS rows,
                    t.modify_date,
@@ -37,17 +38,20 @@ public static class ObjectListService
             JOIN sys.schemas s ON s.schema_id = t.schema_id
             LEFT JOIN sys.extended_properties ep
                    ON ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
-            WHERE s.name = @schema
+            " + (allSchemas ? "" : "WHERE s.name = @schema") + @"
             ORDER BY t.name";
         await using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@schema", schema);
+        if (!allSchemas) cmd.Parameters.AddWithValue("@schema", schema);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
+        {
             result.Add(new ObjectListItem(
-                r.GetString(0),
-                r.IsDBNull(1) ? null : Convert.ToInt64(r.GetValue(1)),
-                r.IsDBNull(2) ? null : r.GetDateTime(2),
-                r.IsDBNull(3) ? null : r.GetString(3)));
+                r.GetString(1),
+                r.IsDBNull(2) ? null : Convert.ToInt64(r.GetValue(2)),
+                r.IsDBNull(3) ? null : r.GetDateTime(3),
+                r.IsDBNull(4) ? null : r.GetString(4),
+                r.GetString(0)));
+        }
         return result;
     }
 
