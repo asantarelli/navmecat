@@ -73,6 +73,10 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
                 break;
 
+            case NodeType.Table when node.Connection.Engine == DatabaseEngine.Firebird:
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                break;
+
             case NodeType.Table:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
@@ -83,7 +87,7 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
                 break;
 
-            case NodeType.View when node.Connection.Engine == DatabaseEngine.Sqlite:
+            case NodeType.View when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 break;
 
@@ -108,7 +112,7 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
-            case NodeType.Category when node.Connection.Engine == DatabaseEngine.Sqlite:
+            case NodeType.Category when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird:
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 

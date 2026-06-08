@@ -6,7 +6,8 @@ public enum DatabaseEngine
     SqlServer,
     Sqlite,
     PostgreSql,
-    MongoDb
+    MongoDb,
+    Firebird
 }
 
 public static class DatabaseEngineInfo
@@ -18,10 +19,11 @@ public static class DatabaseEngineInfo
         DatabaseEngine.Sqlite => "SQLite",
         DatabaseEngine.PostgreSql => "PostgreSQL",
         DatabaseEngine.MongoDb => "MongoDB",
+        DatabaseEngine.Firebird => "Firebird",
         _ => e.ToString()
     };
 
     /// <summary>True for engines that are fully implemented today.</summary>
     public static bool IsSupported(this DatabaseEngine e) =>
-        e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
+        e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite or DatabaseEngine.Firebird;
 }

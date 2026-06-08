@@ -20,6 +20,8 @@ public class NodeIconConverter : IValueConverter
             "M8,1.5 C4.4,1.5 2.5,3.5 2.5,7.5 C2.5,11 4,14.5 6,14.5 C6.9,14.5 6.8,13 7,11.5 " +
             "M8,1.5 C11.6,1.5 13.5,3.5 13.5,7 C13.5,10 12,12.5 10.3,12.5 C9.2,12.5 9.3,10.8 9.5,9"),
         [DatabaseEngine.MongoDb] = Geometry.Parse("M8,1.5 C5,5 5,11.5 8,14.5 C11,11.5 11,5 8,1.5 Z M8,1.5 V14.5"),
+        [DatabaseEngine.Firebird] = Geometry.Parse(
+            "M8,1.5 C9,4 12,5 11.5,8.5 C11.2,11 9.5,13.5 8,13.5 C6.5,13.5 4.8,12 5,9.5 C5.1,8 6,7.7 6.6,8.6 C6.9,6 8,4.5 8,1.5 Z"),
     };
 
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -40,6 +42,7 @@ public class NodeIconBrushConverter : IValueConverter
     private static readonly Brush Sqlite = Frozen("#1B9E8B");
     private static readonly Brush Postgres = Frozen("#336791");
     private static readonly Brush Mongo = Frozen("#4DB33D");
+    private static readonly Brush Firebird = Frozen("#C92E2E");
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
@@ -50,6 +53,7 @@ public class NodeIconBrushConverter : IValueConverter
                 DatabaseEngine.Sqlite => Sqlite,
                 DatabaseEngine.PostgreSql => Postgres,
                 DatabaseEngine.MongoDb => Mongo,
+                DatabaseEngine.Firebird => Firebird,
                 _ => NodeTypeToBrushConverter.BrushFor(NodeType.Server)
             };
         return NodeTypeToBrushConverter.BrushFor(node.Type);

@@ -15,9 +15,57 @@ public static class TableMetadataService
 
     public static Task<TableStructure> GetAsync(
         DatabaseEngine engine, string connectionString, string database, string schema, string table)
-        => engine == DatabaseEngine.Sqlite
-            ? GetSqliteAsync(connectionString, table)
-            : GetSqlServerAsync(connectionString, database, schema, table);
+        => engine switch
+        {
+            DatabaseEngine.Sqlite => GetSqliteAsync(connectionString, table),
+            DatabaseEngine.Firebird => GetFirebirdAsync(connectionString, table),
+            _ => GetSqlServerAsync(connectionString, database, schema, table)
+        };
+
+    private static async Task<TableStructure> GetFirebirdAsync(string connectionString, string table)
+    {
+        var loc = LocalizationManager.Instance;
+        var cols = await FirebirdService.GetColumnsAsync(connectionString, table);
+        var indexes = await FirebirdService.GetIndexesAsync(connectionString, table);
+        var fks = await FirebirdService.GetForeignKeysAsync(connectionString, table);
+        var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name).ToList();
+
+        long rows = -1;
+        try { rows = await FirebirdService.GetRowCountAsync(connectionString, table); } catch { /* best effort */ }
+
+        // DDL (best effort, reconstructed from system tables).
+        var ddl = new StringBuilder($"CREATE TABLE {FirebirdService.Quote(table)} (\n");
+        var lines = cols.Select(c =>
+            $"  {FirebirdService.Quote(c.Name)} {c.TypeName}{(c.Nullable ? "" : " NOT NULL")}").ToList();
+        if (pk.Count > 0)
+            lines.Add($"  PRIMARY KEY ({string.Join(", ", pk.Select(FirebirdService.Quote))})");
+        ddl.Append(string.Join(",\n", lines)).Append("\n);");
+        foreach (var ix in indexes)
+            ddl.Append($"\nCREATE {(ix.Unique ? "UNIQUE " : "")}INDEX {FirebirdService.Quote(ix.Name)} ON {FirebirdService.Quote(table)} ({string.Join(", ", ix.Columns.Select(FirebirdService.Quote))});");
+
+        // Info.
+        var info = new StringBuilder();
+        info.AppendLine($"{loc["Info_Table"],-16}{table}");
+        info.AppendLine($"{loc["Info_Columns"],-16}{cols.Count}");
+        info.AppendLine($"{loc["Info_PrimaryKey"],-16}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
+        info.AppendLine($"{loc["Info_Indexes"],-16}{indexes.Count}");
+        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],-16}{rows:N0}");
+        info.AppendLine();
+        info.AppendLine(loc["Info_Columns"]);
+        foreach (var c in cols)
+            info.AppendLine($"  • {c.Name}  {c.TypeName}  {(c.Nullable ? "NULL" : "NOT NULL")}");
+
+        // Relationships (outgoing FKs).
+        var rels = new StringBuilder();
+        foreach (var fk in fks)
+        {
+            if (rels.Length == 0) rels.AppendLine(loc["Rel_References"]);
+            rels.AppendLine($"  {fk.Name}: ({string.Join(", ", fk.Cols)}) → {fk.RefTable} ({string.Join(", ", fk.RefCols)})");
+        }
+        var relationships = rels.Length == 0 ? loc["Rel_None"] : rels.ToString().TrimEnd();
+
+        return new TableStructure(ddl.ToString(), info.ToString().TrimEnd(), relationships);
+    }
 
     private static async Task<TableStructure> GetSqlServerAsync(string connectionString, string database, string schema, string table)
     {

@@ -389,6 +389,7 @@ public partial class MainViewModel : ObservableObject
         to.Engine = from.Engine;
         to.Server = from.Server;
         to.FilePath = from.FilePath;
+        to.Port = from.Port;
         to.Database = from.Database;
         to.IntegratedSecurity = from.IntegratedSecurity;
         to.Username = from.Username;

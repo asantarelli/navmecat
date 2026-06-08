@@ -548,7 +548,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable
         _setStatus = setStatus;
         _setBusy = setBusy;
         Key = MakeKey(node);
-        Identifier = node.Connection.Engine == DatabaseEngine.Sqlite
+        Identifier = node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird
             ? node.Name
             : $"{node.Database}.{node.Schema}.{node.Name}";
         Header = node.Name;

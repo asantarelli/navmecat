@@ -1,3 +1,4 @@
+using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 
@@ -18,8 +19,11 @@ public class ConnectionProfile
     public string Server { get; set; } = "";
     public string? Database { get; set; }
 
-    /// <summary>SQLite database file path.</summary>
+    /// <summary>SQLite database file path, or Firebird database path/alias.</summary>
     public string? FilePath { get; set; }
+
+    /// <summary>TCP port (Firebird; 0 = engine default 3050).</summary>
+    public int Port { get; set; }
 
     /// <summary>True = Windows Authentication, False = SQL Server login.</summary>
     public bool IntegratedSecurity { get; set; } = true;
@@ -42,6 +46,20 @@ public class ConnectionProfile
         {
             case DatabaseEngine.Sqlite:
                 return new SqliteConnectionStringBuilder { DataSource = FilePath ?? "" }.ToString();
+            case DatabaseEngine.Firebird:
+                var fb = new FbConnectionStringBuilder
+                {
+                    DataSource = string.IsNullOrWhiteSpace(Server) ? "localhost" : Server,
+                    Port = Port > 0 ? Port : 3050,
+                    Database = FilePath ?? "",
+                    UserID = string.IsNullOrWhiteSpace(Username) ? "SYSDBA" : Username,
+                    Password = Password ?? "",
+                    Charset = "UTF8",
+                    Dialect = 3,
+                    ServerType = FbServerType.Default,
+                    Pooling = false
+                };
+                return fb.ToString();
             case DatabaseEngine.SqlServer:
                 break; // built below
             default:

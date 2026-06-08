@@ -1,7 +1,7 @@
 # NavMeCat
 
-A lightweight, Navicat-style database manager for **SQL Server** and **SQLite**, built with
-**C# / WPF (.NET 9)**.
+A lightweight, Navicat-style database manager for **SQL Server**, **SQLite** and **Firebird**,
+built with **C# / WPF (.NET 9)**.
 
 Add connection strings, browse the server tree (databases → schemas → tables), open a table, and
 view & edit its records in place — including adding and deleting rows — with changes pushed back to
@@ -23,11 +23,14 @@ Grab the latest **portable `.exe`** from the
 
 - **Multiple database engines** — pick the engine when creating a connection. Each connection is
   tagged with an engine icon in the tree so you can tell them apart at a glance.
-  - **SQL Server** and **SQLite** are fully supported today; **PostgreSQL** and **MongoDB** are
-    selectable now and being wired up next.
+  - **SQL Server**, **SQLite** and **Firebird** are supported today; **PostgreSQL** and **MongoDB**
+    are selectable now and being wired up next.
   - **SQLite**: just point to a `.db` / `.sqlite` file — browse tables & views, view and edit rows
     (primary-key or rowid-safe), **design tables** (create new, or alter existing via a safe
     table-rebuild), and inspect structure/DDL.
+  - **Firebird**: connect to a server (host / port / database path or alias / user / password) —
+    browse tables & views, view and edit rows (primary-key keyed), and inspect structure (Info,
+    a reconstructed DDL, and foreign-key relationships).
 - **Connection manager** — add, edit, and remove connections.
   - SQL Server: Windows Authentication or SQL Server login.
   - Field-based builder *or* a raw connection string.

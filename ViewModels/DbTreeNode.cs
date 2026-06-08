@@ -132,9 +132,12 @@ public partial class DbTreeNode : ObservableObject
             }
 
             var connStr = Connection.BuildConnectionString();
-            var items = Connection.Engine == DatabaseEngine.Sqlite
-                ? await LoadSqliteChildrenAsync(connStr)
-                : await LoadSqlServerChildrenAsync(connStr);
+            var items = Connection.Engine switch
+            {
+                DatabaseEngine.Sqlite => await LoadSqliteChildrenAsync(connStr),
+                DatabaseEngine.Firebird => await LoadFirebirdChildrenAsync(connStr),
+                _ => await LoadSqlServerChildrenAsync(connStr)
+            };
 
             Children.Clear();
             if (items.Count == 0)
@@ -214,6 +217,31 @@ public partial class DbTreeNode : ObservableObject
                 };
                 foreach (var n in names)
                     items.Add(ObjectNode(CategoryChildType, Connection, main, main, n));
+                break;
+        }
+        return items;
+    }
+
+    /// <summary>Firebird connects to a single database — show Tables/Views directly.</summary>
+    private async Task<List<DbTreeNode>> LoadFirebirdChildrenAsync(string connStr)
+    {
+        const string fb = "firebird";
+        var items = new List<DbTreeNode>();
+        switch (Type)
+        {
+            case NodeType.Server:
+                items.Add(CategoryNode(Connection, fb, fb, "Tables", NodeType.Table));
+                items.Add(CategoryNode(Connection, fb, fb, "Views", NodeType.View));
+                break;
+            case NodeType.Category:
+                var names = CategoryChildType switch
+                {
+                    NodeType.Table => await FirebirdService.GetTablesAsync(connStr),
+                    NodeType.View => await FirebirdService.GetViewsAsync(connStr),
+                    _ => new List<string>()
+                };
+                foreach (var n in names)
+                    items.Add(ObjectNode(CategoryChildType, Connection, fb, fb, n));
                 break;
         }
         return items;

@@ -37,12 +37,23 @@ public partial class ConnectionDialog : Window
         RawModeCheck.IsChecked = _profile.UseRawConnectionString;
         RawBox.Text = _profile.RawConnectionString ?? "";
 
+        // Firebird fields (reuse Server/FilePath/Username/Password/Port).
+        if (_profile.Engine == DatabaseEngine.Firebird)
+        {
+            FbHostBox.Text = string.IsNullOrWhiteSpace(_profile.Server) ? "localhost" : _profile.Server;
+            FbFileBox.Text = _profile.FilePath ?? "";
+            FbUserBox.Text = string.IsNullOrWhiteSpace(_profile.Username) ? "SYSDBA" : _profile.Username;
+            FbPassBox.Password = _profile.Password ?? "";
+        }
+        FbPortBox.Text = (_profile.Port > 0 ? _profile.Port : 3050).ToString();
+
         _engine = _profile.Engine;
         (_engine switch
         {
             DatabaseEngine.Sqlite => EngSqlite,
             DatabaseEngine.PostgreSql => EngPostgres,
             DatabaseEngine.MongoDb => EngMongo,
+            DatabaseEngine.Firebird => EngFirebird,
             _ => EngSqlServer
         }).IsChecked = true;
 
@@ -56,6 +67,18 @@ public partial class ConnectionDialog : Window
     {
         p.Name = string.IsNullOrWhiteSpace(NameBox.Text) ? "Unnamed Connection" : NameBox.Text.Trim();
         p.Engine = _engine;
+
+        if (_engine == DatabaseEngine.Firebird)
+        {
+            p.Server = FbHostBox.Text.Trim();
+            p.FilePath = string.IsNullOrWhiteSpace(FbFileBox.Text) ? null : FbFileBox.Text.Trim();
+            p.Username = string.IsNullOrWhiteSpace(FbUserBox.Text) ? "SYSDBA" : FbUserBox.Text.Trim();
+            p.Password = string.IsNullOrEmpty(FbPassBox.Password) ? null : FbPassBox.Password;
+            p.Port = int.TryParse(FbPortBox.Text, out var port) ? port : 0;
+            p.UseRawConnectionString = false;
+            return;
+        }
+
         p.Server = ServerBox.Text.Trim();
         p.Database = string.IsNullOrWhiteSpace(DatabaseBox.Text) ? null : DatabaseBox.Text.Trim();
         p.IntegratedSecurity = WinAuthRadio.IsChecked == true;
@@ -77,6 +100,7 @@ public partial class ConnectionDialog : Window
             var s when s == EngSqlite => DatabaseEngine.Sqlite,
             var s when s == EngPostgres => DatabaseEngine.PostgreSql,
             var s when s == EngMongo => DatabaseEngine.MongoDb,
+            var s when s == EngFirebird => DatabaseEngine.Firebird,
             _ => DatabaseEngine.SqlServer
         };
         ApplyEngineState();
@@ -88,10 +112,12 @@ public partial class ConnectionDialog : Window
 
         var isSql = _engine == DatabaseEngine.SqlServer;
         var isSqlite = _engine == DatabaseEngine.Sqlite;
+        var isFirebird = _engine == DatabaseEngine.Firebird;
         var supported = _engine.IsSupported();
 
         SqlServerPanel.Visibility = isSql ? Visibility.Visible : Visibility.Collapsed;
         SqlitePanel.Visibility = isSqlite ? Visibility.Visible : Visibility.Collapsed;
+        FirebirdPanel.Visibility = isFirebird ? Visibility.Visible : Visibility.Collapsed;
         ComingSoonPanel.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
         if (!supported)
             ComingSoonText.Text = $"{_engine.DisplayName()} support is coming soon. " +
@@ -133,6 +159,21 @@ public partial class ConnectionDialog : Window
         }
     }
 
+    private void FbBrowse_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = "Firebird databases (*.fdb;*.gdb)|*.fdb;*.gdb|All files (*.*)|*.*",
+            CheckFileExists = false
+        };
+        if (dlg.ShowDialog(this) == true)
+        {
+            FbFileBox.Text = dlg.FileName;
+            if (string.IsNullOrWhiteSpace(NameBox.Text) || NameBox.Text == "New Connection")
+                NameBox.Text = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
+        }
+    }
+
     private void Header_MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
@@ -157,6 +198,8 @@ public partial class ConnectionDialog : Window
         {
             if (_engine == DatabaseEngine.Sqlite)
                 await SqliteService.TestConnectionAsync(temp.BuildConnectionString());
+            else if (_engine == DatabaseEngine.Firebird)
+                await FirebirdService.TestConnectionAsync(temp.BuildConnectionString());
             else
                 await SqlServerService.TestConnectionAsync(temp.BuildConnectionString());
             TestStatus.Text = "Connection succeeded.";
@@ -177,6 +220,14 @@ public partial class ConnectionDialog : Window
             if (string.IsNullOrWhiteSpace(FileBox.Text))
             {
                 Dialogs.ShowError("Missing file", "Please choose a SQLite database file.");
+                return;
+            }
+        }
+        else if (_engine == DatabaseEngine.Firebird)
+        {
+            if (string.IsNullOrWhiteSpace(FbFileBox.Text))
+            {
+                Dialogs.ShowError("Missing database", "Please enter the Firebird database path or alias.");
                 return;
             }
         }

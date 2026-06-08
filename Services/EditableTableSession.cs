@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Text;
+using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using NavMeCat.Models;
@@ -46,7 +47,8 @@ public sealed class EditableTableSession : IDisposable
     public bool HasNaturalKey { get; }
     public bool IsCustomIdentity { get; private set; }
 
-    public string Identifier => _engine == DatabaseEngine.Sqlite ? Table : $"{Database}.{Schema}.{Table}";
+    public string Identifier => _engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird
+        ? Table : $"{Database}.{Schema}.{Table}";
     public IReadOnlyList<string> AllColumnNames => Data.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
     public IReadOnlyList<string> KeyColumnNames => _keyColumns.Select(c => c.ColumnName).ToList();
     public IReadOnlyCollection<string> NonComparableColumns => _nonComparable;
@@ -77,13 +79,21 @@ public sealed class EditableTableSession : IDisposable
         _nonComparable = nonComparable;
     }
 
-    private static string Quote(string identifier) => "[" + identifier.Replace("]", "]]") + "]";
+    private static string Quote(DatabaseEngine engine, string identifier) => engine == DatabaseEngine.Firebird
+        ? "\"" + identifier.Replace("\"", "\"\"") + "\""
+        : "[" + identifier.Replace("]", "]]") + "]";
+
+    /// <summary>Quote an identifier using this session's engine.</summary>
+    private string Q(string identifier) => Quote(_engine, identifier);
 
     public static Task<EditableTableSession> OpenAsync(
         DatabaseEngine engine, string connectionString, string database, string schema, string table, int rowLimit)
-        => engine == DatabaseEngine.Sqlite
-            ? OpenSqliteAsync(connectionString, table, rowLimit)
-            : OpenSqlServerAsync(connectionString, database, schema, table, rowLimit);
+        => engine switch
+        {
+            DatabaseEngine.Sqlite => OpenSqliteAsync(connectionString, table, rowLimit),
+            DatabaseEngine.Firebird => OpenFirebirdAsync(connectionString, table, rowLimit),
+            _ => OpenSqlServerAsync(connectionString, database, schema, table, rowLimit)
+        };
 
     private static async Task<EditableTableSession> OpenSqlServerAsync(
         string connectionString, string database, string schema, string table, int rowLimit)
@@ -91,7 +101,7 @@ public sealed class EditableTableSession : IDisposable
         var connection = new SqlConnection(SqlServerService.WithDatabase(connectionString, database));
         await connection.OpenAsync();
 
-        var fq = $"{Quote(schema)}.{Quote(table)}";
+        var fq = $"{Quote(DatabaseEngine.SqlServer, schema)}.{Quote(DatabaseEngine.SqlServer, table)}";
         var sql = $"SELECT TOP ({rowLimit}) * FROM {fq}";
         var adapter = new SqlDataAdapter(sql, connection)
         {
@@ -138,7 +148,7 @@ public sealed class EditableTableSession : IDisposable
         var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync();
 
-        var fq = Quote(table);
+        var fq = Quote(DatabaseEngine.Sqlite, table);
         var data = new DataTable(table);
         await using (var cmd = connection.CreateCommand())
         {
@@ -180,6 +190,50 @@ public sealed class EditableTableSession : IDisposable
         // SQLite does not support TOP/LIMIT on UPDATE/DELETE, so never emit it.
         return new EditableTableSession(connection, null, data, DatabaseEngine.Sqlite, fq,
             "main", "main", table, rowLimit, keys, useTopOne: false, description, naturalKey, nonComparable);
+    }
+
+    private static async Task<EditableTableSession> OpenFirebirdAsync(
+        string connectionString, string table, int rowLimit)
+    {
+        var connection = new FbConnection(connectionString);
+        await connection.OpenAsync();
+
+        var fq = Quote(DatabaseEngine.Firebird, table);
+        var data = new DataTable(table);
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = $"SELECT FIRST {rowLimit} * FROM {fq}";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            data.Load(reader);
+        }
+
+        var cols = await FirebirdService.GetColumnsAsync(connectionString, table);
+        var nonComparable = new HashSet<string>(
+            cols.Where(c => c.IsBlob).Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
+        foreach (DataColumn c in data.Columns)
+            if (c.DataType == typeof(byte[])) nonComparable.Add(c.ColumnName);
+
+        DataColumn[] keys;
+        string description;
+        bool naturalKey;
+
+        var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name)
+            .Where(data.Columns.Contains).Select(n => data.Columns[n]!).ToArray();
+        if (pk.Length > 0)
+        {
+            keys = pk; description = "primary key"; naturalKey = true;
+        }
+        else
+        {
+            keys = data.Columns.Cast<DataColumn>()
+                .Where(c => c.DataType != typeof(byte[]) && !nonComparable.Contains(c.ColumnName))
+                .ToArray();
+            description = "all columns"; naturalKey = false;
+        }
+
+        // Firebird has no TOP/LIMIT on UPDATE/DELETE.
+        return new EditableTableSession(connection, null, data, DatabaseEngine.Firebird, fq,
+            "firebird", "firebird", table, rowLimit, keys, useTopOne: false, description, naturalKey, nonComparable);
     }
 
     public bool HasChanges => Data.GetChanges() is not null;
@@ -373,7 +427,7 @@ public sealed class EditableTableSession : IDisposable
         {
             if (c.AutoIncrement) continue;
             var v = row[c, DataRowVersion.Current];
-            names.Add(Quote(c.ColumnName));
+            names.Add(Q(c.ColumnName));
             placeholders.Add("@p" + values.Count);
             previewValues.Add(FormatLiteral(v));
             values.Add(v);
@@ -408,8 +462,8 @@ public sealed class EditableTableSession : IDisposable
             var c = changed[i];
             var v = row[c, DataRowVersion.Current];
             var sep = i > 0 ? ", " : "";
-            sql.Append(sep).Append($"{Quote(c.ColumnName)} = @p{values.Count}");
-            preview.Append(sep).Append($"{Quote(c.ColumnName)} = {FormatLiteral(v)}");
+            sql.Append(sep).Append($"{Q(c.ColumnName)} = @p{values.Count}");
+            preview.Append(sep).Append($"{Q(c.ColumnName)} = {FormatLiteral(v)}");
             values.Add(v);
         }
 
@@ -441,13 +495,13 @@ public sealed class EditableTableSession : IDisposable
             var v = row[c, DataRowVersion.Original];
             if (v is DBNull)
             {
-                sql.Append(sep).Append($"{Quote(c.ColumnName)} IS NULL");
-                preview.Append(sep).Append($"{Quote(c.ColumnName)} IS NULL");
+                sql.Append(sep).Append($"{Q(c.ColumnName)} IS NULL");
+                preview.Append(sep).Append($"{Q(c.ColumnName)} IS NULL");
             }
             else
             {
-                sql.Append(sep).Append($"{Quote(c.ColumnName)} = @p{values.Count}");
-                preview.Append(sep).Append($"{Quote(c.ColumnName)} = {FormatLiteral(v)}");
+                sql.Append(sep).Append($"{Q(c.ColumnName)} = @p{values.Count}");
+                preview.Append(sep).Append($"{Q(c.ColumnName)} = {FormatLiteral(v)}");
                 values.Add(v);
             }
         }
