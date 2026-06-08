@@ -14,16 +14,17 @@ public static class TableMetadataService
     private static string Quote(string id) => "[" + id.Replace("]", "]]") + "]";
 
     public static Task<TableStructure> GetAsync(
-        DatabaseEngine engine, string connectionString, string database, string schema, string table)
+        DatabaseEngine engine, string connectionString, string database, string schema, string table,
+        string connectionName = "")
         => engine switch
         {
-            DatabaseEngine.Sqlite => GetSqliteAsync(connectionString, table),
-            DatabaseEngine.Firebird => GetFirebirdAsync(connectionString, table),
-            DatabaseEngine.MongoDb => MongoService.GetStructureAsync(connectionString, database, table),
-            _ => GetSqlServerAsync(connectionString, database, schema, table)
+            DatabaseEngine.Sqlite => GetSqliteAsync(connectionString, table, connectionName),
+            DatabaseEngine.Firebird => GetFirebirdAsync(connectionString, table, connectionName),
+            DatabaseEngine.MongoDb => MongoService.GetStructureAsync(connectionString, database, table, connectionName),
+            _ => GetSqlServerAsync(connectionString, database, schema, table, connectionName)
         };
 
-    private static async Task<TableStructure> GetFirebirdAsync(string connectionString, string table)
+    private static async Task<TableStructure> GetFirebirdAsync(string connectionString, string table, string connectionName)
     {
         var loc = LocalizationManager.Instance;
         var cols = await FirebirdService.GetColumnsAsync(connectionString, table);
@@ -45,12 +46,15 @@ public static class TableMetadataService
             ddl.Append($"\nCREATE {(ix.Unique ? "UNIQUE " : "")}INDEX {FirebirdService.Quote(ix.Name)} ON {FirebirdService.Quote(table)} ({string.Join(", ", ix.Columns.Select(FirebirdService.Quote))});");
 
         // Info.
+        const int w = -18;
         var info = new StringBuilder();
-        info.AppendLine($"{loc["Info_Table"],-16}{table}");
-        info.AppendLine($"{loc["Info_Columns"],-16}{cols.Count}");
-        info.AppendLine($"{loc["Info_PrimaryKey"],-16}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
-        info.AppendLine($"{loc["Info_Indexes"],-16}{indexes.Count}");
-        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],-16}{rows:N0}");
+        if (!string.IsNullOrEmpty(connectionName)) info.AppendLine($"{loc["Info_Connection"],w}{connectionName}");
+        info.AppendLine($"{loc["Info_Table"],w}{table}");
+        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],w}{rows:N0}");
+        info.AppendLine();
+        info.AppendLine($"{loc["Info_Columns"],w}{cols.Count}");
+        info.AppendLine($"{loc["Info_PrimaryKey"],w}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
+        info.AppendLine($"{loc["Info_Indexes"],w}{indexes.Count}");
         info.AppendLine();
         info.AppendLine(loc["Info_Columns"]);
         foreach (var c in cols)
@@ -68,7 +72,7 @@ public static class TableMetadataService
         return new TableStructure(ddl.ToString(), info.ToString().TrimEnd(), relationships);
     }
 
-    private static async Task<TableStructure> GetSqlServerAsync(string connectionString, string database, string schema, string table)
+    private static async Task<TableStructure> GetSqlServerAsync(string connectionString, string database, string schema, string table, string connectionName)
     {
         await using var conn = new SqlConnection(SqlServerService.WithDatabase(connectionString, database));
         await conn.OpenAsync();
@@ -80,7 +84,7 @@ public static class TableMetadataService
         var fks = await GetForeignKeysAsync(conn, fq);
 
         var ddl = BuildDdl(schema, table, columns, identity, indexes, fks);
-        var info = await BuildInfoAsync(conn, fq, schema, table, columns, indexes);
+        var info = await BuildInfoAsync(conn, fq, schema, table, columns, indexes, database, connectionName);
         var relationships = BuildRelationships(schema, table, fks);
 
         return new TableStructure(ddl, info, relationships);
@@ -284,39 +288,52 @@ public static class TableMetadataService
     }
 
     private static async Task<string> BuildInfoAsync(SqlConnection conn, string fq, string schema, string table,
-        List<ColumnDef> columns, List<IndexDef> indexes)
+        List<ColumnDef> columns, List<IndexDef> indexes, string database, string connectionName)
     {
-        long rows = -1;
+        long rows = -1, oid = -1;
         DateTime? created = null, modified = null;
+        string? comment = null;
         try
         {
             const string sql = @"
-                SELECT
-                    (SELECT SUM(p.rows) FROM sys.partitions p WHERE p.object_id = OBJECT_ID(@fq) AND p.index_id IN (0,1)),
-                    t.create_date, t.modify_date
-                FROM sys.tables t WHERE t.object_id = OBJECT_ID(@fq)";
+                SELECT t.object_id,
+                    (SELECT SUM(p.rows) FROM sys.partitions p WHERE p.object_id = t.object_id AND p.index_id IN (0,1)),
+                    t.create_date, t.modify_date,
+                    CAST(ep.value AS nvarchar(4000))
+                FROM sys.tables t
+                LEFT JOIN sys.extended_properties ep
+                       ON ep.major_id = t.object_id AND ep.minor_id = 0 AND ep.class = 1 AND ep.name = 'MS_Description'
+                WHERE t.object_id = OBJECT_ID(@fq)";
             await using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.AddWithValue("@fq", fq);
             await using var r = await cmd.ExecuteReaderAsync();
             if (await r.ReadAsync())
             {
-                rows = r.IsDBNull(0) ? -1 : r.GetInt64(0);
-                created = r.IsDBNull(1) ? null : r.GetDateTime(1);
-                modified = r.IsDBNull(2) ? null : r.GetDateTime(2);
+                oid = r.IsDBNull(0) ? -1 : r.GetInt32(0);
+                rows = r.IsDBNull(1) ? -1 : r.GetInt64(1);
+                created = r.IsDBNull(2) ? null : r.GetDateTime(2);
+                modified = r.IsDBNull(3) ? null : r.GetDateTime(3);
+                comment = r.IsDBNull(4) ? null : r.GetString(4);
             }
         }
         catch { /* info is best-effort */ }
 
         var loc = LocalizationManager.Instance;
         var pk = indexes.FirstOrDefault(i => i.IsPrimaryKey);
+        const int w = -18;
         var sb = new StringBuilder();
-        sb.AppendLine($"{loc["Info_Table"],-16}{schema}.{table}");
-        sb.AppendLine($"{loc["Info_Columns"],-16}{columns.Count}");
-        sb.AppendLine($"{loc["Info_PrimaryKey"],-16}{(pk is null ? loc["Info_None"] : string.Join(", ", pk.Columns.Select(c => c.Col)))}");
-        sb.AppendLine($"{loc["Info_Indexes"],-16}{indexes.Count}");
-        if (rows >= 0) sb.AppendLine($"{loc["Info_Rows"],-16}{rows:N0}");
-        if (created is not null) sb.AppendLine($"{loc["Info_Created"],-16}{created:yyyy-MM-dd HH:mm}");
-        if (modified is not null) sb.AppendLine($"{loc["Info_Modified"],-16}{modified:yyyy-MM-dd HH:mm}");
+        if (!string.IsNullOrEmpty(connectionName)) sb.AppendLine($"{loc["Info_Connection"],w}{connectionName}");
+        sb.AppendLine($"{loc["Info_Database"],w}{database}");
+        sb.AppendLine($"{loc["Info_Schema"],w}{schema}");
+        if (oid >= 0) sb.AppendLine($"{loc["Info_Oid"],w}{oid}");
+        if (rows >= 0) sb.AppendLine($"{loc["Info_Rows"],w}{rows:N0}");
+        if (created is not null) sb.AppendLine($"{loc["Info_Created"],w}{created:yyyy-MM-dd HH:mm:ss.fff}");
+        if (modified is not null) sb.AppendLine($"{loc["Info_Modified"],w}{modified:yyyy-MM-dd HH:mm:ss.fff}");
+        sb.AppendLine($"{loc["Info_Comment"],w}{(string.IsNullOrWhiteSpace(comment) ? "--" : comment)}");
+        sb.AppendLine();
+        sb.AppendLine($"{loc["Info_Columns"],w}{columns.Count}");
+        sb.AppendLine($"{loc["Info_PrimaryKey"],w}{(pk is null ? loc["Info_None"] : string.Join(", ", pk.Columns.Select(c => c.Col)))}");
+        sb.AppendLine($"{loc["Info_Indexes"],w}{indexes.Count}");
         sb.AppendLine();
         sb.AppendLine(loc["Info_Columns"]);
         foreach (var c in columns)
@@ -359,7 +376,7 @@ public static class TableMetadataService
 
     // ---- SQLite ----------------------------------------------------------
 
-    private static async Task<TableStructure> GetSqliteAsync(string connectionString, string table)
+    private static async Task<TableStructure> GetSqliteAsync(string connectionString, string table, string connectionName)
     {
         await using var conn = new SqliteConnection(connectionString);
         await conn.OpenAsync();
@@ -391,13 +408,16 @@ public static class TableMetadataService
         catch { /* best effort */ }
 
         var loc = LocalizationManager.Instance;
+        const int w = -18;
         var pk = columns.Where(c => c.Pk > 0).OrderBy(c => c.Pk).Select(c => c.Name).ToList();
         var info = new StringBuilder();
-        info.AppendLine($"{loc["Info_Table"],-16}{table}");
-        info.AppendLine($"{loc["Info_Columns"],-16}{columns.Count}");
-        info.AppendLine($"{loc["Info_PrimaryKey"],-16}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
-        info.AppendLine($"{loc["Info_Indexes"],-16}{indexes.Count}");
-        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],-16}{rows:N0}");
+        if (!string.IsNullOrEmpty(connectionName)) info.AppendLine($"{loc["Info_Connection"],w}{connectionName}");
+        info.AppendLine($"{loc["Info_Table"],w}{table}");
+        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],w}{rows:N0}");
+        info.AppendLine();
+        info.AppendLine($"{loc["Info_Columns"],w}{columns.Count}");
+        info.AppendLine($"{loc["Info_PrimaryKey"],w}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
+        info.AppendLine($"{loc["Info_Indexes"],w}{indexes.Count}");
         info.AppendLine();
         info.AppendLine(loc["Info_Columns"]);
         foreach (var c in columns)

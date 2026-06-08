@@ -84,7 +84,7 @@ public static class MongoService
         _ => v.ToString() ?? ""
     };
 
-    public static async Task<TableStructure> GetStructureAsync(string uri, string database, string collection)
+    public static async Task<TableStructure> GetStructureAsync(string uri, string database, string collection, string connectionName = "")
     {
         var loc = LocalizationManager.Instance;
         var coll = Client(uri).GetDatabase(database).GetCollection<BsonDocument>(collection);
@@ -98,10 +98,13 @@ public static class MongoService
             foreach (var el in d.Elements)
                 if (seen.Add(el.Name)) fields.Add((el.Name, el.Value.BsonType.ToString()));
 
+        const int w = -18;
         var info = new System.Text.StringBuilder();
-        info.AppendLine($"{loc["Info_Collection"],-16}{database}.{collection}");
-        info.AppendLine($"{loc["Info_Documents"],-16}{count:N0}");
-        info.AppendLine($"{loc["Info_SampledFields"],-16}{fields.Count}  (from {sample.Count} doc(s))");
+        if (!string.IsNullOrEmpty(connectionName)) info.AppendLine($"{loc["Info_Connection"],w}{connectionName}");
+        info.AppendLine($"{loc["Info_Database"],w}{database}");
+        info.AppendLine($"{loc["Info_Collection"],w}{collection}");
+        info.AppendLine($"{loc["Info_Documents"],w}{count:N0}");
+        info.AppendLine($"{loc["Info_SampledFields"],w}{fields.Count}  (from {sample.Count} doc(s))");
         info.AppendLine();
         info.AppendLine(loc["Info_Fields"]);
         foreach (var (fn, ft) in fields)

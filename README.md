@@ -76,8 +76,9 @@ Grab the latest **portable `.exe`** from the
   Double-click a row to open the table in its own tab — the Objects tab stays put as the first tab
   instead of overlaying your open tables. Clicking a SQL Server database lists every table across
   its schemas.
-- **Structure inspector** — a dockable/pinnable side panel showing **Info**, **DDL**
-  (`CREATE TABLE` + indexes + foreign keys), and **Relationships**.
+- **Structure inspector** — a dockable/pinnable side panel showing **Info** (connection, database,
+  schema, OID/object_id, rows, created/modified dates, comment, columns), **DDL** (`CREATE TABLE` +
+  indexes + foreign keys), and **Relationships**.
 - **SQL query window** — **New Query** opens a window to run arbitrary SQL (Run / F5) with a
   results grid, row counts and timing.
 - **Graphical query builder** — compose SELECTs visually (tables, columns, joins with FK

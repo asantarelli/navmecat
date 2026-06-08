@@ -331,7 +331,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         {
             _structure = await TableMetadataService.GetAsync(
                 Node.Connection.Engine, Node.Connection.BuildConnectionString(),
-                Node.Database!, Node.Schema!, Node.Name);
+                Node.Database!, Node.Schema!, Node.Name, Node.Connection.Name);
             UpdateInspectorContent();
         }
         catch (Exception ex)
