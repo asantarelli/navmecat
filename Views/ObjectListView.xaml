@@ -17,32 +17,32 @@
         <Border Grid.Row="0" Background="{StaticResource B.HeaderBar}"
                 BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1" Padding="12,8">
             <StackPanel Orientation="Horizontal">
-                <Button Command="{Binding OpenCommand}" Style="{StaticResource ToolButton}" ToolTip="Open the selected table">
+                <Button Command="{Binding OpenCommand}" Style="{StaticResource ToolButton}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8A7;"/><TextBlock Text="Open Table"/>
+                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8A7;"/><TextBlock Text="{loc:Tr OL_OpenTable}"/>
                     </StackPanel>
                 </Button>
                 <Button Command="{Binding DesignCommand}" Style="{StaticResource ToolButton}"
-                        Visibility="{Binding CanDesign, Converter={StaticResource BoolToVis}}" ToolTip="Design the selected table">
+                        Visibility="{Binding CanDesign, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE70F;"/><TextBlock Text="Design Table"/>
+                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE70F;"/><TextBlock Text="{loc:Tr OL_DesignTable}"/>
                     </StackPanel>
                 </Button>
                 <Button Command="{Binding NewCommand}" Style="{StaticResource ToolButton}"
-                        Visibility="{Binding CanCreate, Converter={StaticResource BoolToVis}}" ToolTip="Create a new table">
+                        Visibility="{Binding CanCreate, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="New Table"/>
+                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="{loc:Tr OL_NewTable}"/>
                     </StackPanel>
                 </Button>
-                <Button Command="{Binding DeleteCommand}" Style="{StaticResource ToolButton}" ToolTip="Drop the selected table">
+                <Button Command="{Binding DeleteCommand}" Style="{StaticResource ToolButton}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74D;"/><TextBlock Text="Delete Table"/>
+                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74D;"/><TextBlock Text="{loc:Tr OL_DeleteTable}"/>
                     </StackPanel>
                 </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,2"/>
-                <Button Command="{Binding RefreshCommand}" Style="{StaticResource ToolButton}" ToolTip="Refresh">
+                <Button Command="{Binding RefreshCommand}" Style="{StaticResource ToolButton}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/><TextBlock Text="Refresh"/>
+                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/><TextBlock Text="{loc:Tr Btn_Refresh}"/>
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -54,7 +54,7 @@
                   SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column"
                   MouseDoubleClick="Grid_DoubleClick">
             <DataGrid.Columns>
-                <DataGridTemplateColumn Header="Name" Width="2*" SortMemberPath="Name">
+                <DataGridTemplateColumn Header="{loc:Tr Col_Name}" Width="2*" SortMemberPath="Name">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" Margin="4,0">
@@ -66,8 +66,8 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Schema" Binding="{Binding Schema}" Width="100"/>
-                <DataGridTextColumn Header="Rows" Binding="{Binding Rows, StringFormat=N0}" Width="120">
+                <DataGridTextColumn Header="{loc:Tr Col_Schema}" Binding="{Binding Schema}" Width="100"/>
+                <DataGridTextColumn Header="{loc:Tr Col_Rows}" Binding="{Binding Rows, StringFormat=N0}" Width="120">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -76,9 +76,9 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="Modified Date" Width="180"
+                <DataGridTextColumn Header="{loc:Tr Col_Modified}" Width="180"
                                     Binding="{Binding Modified, StringFormat='yyyy-MM-dd HH:mm:ss'}"/>
-                <DataGridTextColumn Header="Comment" Width="*" Binding="{Binding Comment}"/>
+                <DataGridTextColumn Header="{loc:Tr Col_Comment}" Width="*" Binding="{Binding Comment}"/>
             </DataGrid.Columns>
         </DataGrid>
 

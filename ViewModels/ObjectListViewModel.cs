@@ -66,7 +66,7 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
                 _container.Connection, _container.Database ?? _container.Name, _container.Schema ?? "");
             Items.Clear();
             foreach (var i in items) Items.Add(i);
-            CountText = $"{Items.Count} object(s)";
+            CountText = string.Format(LocalizationManager.Instance["OL_Count"], Items.Count);
         }
         catch (Exception ex)
         {

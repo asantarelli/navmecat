@@ -92,6 +92,32 @@ public static class Strings
         ["Empty_Hint"] = "Double-click a table in the tree to open it in a new tab.",
         ["Tab_Objects"] = "Objects",
 
+        // Object list (Objects tab)
+        ["OL_OpenTable"] = "Open Table",
+        ["OL_DesignTable"] = "Design Table",
+        ["OL_NewTable"] = "New Table",
+        ["OL_DeleteTable"] = "Delete Table",
+        ["Col_Name"] = "Name",
+        ["Col_Schema"] = "Schema",
+        ["Col_Rows"] = "Rows",
+        ["Col_Modified"] = "Modified Date",
+        ["Col_Comment"] = "Comment",
+        ["OL_Count"] = "{0} object(s)",
+
+        // Drop confirmation
+        ["Btn_Yes"] = "Yes",
+        ["Btn_Delete"] = "Delete",
+        ["ObjType_table"] = "table",
+        ["ObjType_view"] = "view",
+        ["ObjType_function"] = "function",
+        ["ObjType_procedure"] = "procedure",
+        ["Drop_TitleFmt"] = "Drop {0}",
+        ["Drop_Q"] = "Permanently drop {0} “{1}”?",
+        ["Drop_DataLoss"] = "⚠ ALL the data in this table will be permanently lost.",
+        ["Drop_Refs"] = "⚠ These objects reference it:",
+        ["Drop_AndMore"] = "…and {0} more",
+        ["Drop_CannotUndo"] = "This action CANNOT be undone — there is no way to backtrack once it's dropped.",
+
         // Settings dialog
         ["Settings_Title"] = "Settings",
         ["Settings_WhenOpening"] = "When opening a table",
@@ -253,6 +279,32 @@ public static class Strings
         ["Empty_NoTable"] = "Ninguna tabla abierta",
         ["Empty_Hint"] = "Haga doble clic en una tabla del árbol para abrirla en una nueva pestaña.",
         ["Tab_Objects"] = "Objetos",
+
+        // Lista de objetos
+        ["OL_OpenTable"] = "Abrir tabla",
+        ["OL_DesignTable"] = "Diseñar tabla",
+        ["OL_NewTable"] = "Nueva tabla",
+        ["OL_DeleteTable"] = "Eliminar tabla",
+        ["Col_Name"] = "Nombre",
+        ["Col_Schema"] = "Esquema",
+        ["Col_Rows"] = "Filas",
+        ["Col_Modified"] = "Fecha de modificación",
+        ["Col_Comment"] = "Comentario",
+        ["OL_Count"] = "{0} objeto(s)",
+
+        // Confirmación de eliminación
+        ["Btn_Yes"] = "Sí",
+        ["Btn_Delete"] = "Eliminar",
+        ["ObjType_table"] = "la tabla",
+        ["ObjType_view"] = "la vista",
+        ["ObjType_function"] = "la función",
+        ["ObjType_procedure"] = "el procedimiento",
+        ["Drop_TitleFmt"] = "Eliminar {0}",
+        ["Drop_Q"] = "¿Eliminar permanentemente {0} “{1}”?",
+        ["Drop_DataLoss"] = "⚠ TODOS los datos de esta tabla se perderán permanentemente.",
+        ["Drop_Refs"] = "⚠ Estos objetos la referencian:",
+        ["Drop_AndMore"] = "…y {0} más",
+        ["Drop_CannotUndo"] = "Esta acción NO se puede deshacer — no hay forma de revertir una vez eliminado.",
 
         // Configuración
         ["Settings_Title"] = "Configuración",

@@ -408,21 +408,21 @@ public partial class MainViewModel : ObservableObject
         }
         catch { /* dependency check is best-effort */ }
 
-        var kw = keyword.ToLowerInvariant();
+        string L(string key) => LocalizationManager.Instance[key];
+        var typeWord = L("ObjType_" + keyword.ToLowerInvariant()); // e.g. ObjType_table
+        var title = string.Format(L("Drop_TitleFmt"), typeWord);
         var display = node.Connection.Engine == DatabaseEngine.SqlServer
             ? $"{node.Schema}.{node.Name}" : node.Name;
 
-        var msg = $"Permanently drop {kw} “{display}”?";
+        var msg = string.Format(L("Drop_Q"), typeWord, display);
         if (dataLoss)
-            msg += "\n\n⚠ ALL the data in this table will be permanently lost.";
+            msg += "\n\n" + L("Drop_DataLoss");
         if (dependents.Count > 0)
-            msg += "\n\n⚠ These objects reference it:\n• " + string.Join("\n• ", dependents.Take(15)) +
-                   (dependents.Count > 15 ? $"\n…and {dependents.Count - 15} more" : "");
-        msg += "\n\nThis action CANNOT be undone — there is no way to backtrack once it's dropped.";
+            msg += "\n\n" + L("Drop_Refs") + "\n• " + string.Join("\n• ", dependents.Take(15)) +
+                   (dependents.Count > 15 ? "\n" + string.Format(L("Drop_AndMore"), dependents.Count - 15) : "");
+        msg += "\n\n" + L("Drop_CannotUndo");
 
-        return dataLoss
-            ? Dialogs.ConfirmDanger("Drop " + kw, msg, "Drop table")
-            : Dialogs.ConfirmDanger("Drop " + kw, msg, "Drop " + kw);
+        return Dialogs.ConfirmDanger(title, msg, title);
     }
 
     [RelayCommand]
