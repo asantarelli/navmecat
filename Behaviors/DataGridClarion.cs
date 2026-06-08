@@ -174,9 +174,14 @@ public static class DataGridClarion
             .ToList();
 
         box.TextChanged += OnLiveTextChanged;
+
+        // The character that started the edit is already in the box before TextChanged is hooked,
+        // so fire one fill now to propagate that first keystroke.
+        grid.Dispatcher.BeginInvoke(new Action(() => OnLiveTextChanged(box, null!)),
+            System.Windows.Threading.DispatcherPriority.Background);
     }
 
-    private static void OnLiveTextChanged(object? sender, TextChangedEventArgs e)
+    private static void OnLiveTextChanged(object? sender, TextChangedEventArgs? e)
     {
         if (_liveGrid is null || _liveBox is null || _liveOthers is not { Count: > 0 }) return;
         if (_liveGrid.ItemsSource is not DataView view || view.Table is not { } table) return;
