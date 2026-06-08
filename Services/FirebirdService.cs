@@ -169,6 +169,15 @@ public static class FirebirdService
         return order.Select(n => (n, map[n].Cols, map[n].RefTable, map[n].RefCols)).ToList();
     }
 
+    public static async Task ExecuteAsync(string connectionString, string sql)
+    {
+        await using var conn = new FbConnection(connectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     public static async Task<long> GetRowCountAsync(string connectionString, string table)
     {
         await using var conn = new FbConnection(connectionString);

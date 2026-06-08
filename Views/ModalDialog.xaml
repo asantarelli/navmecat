@@ -36,6 +36,8 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="SecondaryButton" Content="Cancel" MinWidth="90"
                             Margin="0,0,10,0" Click="Secondary_Click" Visibility="Collapsed"/>
+                    <Button x:Name="MiddleButton" Content="" MinWidth="90"
+                            Margin="0,0,10,0" Click="Middle_Click" Visibility="Collapsed"/>
                     <Button x:Name="PrimaryButton" Content="OK" MinWidth="90"
                             Style="{StaticResource AccentButton}" Click="Primary_Click" IsDefault="True"/>
                 </StackPanel>

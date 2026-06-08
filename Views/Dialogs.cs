@@ -17,6 +17,19 @@ public static class Dialogs
     public static bool Confirm(string title, string message)
         => ModalDialog.Show(title, message, DialogKind.Question, "Yes", "Cancel");
 
+    public enum CopyMode { Cancel, StructureOnly, StructureAndData }
+
+    /// <summary>Asks whether to copy a table's structure only or structure + data.</summary>
+    public static CopyMode ChooseCopyMode(string sourceName, string newName)
+        => ModalDialog.Choose("Copy table",
+               $"Copy “{sourceName}” to a new table “{newName}”.\n\nInclude the data, or copy the structure only?",
+               DialogKind.Question, "Structure + data", "Structure only", "Cancel") switch
+        {
+            1 => CopyMode.StructureAndData,
+            2 => CopyMode.StructureOnly,
+            _ => CopyMode.Cancel
+        };
+
     /// <summary>Opens the connection editor. Returns true if the user saved.</summary>
     public static bool EditConnection(ConnectionProfile profile)
         => new ConnectionDialog(profile).ShowDialog() == true;

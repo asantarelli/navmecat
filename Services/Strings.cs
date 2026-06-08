@@ -107,6 +107,8 @@ public static class Strings
         // Context menu
         ["Ctx_Open"] = "Open",
         ["Ctx_Design"] = "Design",
+        ["Ctx_CopyTable"] = "Copy",
+        ["Ctx_PasteTable"] = "Paste",
         ["Ctx_GenerateInsert"] = "Generate INSERT script…",
         ["Ctx_ImportData"] = "Import data…",
         ["Ctx_Drop"] = "Drop…",
@@ -266,6 +268,8 @@ public static class Strings
         // Menú contextual
         ["Ctx_Open"] = "Abrir",
         ["Ctx_Design"] = "Diseñar",
+        ["Ctx_CopyTable"] = "Copiar",
+        ["Ctx_PasteTable"] = "Pegar",
         ["Ctx_GenerateInsert"] = "Generar script INSERT…",
         ["Ctx_ImportData"] = "Importar datos…",
         ["Ctx_Drop"] = "Eliminar…",

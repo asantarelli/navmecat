@@ -186,7 +186,8 @@
                               ItemsSource="{Binding Roots}"
                               SelectedItemChanged="Tree_SelectedItemChanged"
                               MouseDoubleClick="Tree_MouseDoubleClick"
-                              PreviewMouseRightButtonDown="Tree_RightClick">
+                              PreviewMouseRightButtonDown="Tree_RightClick"
+                              KeyDown="Tree_KeyDown">
                         <TreeView.ItemContainerStyle>
                             <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                                 <Setter Property="Visibility"

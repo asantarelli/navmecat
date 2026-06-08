@@ -81,6 +81,10 @@ Grab the latest **portable `.exe`** from the
   single transaction (all-or-nothing).
 - **Generate INSERT script** — right-click a table to produce a ready-to-run `INSERT` script for
   its rows (wrapped in `SET IDENTITY_INSERT` when needed), viewable, copyable and savable as `.sql`.
+- **Copy & paste a table** — right-click a table → **Copy** (or Ctrl+C in the tree), then **Paste**
+  (Ctrl+V) onto a Tables folder / database in the same connection. It asks whether to copy the
+  **structure only** or **structure + data**, and auto-names the copy (`name_copy`, `name_copy2`, …)
+  if the name is taken. Works for SQL Server, SQLite, Firebird, and MongoDB (collections).
 - **Table designer** — create and alter tables: columns, types, nullability, defaults, primary
   key and indexes, with a copyable generated script.
 - **Edit routines & views** — open and edit **functions, stored procedures and views**; create

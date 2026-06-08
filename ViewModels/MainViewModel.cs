@@ -227,6 +227,80 @@ public partial class MainViewModel : ObservableObject
         StatusText = $"Designing {node.Schema}.{node.Name}.";
     }
 
+    // ---- copy / paste a table -------------------------------------------
+
+    private sealed record CopiedTable(ConnectionProfile Connection, string? Database, string? Schema, string Name);
+
+    private CopiedTable? _copied;
+
+    public bool HasCopiedTable => _copied is not null;
+
+    [RelayCommand]
+    private void CopyTable(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is not { Type: NodeType.Table }) return;
+        _copied = new CopiedTable(node.Connection, node.Database, node.Schema, node.Name);
+        StatusText = $"Copied '{node.Name}'. Paste onto a Tables folder or table in the same database.";
+    }
+
+    [RelayCommand]
+    private async Task PasteTable(DbTreeNode? node)
+    {
+        node ??= SelectedNode;
+        if (node is null) return;
+        if (_copied is null) { StatusText = "Nothing to paste — copy a table first."; return; }
+
+        // Resolve the paste target from the node.
+        var conn = node.Connection;
+        var db = node.Database ?? _copied.Database;
+        var schema = node.Schema ?? _copied.Schema;
+
+        if (conn.Id != _copied.Connection.Id)
+        {
+            Dialogs.ShowError("Paste table", "Paste into the same connection the table was copied from.");
+            return;
+        }
+        if (!string.Equals(db, _copied.Database, StringComparison.OrdinalIgnoreCase))
+        {
+            Dialogs.ShowError("Paste table", "Paste into the same database the table was copied from.");
+            return;
+        }
+
+        try
+        {
+            var existing = await TableCopyService.ListObjectsAsync(conn, db ?? "", schema ?? "");
+            var newName = TableCopyService.FreeName(_copied.Name, existing);
+
+            var mode = Dialogs.ChooseCopyMode(_copied.Name, newName);
+            if (mode == Dialogs.CopyMode.Cancel) return;
+
+            IsBusy = true;
+            StatusText = $"Copying '{_copied.Name}' → '{newName}'…";
+            await TableCopyService.CopyAsync(conn,
+                _copied.Database ?? "", _copied.Schema ?? "", _copied.Name,
+                db ?? "", schema ?? "", newName, mode == Dialogs.CopyMode.StructureAndData);
+
+            // Refresh the folder that now contains the copy.
+            var folder = node.Type == NodeType.Category ? node
+                : node.Type == NodeType.Table ? node.Parent
+                : node;
+            if (folder is not null) await RefreshNode(folder);
+
+            StatusText = $"Created '{newName}'" +
+                         (mode == Dialogs.CopyMode.StructureAndData ? " with data." : " (structure only).");
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Copy table failed", ex.Message);
+            StatusText = "Copy failed.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     [RelayCommand]
     private async Task GenerateInserts(DbTreeNode? node)
     {

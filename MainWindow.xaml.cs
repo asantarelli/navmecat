@@ -38,6 +38,15 @@ public partial class MainWindow : Window
             Vm.EditRoutineCommand.Execute(node);
     }
 
+    private void Tree_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control) return;
+        var node = Vm.SelectedNode;
+        if (node is null) return;
+        if (e.Key == Key.C) { Run(Vm.CopyTableCommand, node); e.Handled = true; }
+        else if (e.Key == Key.V) { Run(Vm.PasteTableCommand, node); e.Handled = true; }
+    }
+
     private void Tree_RightClick(object sender, MouseButtonEventArgs e)
     {
         var item = FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject);
@@ -71,10 +80,12 @@ public partial class MainWindow : Window
             case NodeType.Table when node.Connection.Engine == DatabaseEngine.Sqlite:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
+                AddCopyPaste(menu, node);
                 break;
 
             case NodeType.Table when node.Connection.Engine is DatabaseEngine.Firebird or DatabaseEngine.MongoDb:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                AddCopyPaste(menu, node);
                 break;
 
             case NodeType.Table:
@@ -83,6 +94,7 @@ public partial class MainWindow : Window
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_GenerateInsert", () => Run(Vm.GenerateInsertsCommand, node)));
                 menu.Items.Add(Item("Ctx_ImportData", () => Run(Vm.ImportDataCommand, node)));
+                AddCopyPaste(menu, node);
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
                 break;
@@ -108,11 +120,13 @@ public partial class MainWindow : Window
             case NodeType.Category when node.Connection.Engine == DatabaseEngine.Sqlite
                                          && node.CategoryChildType is NodeType.Table:
                 menu.Items.Add(Item("Ctx_NewTable", () => Run(Vm.NewTableCommand, node)));
+                AddPaste(menu, node);
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Category when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird:
+                if (node.CategoryChildType is NodeType.Table) AddPaste(menu, node);
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
@@ -136,11 +150,17 @@ public partial class MainWindow : Window
 
             case NodeType.Category when node.CategoryChildType is NodeType.Table:
                 menu.Items.Add(Item("Ctx_NewTable", () => Run(Vm.NewTableCommand, node)));
+                AddPaste(menu, node);
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
-            case NodeType.Server or NodeType.Database or NodeType.Schema or NodeType.Category:
+            case NodeType.Database or NodeType.Schema:
+                AddPaste(menu, node);
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                break;
+
+            case NodeType.Server or NodeType.Category:
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
@@ -153,6 +173,25 @@ public partial class MainWindow : Window
     private static void Run(System.Windows.Input.ICommand command, DbTreeNode node)
     {
         if (command.CanExecute(node)) command.Execute(node);
+    }
+
+    /// <summary>Appends Copy (and Paste, when a table is on the clipboard) to a table's menu.</summary>
+    private void AddCopyPaste(ContextMenu menu, DbTreeNode node)
+    {
+        menu.Items.Add(new Separator());
+        var copy = new MenuItem { Header = LocalizationManager.Instance["Ctx_CopyTable"] };
+        copy.Click += (_, _) => Run(Vm.CopyTableCommand, node);
+        menu.Items.Add(copy);
+        AddPaste(menu, node);
+    }
+
+    /// <summary>Appends a Paste item only when a table has been copied.</summary>
+    private void AddPaste(ContextMenu menu, DbTreeNode node)
+    {
+        if (!Vm.HasCopiedTable) return;
+        var paste = new MenuItem { Header = LocalizationManager.Instance["Ctx_PasteTable"] };
+        paste.Click += (_, _) => Run(Vm.PasteTableCommand, node);
+        menu.Items.Add(paste);
     }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
