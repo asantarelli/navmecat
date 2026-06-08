@@ -17,6 +17,10 @@ public static class Dialogs
     public static bool Confirm(string title, string message)
         => ModalDialog.Show(title, message, DialogKind.Question, "Yes", "Cancel");
 
+    /// <summary>A red, destructive confirmation (e.g. dropping a table).</summary>
+    public static bool ConfirmDanger(string title, string message, string confirmText = "Delete")
+        => ModalDialog.Show(title, message, DialogKind.Error, confirmText, "Cancel");
+
     public enum CopyMode { Cancel, StructureOnly, StructureAndData }
 
     /// <summary>Asks whether to copy a table's structure only or structure + data.</summary>

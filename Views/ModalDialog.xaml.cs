@@ -76,6 +76,11 @@ public partial class ModalDialog : Window
         dlg.IconBadge.Background = brush;
         dlg.IconGlyph.Text = glyph;
 
+        // Destructive confirmations get a red primary button.
+        if (kind == DialogKind.Error && secondaryText is not null
+            && dlg.TryFindResource("DangerButton") is Style danger)
+            dlg.PrimaryButton.Style = danger;
+
         return dlg.ShowDialog() == true;
     }
 

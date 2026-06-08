@@ -256,10 +256,10 @@ public partial class MainViewModel : ObservableObject
         var db = node.Database ?? _copied.Database;
         var schema = node.Schema ?? _copied.Schema;
 
-        if (conn.Engine != _copied.Connection.Engine)
+        if (!TableCopyService.CanCopyBetween(_copied.Connection.Engine, conn.Engine))
         {
             Dialogs.ShowError("Paste table",
-                $"Paste only works into the same database type — the copied table is {_copied.Connection.Engine.DisplayName()}.");
+                $"Can't copy a {_copied.Connection.Engine.DisplayName()} table into {conn.Engine.DisplayName()}.");
             return;
         }
 
@@ -348,7 +348,7 @@ public partial class MainViewModel : ObservableObject
         new Views.TableDesignerWindow(connection, category?.Database, schema, "NewTable", isNew: true).Show();
     }
 
-    private static async Task<bool> ConfirmDrop(DbTreeNode node, string keyword, string extra = "")
+    private static async Task<bool> ConfirmDrop(DbTreeNode node, string keyword, bool dataLoss = false)
     {
         var dependents = new List<string>();
         try
@@ -358,11 +358,21 @@ public partial class MainViewModel : ObservableObject
         }
         catch { /* dependency check is best-effort */ }
 
-        var msg = $"Permanently drop {keyword.ToLowerInvariant()} {node.Schema}.{node.Name}?{extra}";
+        var kw = keyword.ToLowerInvariant();
+        var display = node.Connection.Engine == DatabaseEngine.SqlServer
+            ? $"{node.Schema}.{node.Name}" : node.Name;
+
+        var msg = $"Permanently drop {kw} “{display}”?";
+        if (dataLoss)
+            msg += "\n\n⚠ ALL the data in this table will be permanently lost.";
         if (dependents.Count > 0)
             msg += "\n\n⚠ These objects reference it:\n• " + string.Join("\n• ", dependents.Take(15)) +
                    (dependents.Count > 15 ? $"\n…and {dependents.Count - 15} more" : "");
-        return Dialogs.Confirm("Drop " + keyword.ToLowerInvariant(), msg);
+        msg += "\n\nThis action CANNOT be undone — there is no way to backtrack once it's dropped.";
+
+        return dataLoss
+            ? Dialogs.ConfirmDanger("Drop " + kw, msg, "Drop table")
+            : Dialogs.ConfirmDanger("Drop " + kw, msg, "Drop " + kw);
     }
 
     [RelayCommand]
@@ -370,7 +380,7 @@ public partial class MainViewModel : ObservableObject
     {
         node ??= SelectedNode;
         if (node is not { Type: NodeType.Table }) return;
-        if (!await ConfirmDrop(node, "TABLE", " All its data will be lost."))
+        if (!await ConfirmDrop(node, "TABLE", dataLoss: true))
             return;
         try
         {

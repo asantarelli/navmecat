@@ -84,10 +84,11 @@ Grab the latest **portable `.exe`** from the
 - **Copy & paste a table** — right-click a table → **Copy** (or Ctrl+C in the tree), then **Paste**
   (Ctrl+V) onto a Tables folder / database. It asks whether to copy the **structure only** or
   **structure + data**, and auto-names the copy (`name_copy`, `name_copy2`, …) if the name is taken.
-  Paste **into the same connection** *or* **into a different connection of the same engine**
-  (e.g. copy a table from one SQL Server / SQLite file / Firebird / MongoDB to another). Works for
-  SQL Server, SQLite, Firebird, and MongoDB (collections). Cross-connection SQL Server copies use
-  **SqlBulkCopy** (streaming) so large tables move fast.
+  Paste **into the same connection**, **a different connection of the same engine**, or even
+  **a different relational engine** (e.g. SQLite → SQL Server, Firebird → SQLite): NavMeCat maps
+  each column to a compatible type, creates the table, and copies the rows. Cross-connection SQL
+  Server copies use **SqlBulkCopy** (streaming) so large tables move fast. (MongoDB ↔ relational
+  isn't supported — documents and tables aren't interchangeable.)
 - **Table designer** — create and alter tables: columns, types, nullability, defaults, primary
   key and indexes, with a copyable generated script.
 - **Edit routines & views** — open and edit **functions, stored procedures and views**; create

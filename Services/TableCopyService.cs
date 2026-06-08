@@ -137,12 +137,25 @@ public static class TableCopyService
     //  Cross-connection copy (two connections of the same engine)
     // =====================================================================
 
+    public static bool IsRelational(DatabaseEngine e) =>
+        e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite or DatabaseEngine.Firebird;
+
+    /// <summary>True if a table can be copied from one engine to the other.</summary>
+    public static bool CanCopyBetween(DatabaseEngine a, DatabaseEngine b) =>
+        a == b || (IsRelational(a) && IsRelational(b));
+
     public static Task CopyCrossAsync(
         ConnectionProfile src, string srcDb, string srcSchema, string srcName,
         ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData)
-        => src.Engine == DatabaseEngine.MongoDb
-            ? CopyMongoCrossAsync(src, srcDb, srcName, tgt, tgtDb, newName, includeData)
-            : CopyRelationalCrossAsync(src, srcDb, srcSchema, srcName, tgt, tgtDb, tgtSchema, newName, includeData);
+    {
+        if (src.Engine == DatabaseEngine.MongoDb || tgt.Engine == DatabaseEngine.MongoDb)
+        {
+            if (src.Engine == DatabaseEngine.MongoDb && tgt.Engine == DatabaseEngine.MongoDb)
+                return CopyMongoCrossAsync(src, srcDb, srcName, tgt, tgtDb, newName, includeData);
+            throw new NotSupportedException("Copying between MongoDB and a relational database isn't supported.");
+        }
+        return CopyRelationalCrossAsync(src, srcDb, srcSchema, srcName, tgt, tgtDb, tgtSchema, newName, includeData);
+    }
 
     private static string Q(DatabaseEngine e, string id) => e == DatabaseEngine.Firebird
         ? "\"" + id.Replace("\"", "\"\"") + "\""
@@ -168,8 +181,10 @@ public static class TableCopyService
         ConnectionProfile src, string srcDb, string srcSchema, string srcName,
         ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData)
     {
-        // 1. Create the structure at the target.
-        var ddl = await BuildCreateDdlAsync(src, srcDb, srcSchema, srcName, tgtSchema, newName);
+        // 1. Create the structure at the target (clone when same engine; map types when different).
+        var ddl = src.Engine == tgt.Engine
+            ? await BuildCreateDdlAsync(src, srcDb, srcSchema, srcName, tgtSchema, newName)
+            : await BuildCrossEngineDdlAsync(src, srcDb, srcSchema, srcName, tgt, tgtSchema, newName);
         await ExecuteAsync(tgt, tgtDb, ddl);
 
         if (!includeData) return;
@@ -285,6 +300,144 @@ public static class TableCopyService
                 return $"CREATE TABLE {Q(src.Engine, tgtSchema)}.{Q(src.Engine, newName)} (\n{string.Join(",\n", lines)}\n)";
             }
         }
+    }
+
+    // ---- cross-engine structure (map source column CLR types to target) --
+
+    private sealed record CrossColumn(string Name, Type Type, int Size, int Precision, int Scale, bool Nullable);
+
+    private static async Task<string> BuildCrossEngineDdlAsync(
+        ConnectionProfile src, string srcDb, string srcSchema, string srcName,
+        ConnectionProfile tgt, string tgtSchema, string newName)
+    {
+        var cols = await DescribeAsync(src, srcDb, srcSchema, srcName);
+        if (cols.Count == 0)
+            throw new InvalidOperationException($"Could not read the columns of '{srcName}'.");
+
+        var pk = new HashSet<string>(
+            await GetPrimaryKeyNamesAsync(src, srcDb, srcSchema, srcName), StringComparer.OrdinalIgnoreCase);
+
+        var lines = cols.Select(c =>
+        {
+            var notNull = !c.Nullable || pk.Contains(c.Name);
+            return $"  {Q(tgt.Engine, c.Name)} {MapType(tgt.Engine, c)}{(notNull ? " NOT NULL" : "")}";
+        }).ToList();
+
+        var pkCols = cols.Where(c => pk.Contains(c.Name)).Select(c => Q(tgt.Engine, c.Name)).ToList();
+        if (pkCols.Count > 0)
+            lines.Add(tgt.Engine == DatabaseEngine.SqlServer
+                ? $"  CONSTRAINT {Q(tgt.Engine, "PK_" + newName)} PRIMARY KEY ({string.Join(", ", pkCols)})"
+                : $"  PRIMARY KEY ({string.Join(", ", pkCols)})");
+
+        var fq = Fq(tgt.Engine, tgtSchema, newName);
+        return $"CREATE TABLE {fq} (\n{string.Join(",\n", lines)}\n)";
+    }
+
+    private static async Task<List<CrossColumn>> DescribeAsync(
+        ConnectionProfile p, string db, string schema, string name)
+    {
+        await using var conn = await OpenAsync(p, db);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT * FROM {Fq(p.Engine, schema, name)}";
+        await using var reader = await cmd.ExecuteReaderAsync(System.Data.CommandBehavior.SchemaOnly);
+        var schemaTable = await reader.GetSchemaTableAsync();
+
+        var result = new List<CrossColumn>();
+        if (schemaTable is null) return result;
+
+        int? AsInt(System.Data.DataRow r, string col)
+            => schemaTable.Columns.Contains(col) && r[col] is not (null or DBNull) ? Convert.ToInt32(r[col]) : null;
+        bool AsBool(System.Data.DataRow r, string col, bool dflt)
+            => schemaTable.Columns.Contains(col) && r[col] is bool b ? b : dflt;
+
+        foreach (System.Data.DataRow r in schemaTable.Rows)
+        {
+            var cname = r["ColumnName"]?.ToString() ?? "";
+            var ctype = r["DataType"] as Type ?? typeof(string);
+            result.Add(new CrossColumn(cname, ctype,
+                AsInt(r, "ColumnSize") ?? 0, AsInt(r, "NumericPrecision") ?? 0,
+                AsInt(r, "NumericScale") ?? 0, AsBool(r, "AllowDBNull", true)));
+        }
+        return result;
+    }
+
+    private static Task<List<string>> GetPrimaryKeyNamesAsync(
+        ConnectionProfile p, string db, string schema, string name)
+    {
+        var cs = p.BuildConnectionString();
+        return p.Engine switch
+        {
+            DatabaseEngine.SqlServer => SqlServerService.GetPrimaryKeyAsync(cs, db, schema, name)
+                .ContinueWith(t => t.Result.Columns),
+            DatabaseEngine.Firebird => FirebirdService.GetPrimaryKeyAsync(cs, name),
+            DatabaseEngine.Sqlite => SqliteService.GetColumnDetailsAsync(cs, name)
+                .ContinueWith(t => t.Result.Where(c => c.Pk > 0).OrderBy(c => c.Pk).Select(c => c.Name).ToList()),
+            _ => Task.FromResult(new List<string>())
+        };
+    }
+
+    private static bool IsLarge(int size, int threshold) => size <= 0 || size > threshold || size == int.MaxValue;
+
+    private static string MapType(DatabaseEngine target, CrossColumn c)
+    {
+        var t = Nullable.GetUnderlyingType(c.Type) ?? c.Type;
+        var tn = t.Name;
+
+        return target switch
+        {
+            DatabaseEngine.Sqlite => tn switch
+            {
+                "Int16" or "Int32" or "Int64" or "Byte" or "SByte" or "Boolean" => "INTEGER",
+                "Decimal" => "NUMERIC",
+                "Double" or "Single" => "REAL",
+                "Byte[]" => "BLOB",
+                _ => "TEXT"
+            },
+            DatabaseEngine.Firebird => tn switch
+            {
+                "Int64" => "BIGINT",
+                "Int32" => "INTEGER",
+                "Int16" or "Byte" or "SByte" => "SMALLINT",
+                "Boolean" => "BOOLEAN",
+                "Decimal" => $"DECIMAL({ClampPrec(c.Precision, 18)},{ClampScale(c.Scale, c.Precision, 18)})",
+                "Double" => "DOUBLE PRECISION",
+                "Single" => "FLOAT",
+                "Guid" => "CHAR(38)",
+                "DateTime" or "DateTimeOffset" => "TIMESTAMP",
+                "DateOnly" => "DATE",
+                "TimeSpan" or "TimeOnly" => "TIME",
+                "Byte[]" => "BLOB",
+                "String" or "Char" => IsLarge(c.Size, 8191) ? "BLOB SUB_TYPE TEXT" : $"VARCHAR({c.Size})",
+                _ => "BLOB SUB_TYPE TEXT"
+            },
+            _ => tn switch // SQL Server
+            {
+                "Int64" => "bigint",
+                "Int32" => "int",
+                "Int16" => "smallint",
+                "Byte" or "SByte" => "tinyint",
+                "Boolean" => "bit",
+                "Decimal" => $"decimal({ClampPrec(c.Precision, 38)},{ClampScale(c.Scale, c.Precision, 38)})",
+                "Double" => "float",
+                "Single" => "real",
+                "Guid" => "uniqueidentifier",
+                "DateTime" => "datetime2",
+                "DateTimeOffset" => "datetimeoffset",
+                "DateOnly" => "date",
+                "TimeSpan" or "TimeOnly" => "time",
+                "Byte[]" => "varbinary(max)",
+                "String" or "Char" => IsLarge(c.Size, 4000) ? "nvarchar(max)" : $"nvarchar({c.Size})",
+                _ => "nvarchar(max)"
+            }
+        };
+    }
+
+    private static int ClampPrec(int prec, int max) => prec is > 0 and <= 100 ? Math.Min(prec, max) : max == 38 ? 38 : 18;
+    private static int ClampScale(int scale, int prec, int maxPrec)
+    {
+        var p = ClampPrec(prec, maxPrec);
+        if (scale < 0) scale = maxPrec == 38 ? 6 : 4;
+        return Math.Min(scale, p);
     }
 
     private static string SqlServerType(SqlServerService.ColumnDetail c)
