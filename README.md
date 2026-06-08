@@ -26,7 +26,8 @@ Grab the latest **portable `.exe`** from the
   - **SQL Server** and **SQLite** are fully supported today; **PostgreSQL** and **MongoDB** are
     selectable now and being wired up next.
   - **SQLite**: just point to a `.db` / `.sqlite` file — browse tables & views, view and edit rows
-    (primary-key or rowid-safe), and inspect structure/DDL.
+    (primary-key or rowid-safe), **design tables** (create new, or alter existing via a safe
+    table-rebuild), and inspect structure/DDL.
 - **Connection manager** — add, edit, and remove connections.
   - SQL Server: Windows Authentication or SQL Server login.
   - Field-based builder *or* a raw connection string.

@@ -12,6 +12,7 @@ namespace NavMeCat.ViewModels;
 public partial class TableDesignerViewModel : ObservableObject
 {
     private readonly ConnectionProfile _connection;
+    private readonly DatabaseEngine _engine;
     private readonly string? _database;
     private string _schema;
     private string _table;
@@ -21,9 +22,12 @@ public partial class TableDesignerViewModel : ObservableObject
     private List<string> _originalPk = new();
     private List<string> _originalIndexNames = new();
 
+    private bool IsSqlite => _engine == DatabaseEngine.Sqlite;
+
     public ObservableCollection<DesignColumn> Columns { get; } = new();
     public ObservableCollection<DesignIndex> Indexes { get; } = new();
-    public string[] DataTypes { get; } =
+
+    private static readonly string[] SqlServerTypes =
     {
         "int", "bigint", "smallint", "tinyint", "bit",
         "decimal", "numeric", "money", "float", "real",
@@ -32,6 +36,13 @@ public partial class TableDesignerViewModel : ObservableObject
         "uniqueidentifier", "varbinary", "binary", "xml"
     };
 
+    private static readonly string[] SqliteTypes =
+    {
+        "INTEGER", "TEXT", "REAL", "NUMERIC", "BLOB", "BOOLEAN", "DATE", "DATETIME"
+    };
+
+    public string[] DataTypes { get; }
+
     [ObservableProperty] private string tableName;
     [ObservableProperty] private string generatedSql = "";
     [ObservableProperty] private string messages = "";
@@ -39,11 +50,13 @@ public partial class TableDesignerViewModel : ObservableObject
     public TableDesignerViewModel(ConnectionProfile connection, string? database, string schema, string table, bool isNew)
     {
         _connection = connection;
+        _engine = connection.Engine;
         _database = database;
         _schema = schema;
         _table = table;
         _isNew = isNew;
         tableName = table;
+        DataTypes = _engine == DatabaseEngine.Sqlite ? SqliteTypes : SqlServerTypes;
 
         Columns.CollectionChanged += OnColumnsChanged;
         Indexes.CollectionChanged += OnColumnsChanged;
@@ -61,6 +74,7 @@ public partial class TableDesignerViewModel : ObservableObject
 
     private async Task LoadAsync()
     {
+        if (IsSqlite) { await LoadSqliteAsync(); return; }
         try
         {
             var cols = await SqlServerService.GetColumnDetailsAsync(_connection.BuildConnectionString(), _database ?? "", _schema, _table);
@@ -128,10 +142,60 @@ public partial class TableDesignerViewModel : ObservableObject
         };
     }
 
+    private async Task LoadSqliteAsync()
+    {
+        try
+        {
+            var cs = _connection.BuildConnectionString();
+            var cols = await SqliteService.GetColumnDetailsAsync(cs, _table);
+            foreach (var c in cols)
+            {
+                var dc = new DesignColumn
+                {
+                    OriginalName = c.Name,
+                    OriginalType = c.Type,
+                    OriginalNullable = !c.NotNull,
+                    Name = c.Name,
+                    Type = string.IsNullOrWhiteSpace(c.Type) ? "TEXT" : c.Type,
+                    Nullable = !c.NotNull,
+                    DefaultValue = c.Default,
+                    PrimaryKey = c.Pk > 0,
+                    OriginalPrimaryKey = c.Pk > 0,
+                    OriginalDefault = c.Default
+                };
+                dc.PropertyChanged += OnColumnChanged;
+                Columns.Add(dc);
+            }
+            _originalColumns = cols.Select(c => c.Name).ToList();
+            _originalPk = cols.Where(c => c.Pk > 0).OrderBy(c => c.Pk).Select(c => c.Name).ToList();
+
+            foreach (var ix in await SqliteService.GetIndexesAsync(cs, _table))
+            {
+                var di = new DesignIndex
+                {
+                    OriginalName = ix.Name,
+                    Name = ix.Name,
+                    Columns = string.Join(", ", ix.Columns),
+                    Unique = ix.Unique,
+                    OriginalSpec = IndexSpec(ix.Unique, ix.Columns)
+                };
+                di.PropertyChanged += OnColumnChanged;
+                Indexes.Add(di);
+            }
+            _originalIndexNames = Indexes.Where(i => i.OriginalName is not null).Select(i => i.OriginalName!).ToList();
+
+            Generate();
+        }
+        catch (Exception ex)
+        {
+            Messages = "Could not load columns: " + ex.Message;
+        }
+    }
+
     [RelayCommand]
     private void AddColumn()
     {
-        var dc = new DesignColumn { Name = "Column" + (Columns.Count + 1) };
+        var dc = new DesignColumn { Name = "Column" + (Columns.Count + 1), Type = IsSqlite ? "TEXT" : "int" };
         dc.PropertyChanged += OnColumnChanged;
         Columns.Add(dc);
     }
@@ -181,7 +245,10 @@ public partial class TableDesignerViewModel : ObservableObject
         Messages = "Saving…";
         try
         {
-            await SqlServerService.ExecuteAsync(_connection.BuildConnectionString(), _database ?? "", GeneratedSql);
+            if (IsSqlite)
+                await SqliteService.ExecuteScriptAsync(_connection.BuildConnectionString(), GeneratedSql);
+            else
+                await SqlServerService.ExecuteAsync(_connection.BuildConnectionString(), _database ?? "", GeneratedSql);
             Messages = _isNew
                 ? "Created successfully. Close and re-open Design to make further changes."
                 : "Saved successfully.";
@@ -211,7 +278,84 @@ public partial class TableDesignerViewModel : ObservableObject
         var valid = Columns.Where(c => !string.IsNullOrWhiteSpace(c.Name)).ToList();
         if (valid.Count == 0) { GeneratedSql = ""; return; }
 
-        GeneratedSql = _isNew ? GenerateCreate(valid) : GenerateAlter(valid);
+        if (IsSqlite)
+            GeneratedSql = _isNew ? GenerateSqliteCreate(valid) : GenerateSqliteRebuild(valid);
+        else
+            GeneratedSql = _isNew ? GenerateCreate(valid) : GenerateAlter(valid);
+    }
+
+    // ---- SQLite generation ----------------------------------------------
+
+    private static bool IsIntegerType(string type) => type.ToUpperInvariant().Contains("INT");
+
+    private static string SqliteType(DesignColumn c) =>
+        string.IsNullOrWhiteSpace(c.Type) ? "TEXT" : c.Type.Trim();
+
+    /// <summary>The CREATE TABLE statement (columns + PK), no indexes, no trailing semicolon.</summary>
+    private string SqliteCreateTable(List<DesignColumn> cols, string name)
+    {
+        var pkCols = cols.Where(c => c.PrimaryKey).ToList();
+        var inlinePk = pkCols.Count == 1;
+
+        var lines = new List<string>();
+        foreach (var c in cols)
+        {
+            var line = new StringBuilder($"  [{c.Name}] {SqliteType(c)}");
+            if (inlinePk && c.PrimaryKey)
+            {
+                line.Append(" PRIMARY KEY");
+                if (c.Identity && IsIntegerType(SqliteType(c))) line.Append(" AUTOINCREMENT");
+            }
+            if (!c.Nullable && !(inlinePk && c.PrimaryKey)) line.Append(" NOT NULL");
+            if (!string.IsNullOrWhiteSpace(c.DefaultValue)) line.Append($" DEFAULT {c.DefaultValue}");
+            lines.Add(line.ToString());
+        }
+        if (pkCols.Count > 1)
+            lines.Add($"  PRIMARY KEY ({string.Join(", ", pkCols.Select(c => $"[{c.Name}]"))})");
+
+        return $"CREATE TABLE [{name}] (\n{string.Join(",\n", lines)}\n)";
+    }
+
+    private string GenerateSqliteCreate(List<DesignColumn> cols)
+    {
+        var sb = new StringBuilder(SqliteCreateTable(cols, TableName));
+        foreach (var ix in Indexes.Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.Columns)))
+            sb.Append($";\nCREATE {(ix.Unique ? "UNIQUE " : "")}INDEX [{ix.Name}] ON [{TableName}] ({BracketCols(ix.Columns)})");
+        return sb.ToString() + ";";
+    }
+
+    /// <summary>
+    /// SQLite can't ALTER most things, so rebuild: create a new table with the desired schema,
+    /// copy the kept columns across, drop the old table, rename, then recreate indexes.
+    /// </summary>
+    private string GenerateSqliteRebuild(List<DesignColumn> cols)
+    {
+        var kept = cols.Where(c => c.OriginalName is not null).ToList();
+        var tmp = _table + "__nmc_new";
+
+        var stmts = new List<string>
+        {
+            "PRAGMA foreign_keys=OFF",
+            "BEGIN TRANSACTION",
+            SqliteCreateTable(cols, tmp)
+        };
+
+        if (kept.Count > 0)
+        {
+            var target = string.Join(", ", kept.Select(c => $"[{c.Name}]"));
+            var source = string.Join(", ", kept.Select(c => $"[{c.OriginalName}]"));
+            stmts.Add($"INSERT INTO [{tmp}] ({target}) SELECT {source} FROM [{_table}]");
+        }
+
+        stmts.Add($"DROP TABLE [{_table}]");
+        stmts.Add($"ALTER TABLE [{tmp}] RENAME TO [{TableName}]");
+
+        foreach (var ix in Indexes.Where(i => !string.IsNullOrWhiteSpace(i.Name) && !string.IsNullOrWhiteSpace(i.Columns)))
+            stmts.Add($"CREATE {(ix.Unique ? "UNIQUE " : "")}INDEX [{ix.Name}] ON [{TableName}] ({BracketCols(ix.Columns)})");
+
+        stmts.Add("COMMIT");
+        stmts.Add("PRAGMA foreign_keys=ON");
+        return string.Join(";\n", stmts) + ";";
     }
 
     private string GenerateCreate(List<DesignColumn> cols)

@@ -70,6 +70,7 @@ public partial class MainWindow : Window
         {
             case NodeType.Table when node.Connection.Engine == DatabaseEngine.Sqlite:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
                 break;
 
             case NodeType.Table:
@@ -98,6 +99,13 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Execute", () => Run(Vm.ExecuteRoutineCommand, node)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
+                break;
+
+            case NodeType.Category when node.Connection.Engine == DatabaseEngine.Sqlite
+                                         && node.CategoryChildType is NodeType.Table:
+                menu.Items.Add(Item("Ctx_NewTable", () => Run(Vm.NewTableCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Category when node.Connection.Engine == DatabaseEngine.Sqlite:
