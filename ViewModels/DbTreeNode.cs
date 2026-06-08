@@ -181,8 +181,18 @@ public partial class DbTreeNode : ObservableObject
         switch (Type)
         {
             case NodeType.Server:
-                foreach (var db in await SqlServerService.GetDatabasesAsync(connStr))
-                    items.Add(DatabaseNode(Connection, db));
+                // With a default database set, skip the database level: connection → schema → tables.
+                if (!string.IsNullOrWhiteSpace(Connection.Database))
+                {
+                    var db = Connection.Database!;
+                    foreach (var schema in await SqlServerService.GetSchemasAsync(connStr, db))
+                        items.Add(SchemaNode(Connection, db, schema));
+                }
+                else
+                {
+                    foreach (var db in await SqlServerService.GetDatabasesAsync(connStr))
+                        items.Add(DatabaseNode(Connection, db));
+                }
                 break;
             case NodeType.Database:
                 foreach (var schema in await SqlServerService.GetSchemasAsync(connStr, Database!))

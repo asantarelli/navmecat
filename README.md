@@ -67,7 +67,9 @@ Grab the latest **portable `.exe`** from the
   and times (🕒), while keeping them editable. Toggle per tab.
 - **Object tree (Navicat-style)** — Server → Database → Schema → **Tables / Views / Functions /
   Procedures** folders, with a **filter/locator** box to jump to a table by name. Open tables or
-  views to browse rows.
+  views to browse rows. For SQL Server, set a connection's **default database** to collapse the
+  tree to *connection → schema → Tables* (the database level is skipped); leave it blank to browse
+  all databases on the server.
 - **Object list** — click a **Tables** folder (or a MongoDB database) to see all its tables in the
   content area, Navicat-style: **Name, Rows, Modified Date, Comment**, with a toolbar (Open / Design
   / New / Delete / Refresh). Double-click a row to open it.
