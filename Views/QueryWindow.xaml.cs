@@ -53,6 +53,7 @@ public partial class QueryWindow : Window
         {
             var table = new DataTable();
             int affected;
+            var truncated = false;
             var sw = Stopwatch.StartNew();
 
             await using (var conn = CreateConnection())
@@ -62,7 +63,7 @@ public partial class QueryWindow : Window
                 cmd.CommandText = sql;
                 try { cmd.CommandTimeout = 0; } catch { /* not all providers allow 0 */ }
                 await using var reader = await cmd.ExecuteReaderAsync();
-                if (reader.FieldCount > 0) table.Load(reader);
+                if (reader.FieldCount > 0) (table, truncated) = await ResultReader.LoadAsync(reader);
                 affected = reader.RecordsAffected;
             }
             sw.Stop();
@@ -70,7 +71,8 @@ public partial class QueryWindow : Window
             if (table.Columns.Count > 0)
             {
                 ResultsGrid.ItemsSource = table.DefaultView;
-                Messages.Text = $"{table.Rows.Count:N0} row(s)  ·  {sw.ElapsedMilliseconds} ms";
+                Messages.Text = $"{table.Rows.Count:N0} row(s)  ·  {sw.ElapsedMilliseconds} ms" +
+                                (truncated ? $"  (first {ResultReader.DefaultRowCap:N0})" : "");
             }
             else
             {

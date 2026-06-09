@@ -208,7 +208,8 @@ public partial class QueryBuilderViewModel : ObservableObject
         Messages = "Running…";
         try
         {
-            var data = new DataTable();
+            System.Data.DataTable data;
+            bool truncated;
             await using (var conn = CreateConnection())
             {
                 await conn.OpenAsync();
@@ -216,10 +217,11 @@ public partial class QueryBuilderViewModel : ObservableObject
                 cmd.CommandText = GeneratedSql;
                 try { cmd.CommandTimeout = 0; } catch { /* provider may not allow 0 */ }
                 await using var reader = await cmd.ExecuteReaderAsync();
-                if (reader.FieldCount > 0) data.Load(reader);
+                (data, truncated) = await ResultReader.LoadAsync(reader);
             }
             Results = data.DefaultView;
-            Messages = $"{data.Rows.Count:N0} row(s).";
+            Messages = $"{data.Rows.Count:N0} row(s)." +
+                       (truncated ? $"  (showing the first {ResultReader.DefaultRowCap:N0})" : "");
         }
         catch (Exception ex)
         {
