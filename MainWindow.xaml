@@ -60,59 +60,88 @@
         <Border Grid.Row="1" Background="{StaticResource B.SurfaceAlt}"
                 BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1" Padding="10,4">
             <StackPanel Orientation="Horizontal">
+                <!-- Connection (green plug) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding AddConnectionCommand}">
                     <StackPanel>
-                        <Path Width="24" Height="24" Stretch="Uniform" HorizontalAlignment="Center"
-                              Data="M2,3 H14 V6.5 H2 Z M2,9.5 H14 V13 H2 Z M4,4.75 H4.01 M4,11.25 H4.01"
-                              Stroke="#FF2D7FE0" StrokeThickness="1.2" Fill="Transparent"/>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="#2E9E5B" Data="M8.2,3.5 H9.8 V7.5 H8.2 Z"/>
+                            <Path Fill="#2E9E5B" Data="M14.2,3.5 H15.8 V7.5 H14.2 Z"/>
+                            <Path Fill="#34B26A" Data="M6,7 H18 V10 A6,6 0 0 1 6,10 Z"/>
+                            <Path Fill="#2E9E5B" Data="M11.2,15 H12.8 V19.5 H11.2 Z"/>
+                            <Path Fill="#7BC49A" Data="M7.5,18 H16.5 A1.5,1.5 0 0 1 18,19.5 V21 H6 V19.5 A1.5,1.5 0 0 1 7.5,18 Z"/>
+                        </Canvas>
                         <TextBlock Text="{loc:Tr Bar_Connection}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
+                <!-- New Query (document + green plus) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding OpenQueryCommand}">
                     <StackPanel>
-                        <Path Width="24" Height="24" Stretch="Uniform" HorizontalAlignment="Center"
-                              Data="M4,2 H10 L13.5,5.5 V14 H4 Z M10,2 V5.5 H13.5 M5.5,8.5 H11.5 M5.5,11 H9.5"
-                              Stroke="#FFC0653C" StrokeThickness="1.1" Fill="Transparent"/>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="#EAF2FB" Stroke="#2D7FE0" StrokeThickness="1.1" Data="M5,2.5 H13 L17.5,7 V21 H5 Z"/>
+                            <Path Fill="#2D7FE0" Data="M13,2.5 V7 H17.5 Z"/>
+                            <Path Stroke="#7A8794" StrokeThickness="1" Data="M7.3,11 H13.5 M7.3,13.3 H13.5 M7.3,15.6 H11"/>
+                            <Path Fill="#2E9E5B" Data="M17,13.6 m-4.4,0 a4.4,4.4 0 1,0 8.8,0 a4.4,4.4 0 1,0 -8.8,0 Z"/>
+                            <Path Fill="White" Data="M16.2,16 H17.8 V14.4 H19.4 V12.8 H17.8 V11.2 H16.2 V12.8 H14.6 V14.4 H16.2 Z"/>
+                        </Canvas>
                         <TextBlock Text="{loc:Tr Bar_NewQuery}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
+                <!-- Visual Designer (linked boxes) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding OpenQueryBuilderCommand}">
                     <StackPanel>
-                        <Path Width="24" Height="24" Stretch="Uniform" HorizontalAlignment="Center"
-                              Data="M2,3 H6.5 V6.5 H2 Z M9.5,9.5 H14 V13 H9.5 Z M4.25,6.5 V9.5 H11.75 V9.5 M11.75,8 V11"
-                              Stroke="#FF1B9E8B" StrokeThickness="1.2" Fill="Transparent"/>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Stroke="#9AA7B4" StrokeThickness="1.4" Fill="Transparent" Data="M9.5,6.5 H12.5 V15.5 H14.5"/>
+                            <Path Fill="#3B82E0" Data="M2.5,3.5 H10 A1,1 0 0 1 11,4.5 V8.5 A1,1 0 0 1 10,9.5 H2.5 A1,1 0 0 1 1.5,8.5 V4.5 A1,1 0 0 1 2.5,3.5 Z"/>
+                            <Path Fill="#1B9E8B" Data="M14,13 H21.5 A1,1 0 0 1 22.5,14 V18 A1,1 0 0 1 21.5,19 H14 A1,1 0 0 1 13,18 V14 A1,1 0 0 1 14,13 Z"/>
+                        </Canvas>
                         <TextBlock Text="{loc:Tr Bar_VisualDesigner}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
+                <!-- Table (blue header grid) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToTablesCommand}">
                     <StackPanel>
-                        <Path Width="24" Height="24" Stretch="Uniform" HorizontalAlignment="Center"
-                              Data="M2.5,3.5 H13.5 V12.5 H2.5 Z M2.5,6.5 H13.5 M2.5,9.5 H13.5 M6.17,3.5 V12.5 M9.83,3.5 V12.5"
-                              Stroke="#FF2D7FE0" StrokeThickness="1.2" Fill="Transparent"/>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="#FFFFFF" Stroke="#9AB6D8" StrokeThickness="0.9" Data="M3,4 H21 V20 H3 Z"/>
+                            <Path Fill="#2D7FE0" Data="M3,4 H21 V8.5 H3 Z"/>
+                            <Path Stroke="#9AB6D8" StrokeThickness="0.9" Data="M9,8.5 V20 M15,8.5 V20 M3,12.5 H21 M3,16.5 H21"/>
+                            <Path Stroke="#2D7FE0" StrokeThickness="1.3" Fill="Transparent" Data="M3,4 H21 V20 H3 Z"/>
+                        </Canvas>
                         <TextBlock Text="{loc:Tr Bar_Table}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
+                <!-- View (teal eye) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToViewsCommand}">
                     <StackPanel>
-                        <Path Width="24" Height="24" Stretch="Uniform" HorizontalAlignment="Center"
-                              Data="M1.5,8 C3.5,4.5 12.5,4.5 14.5,8 C12.5,11.5 3.5,11.5 1.5,8 Z M8,6.2 A1.8,1.8 0 1 0 8,9.8 A1.8,1.8 0 1 0 8,6.2 Z"
-                              Stroke="#FF1B9E8B" StrokeThickness="1.2" Fill="Transparent"/>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="#1B9E8B" Data="M2,12 C5,6.5 19,6.5 22,12 C19,17.5 5,17.5 2,12 Z"/>
+                            <Path Fill="White" Data="M12,8.3 a3.7,3.7 0 1,0 0.01,0 Z"/>
+                            <Path Fill="#15776A" Data="M12,10.1 a1.9,1.9 0 1,0 0.01,0 Z"/>
+                        </Canvas>
                         <TextBlock Text="{loc:Tr Bar_View}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
+                <!-- Function (purple ƒx badge) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToFunctionsCommand}">
                     <StackPanel>
-                        <TextBlock Text="ƒ(x)" FontSize="17" FontWeight="SemiBold" Width="24" Height="24"
-                                   TextAlignment="Center" Foreground="#FF8E44AD" HorizontalAlignment="Center"/>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="#8E44AD" Data="M4.5,3.5 H19.5 A2.5,2.5 0 0 1 22,6 V18 A2.5,2.5 0 0 1 19.5,20.5 H4.5 A2.5,2.5 0 0 1 2,18 V6 A2.5,2.5 0 0 1 4.5,3.5 Z"/>
+                            <TextBlock Canvas.Left="0" Canvas.Top="2.5" Width="24" TextAlignment="Center"
+                                       Text="ƒx" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
+                        </Canvas>
                         <TextBlock Text="{loc:Tr Bar_Function}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
+                <!-- Refresh (green circular arrow) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding RefreshNodeCommand}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;" FontSize="22" Width="24" Height="24"
-                                   TextAlignment="Center" Margin="0" Foreground="{StaticResource B.TextMuted}"/>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Stroke="#2E9E5B" StrokeThickness="2.3" Fill="Transparent"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Data="M19,9 A7,7 0 1 0 19.7,14.5"/>
+                            <Path Fill="#2E9E5B" Data="M14.5,3.5 L20.5,8.5 L13.7,10 Z"/>
+                        </Canvas>
                         <TextBlock Text="{loc:Tr Bar_Refresh}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
