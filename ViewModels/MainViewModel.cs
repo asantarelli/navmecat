@@ -186,10 +186,10 @@ public partial class MainViewModel : ObservableObject
             StatusText = "Add a connection first.";
             return;
         }
-        if (connection.Engine != DatabaseEngine.SqlServer)
+        if (connection.Engine == DatabaseEngine.MongoDb)
         {
             Dialogs.ShowMessage("Not available",
-                $"The query window currently supports SQL Server only — not {connection.Engine.DisplayName()}.");
+                "The SQL query window doesn't apply to MongoDB.");
             return;
         }
         new Views.QueryWindow(connection, node?.Database).Show();

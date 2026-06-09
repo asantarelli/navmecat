@@ -1,8 +1,11 @@
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
+using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 using NavMeCat.Models;
 using NavMeCat.Services;
 
@@ -48,18 +51,16 @@ public partial class QueryWindow : Window
         Messages.Text = "Running…";
         try
         {
-            var cs = string.IsNullOrEmpty(_database)
-                ? _connection.BuildConnectionString()
-                : SqlServerService.WithDatabase(_connection.BuildConnectionString(), _database);
-
             var table = new DataTable();
             int affected;
             var sw = Stopwatch.StartNew();
 
-            await using (var conn = new SqlConnection(cs))
+            await using (var conn = CreateConnection())
             {
                 await conn.OpenAsync();
-                await using var cmd = new SqlCommand(sql, conn) { CommandTimeout = 0 };
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = sql;
+                try { cmd.CommandTimeout = 0; } catch { /* not all providers allow 0 */ }
                 await using var reader = await cmd.ExecuteReaderAsync();
                 if (reader.FieldCount > 0) table.Load(reader);
                 affected = reader.RecordsAffected;
@@ -86,5 +87,16 @@ public partial class QueryWindow : Window
         {
             RunButton.IsEnabled = true;
         }
+    }
+
+    private DbConnection CreateConnection()
+    {
+        var cs = _connection.BuildConnectionString();
+        return _connection.Engine switch
+        {
+            DatabaseEngine.Sqlite => new SqliteConnection(cs),
+            DatabaseEngine.Firebird => new FbConnection(cs),
+            _ => new SqlConnection(string.IsNullOrEmpty(_database) ? cs : SqlServerService.WithDatabase(cs, _database))
+        };
     }
 }
