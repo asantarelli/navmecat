@@ -31,19 +31,22 @@
         <conv:NodeIconConverter x:Key="NodeIcon"/>
         <conv:NodeIconBrushConverter x:Key="NodeIconBrush"/>
 
-        <!-- Command-bar icon gradients -->
-        <LinearGradientBrush x:Key="GBlue" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#5BA8F5" Offset="0"/><GradientStop Color="#2D7FE0" Offset="1"/>
+        <!-- Command-bar icon gradients (diagonal, with a highlight) -->
+        <LinearGradientBrush x:Key="GBlue" StartPoint="0.1,0" EndPoint="0.9,1">
+            <GradientStop Color="#73B7F8" Offset="0"/><GradientStop Color="#3D8AE6" Offset="0.5"/><GradientStop Color="#2167C4" Offset="1"/>
         </LinearGradientBrush>
-        <LinearGradientBrush x:Key="GGreen" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#56C885" Offset="0"/><GradientStop Color="#2E9E5B" Offset="1"/>
+        <LinearGradientBrush x:Key="GGreen" StartPoint="0.1,0" EndPoint="0.9,1">
+            <GradientStop Color="#6BD297" Offset="0"/><GradientStop Color="#3DAE69" Offset="0.5"/><GradientStop Color="#23864B" Offset="1"/>
         </LinearGradientBrush>
-        <LinearGradientBrush x:Key="GTeal" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#34C6AF" Offset="0"/><GradientStop Color="#159684" Offset="1"/>
+        <LinearGradientBrush x:Key="GTeal" StartPoint="0.1,0" EndPoint="0.9,1">
+            <GradientStop Color="#41D2BA" Offset="0"/><GradientStop Color="#1FAE99" Offset="0.5"/><GradientStop Color="#0E7F70" Offset="1"/>
         </LinearGradientBrush>
-        <LinearGradientBrush x:Key="GPurple" StartPoint="0,0" EndPoint="0,1">
-            <GradientStop Color="#B070D8" Offset="0"/><GradientStop Color="#8E44AD" Offset="1"/>
+        <LinearGradientBrush x:Key="GPurple" StartPoint="0.1,0" EndPoint="0.9,1">
+            <GradientStop Color="#BC81DF" Offset="0"/><GradientStop Color="#9A52B8" Offset="0.5"/><GradientStop Color="#7C399A" Offset="1"/>
         </LinearGradientBrush>
+
+        <!-- Soft shadow shared by command-bar icons -->
+        <DropShadowEffect x:Key="IconShadow" BlurRadius="3.5" ShadowDepth="1" Direction="270" Opacity="0.3" Color="#FF26323E"/>
         <conv:IsNullToVisibilityConverter x:Key="NullToVis"/>
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -77,7 +80,7 @@
                 <!-- Connection (glossy green plug) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding AddConnectionCommand}">
                     <StackPanel>
-                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center" Effect="{StaticResource IconShadow}">
                             <Path Fill="{StaticResource GGreen}" Data="M8.3,3.2 H9.9 A0.3,0.3 0 0 1 10.2,3.5 V7.3 H8 V3.5 A0.3,0.3 0 0 1 8.3,3.2 Z"/>
                             <Path Fill="{StaticResource GGreen}" Data="M14.1,3.2 H15.7 A0.3,0.3 0 0 1 16,3.5 V7.3 H13.8 V3.5 A0.3,0.3 0 0 1 14.1,3.2 Z"/>
                             <Path Fill="{StaticResource GGreen}" Data="M5.8,7 H18.2 V10 A6.2,6.2 0 0 1 5.8,10 Z"/>
@@ -91,7 +94,7 @@
                 <!-- New Query (document + green plus) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding OpenQueryCommand}">
                     <StackPanel>
-                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center" Effect="{StaticResource IconShadow}">
                             <Path Fill="#F4F9FE" Stroke="#9CC0EA" StrokeThickness="0.9"
                                   Data="M5,2.5 H12.7 L17.5,7.3 V20.3 A0.7,0.7 0 0 1 16.8,21 H5.7 A0.7,0.7 0 0 1 5,20.3 Z"/>
                             <Path Fill="{StaticResource GBlue}" Data="M12.7,2.5 V6.6 A0.7,0.7 0 0 0 13.4,7.3 H17.5 Z"/>
@@ -106,7 +109,7 @@
                 <!-- Visual Designer (linked tiles) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding OpenQueryBuilderCommand}">
                     <StackPanel>
-                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center" Effect="{StaticResource IconShadow}">
                             <Path Stroke="#B7C2CE" StrokeThickness="1.6" Fill="Transparent"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round" Data="M10.9,6.7 H12.6 V15.8 H14.1"/>
                             <Path Fill="{StaticResource GBlue}" Data="M2.5,3.3 H9.7 A1.3,1.3 0 0 1 11,4.6 V8.4 A1.3,1.3 0 0 1 9.7,9.7 H2.5 A1.3,1.3 0 0 1 1.2,8.4 V4.6 A1.3,1.3 0 0 1 2.5,3.3 Z"/>
@@ -121,7 +124,7 @@
                 <!-- Table (rounded card, blue header) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToTablesCommand}">
                     <StackPanel>
-                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center" Effect="{StaticResource IconShadow}">
                             <Path Fill="#FFFFFF" Data="M4,4 H20 A2,2 0 0 1 22,6 V18 A2,2 0 0 1 20,20 H4 A2,2 0 0 1 2,18 V6 A2,2 0 0 1 4,4 Z"/>
                             <Path Fill="{StaticResource GBlue}" Data="M4,4 H20 A2,2 0 0 1 22,6 V8.6 H2 V6 A2,2 0 0 1 4,4 Z"/>
                             <Path Stroke="#C3D4E6" StrokeThickness="0.9" Data="M8.7,8.6 V20 M15.3,8.6 V20 M2,12.7 H22 M2,16.4 H22"/>
@@ -133,7 +136,7 @@
                 <!-- View (teal eye with glint) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToViewsCommand}">
                     <StackPanel>
-                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center" Effect="{StaticResource IconShadow}">
                             <Path Fill="{StaticResource GTeal}" Data="M2,12 C5,6 19,6 22,12 C19,18 5,18 2,12 Z"/>
                             <Path Fill="White" Data="M12,8.4 a3.6,3.6 0 1,0 0.01,0 Z"/>
                             <Path Fill="#147567" Data="M12,9.9 a2.1,2.1 0 1,0 0.01,0 Z"/>
@@ -145,7 +148,7 @@
                 <!-- Function (purple ƒx tile) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToFunctionsCommand}">
                     <StackPanel>
-                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center" Effect="{StaticResource IconShadow}">
                             <Path Fill="{StaticResource GPurple}" Data="M4.5,3.5 H19.5 A2.5,2.5 0 0 1 22,6 V18 A2.5,2.5 0 0 1 19.5,20.5 H4.5 A2.5,2.5 0 0 1 2,18 V6 A2.5,2.5 0 0 1 4.5,3.5 Z"/>
                             <Path Fill="#28FFFFFF" Data="M4.5,3.5 H19.5 A2.5,2.5 0 0 1 22,6 V9 H2 V6 A2.5,2.5 0 0 1 4.5,3.5 Z"/>
                             <TextBlock Canvas.Left="0" Canvas.Top="2.5" Width="24" TextAlignment="Center"
@@ -158,7 +161,7 @@
                 <!-- Refresh (green circular arrow) -->
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding RefreshNodeCommand}">
                     <StackPanel>
-                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center" Effect="{StaticResource IconShadow}">
                             <Path Stroke="{StaticResource GGreen}" StrokeThickness="2.4" Fill="Transparent"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                                   Data="M19,9.2 A7,7 0 1 0 19.6,14.3"/>
