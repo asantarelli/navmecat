@@ -26,6 +26,10 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
     [ObservableProperty] private string countText = "";
     [ObservableProperty] private bool canDesign;
     [ObservableProperty] private bool canCreate;
+    [ObservableProperty] private bool isTables = true;
+
+    /// <summary>The kind of objects listed: Table, View, Function, or Procedure.</summary>
+    public NodeType ChildType { get; private set; } = NodeType.Table;
 
     public string Header => LocalizationManager.Instance["Tab_Objects"];
     public bool CanClose => false;
@@ -50,17 +54,24 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
     public async Task ConfigureAsync(DbTreeNode container)
     {
         _container = container;
+        ChildType = container.Type == NodeType.Category ? container.CategoryChildType : NodeType.Table;
+        IsTables = ChildType == NodeType.Table;
         var engine = container.Connection.Engine;
-        CanDesign = engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
-        CanCreate = engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
-        Title = engine == DatabaseEngine.MongoDb
-            ? $"{container.Name} — collections"
-            : container.Type switch
-            {
-                NodeType.Database => $"{container.Name} — tables",
-                NodeType.Schema => $"{container.Database}.{container.Name} — tables",
-                _ => $"{container.Database}.{container.Schema} — tables"
-            };
+        CanDesign = IsTables && engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
+        CanCreate = CanDesign;
+
+        var loc = LocalizationManager.Instance;
+        var kindWord = ChildType switch
+        {
+            NodeType.View => loc["OL_Views"],
+            NodeType.Function => loc["OL_Functions"],
+            NodeType.Procedure => loc["OL_Procedures"],
+            _ => engine == DatabaseEngine.MongoDb ? loc["OL_Collections"] : loc["OL_Tables"]
+        };
+        var where = container.Type == NodeType.Database
+            ? container.Name
+            : $"{container.Database}.{(container.Type == NodeType.Schema ? container.Name : container.Schema)}";
+        Title = $"{where} — {kindWord}";
         await LoadAsync();
     }
 
@@ -70,8 +81,12 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
         IsLoading = true;
         try
         {
-            var items = await ObjectListService.LoadTablesAsync(
-                _container.Connection, _container.Database ?? _container.Name, _container.Schema ?? "");
+            var db = _container.Database ?? _container.Name;
+            var schema = _container.Schema ?? "";
+            var items = ChildType == NodeType.Table
+                ? await ObjectListService.LoadTablesAsync(_container.Connection, db, schema)
+                : await ObjectListService.LoadNamesAsync(_container.Connection, db, schema,
+                    ChildType switch { NodeType.View => "view", NodeType.Function => "function", _ => "procedure" });
             Items.Clear();
             foreach (var i in items) Items.Add(i);
             CountText = string.Format(LocalizationManager.Instance["OL_Count"], Items.Count);

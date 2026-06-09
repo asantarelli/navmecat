@@ -22,6 +22,26 @@ public static class ObjectListService
             _ => Task.FromResult(new List<ObjectListItem>())
         };
 
+    /// <summary>Lists views / functions / procedures by name. kind = "view" | "function" | "procedure".</summary>
+    public static async Task<List<ObjectListItem>> LoadNamesAsync(ConnectionProfile p, string database, string schema, string kind)
+    {
+        var cs = p.BuildConnectionString();
+        List<string> names = p.Engine switch
+        {
+            DatabaseEngine.SqlServer => kind switch
+            {
+                "view" => await SqlServerService.GetViewsAsync(cs, database, schema),
+                "function" => await SqlServerService.GetFunctionsAsync(cs, database, schema),
+                "procedure" => await SqlServerService.GetProceduresAsync(cs, database, schema),
+                _ => new()
+            },
+            DatabaseEngine.Sqlite => kind == "view" ? await SqliteService.GetViewsAsync(cs) : new(),
+            DatabaseEngine.Firebird => kind == "view" ? await FirebirdService.GetViewsAsync(cs) : new(),
+            _ => new()
+        };
+        return names.Select(n => new ObjectListItem(n, null, null, null, schema)).ToList();
+    }
+
     private static async Task<List<ObjectListItem>> LoadSqlServerAsync(ConnectionProfile p, string database, string schema)
     {
         var allSchemas = string.IsNullOrEmpty(schema);

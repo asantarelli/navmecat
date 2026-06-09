@@ -36,8 +36,9 @@ public partial class MainViewModel : ObservableObject
 
     private async Task UpdateObjectListAsync(DbTreeNode? node)
     {
-        // The Objects tab tracks the selected Tables folder, schema, or database.
-        var show = node is { Type: NodeType.Category, CategoryChildType: NodeType.Table }
+        // The Objects tab tracks the selected Tables/Views/Functions folder, schema, or database.
+        var show = node is { Type: NodeType.Category, CategoryChildType: NodeType.Table or NodeType.View
+                                 or NodeType.Function or NodeType.Procedure }
                    or { Type: NodeType.Schema }
                    or { Type: NodeType.Database };
         if (!show) return;
@@ -59,15 +60,24 @@ public partial class MainViewModel : ObservableObject
         await _objectsTab.ConfigureAsync(node!);
     }
 
-    private static DbTreeNode NodeForItem(DbTreeNode container, ObjectListItem item) =>
-        container.MakeObjectChild(NodeType.Table, item.Name, item.Schema);
+    private static NodeType ChildTypeOf(DbTreeNode container) =>
+        container.Type == NodeType.Category ? container.CategoryChildType : NodeType.Table;
 
-    private void OpenFromList(DbTreeNode container, ObjectListItem item) =>
-        OpenTableCommand.Execute(NodeForItem(container, item));
+    private static DbTreeNode NodeForItem(DbTreeNode container, ObjectListItem item) =>
+        container.MakeObjectChild(ChildTypeOf(container), item.Name, item.Schema);
+
+    private void OpenFromList(DbTreeNode container, ObjectListItem item)
+    {
+        var node = NodeForItem(container, item);
+        if (node.IsOpenable) OpenTableCommand.Execute(node);          // table / view
+        else EditRoutineCommand.Execute(node);                        // function / procedure
+    }
 
     private async void DeleteFromListAsync(DbTreeNode container, ObjectListItem item)
     {
-        await DropTable(NodeForItem(container, item));
+        var node = NodeForItem(container, item);
+        if (node.Type == NodeType.Table) await DropTable(node);
+        else await DropRoutine(node);
         if (_objectsTab is not null) await _objectsTab.LoadAsync();
     }
 
@@ -76,6 +86,75 @@ public partial class MainViewModel : ObservableObject
         await PasteTable(container);
         if (_objectsTab is not null) await _objectsTab.LoadAsync();
     }
+
+    // ---- command-bar navigation -----------------------------------------
+
+    [RelayCommand]
+    private Task GoToTables() => GoToSection(NodeType.Table);
+    [RelayCommand]
+    private Task GoToViews() => GoToSection(NodeType.View);
+    [RelayCommand]
+    private Task GoToFunctions() => GoToSection(NodeType.Function);
+
+    /// <summary>Drills the tree to the current connection/database's section and selects it.</summary>
+    private async Task GoToSection(NodeType childType)
+    {
+        var conn = SelectedNode?.Connection ?? Roots.FirstOrDefault(r => r.Type == NodeType.Server)?.Connection;
+        if (conn is null) { StatusText = "Add a connection first."; return; }
+        var server = Roots.FirstOrDefault(r => r.Type == NodeType.Server && r.Connection.Id == conn.Id);
+        if (server is null) return;
+
+        try
+        {
+            var target = await FindSectionNodeAsync(server, SelectedNode, childType);
+            if (target is null) { StatusText = "That section isn't available for this connection."; return; }
+
+            for (var n = target.Parent; n is not null; n = n.Parent) n.IsExpanded = true;
+            target.IsExpanded = true;
+            SelectedNode = target; // shows the object list for the section
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Couldn't open the section: " + ex.Message;
+        }
+    }
+
+    private static async Task<DbTreeNode?> FindSectionNodeAsync(DbTreeNode server, DbTreeNode? selected, NodeType childType)
+    {
+        await server.LoadChildrenAsync();
+        var engine = server.Connection.Engine;
+
+        if (engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird)
+            return server.Children.FirstOrDefault(c => c.Type == NodeType.Category && c.CategoryChildType == childType);
+
+        if (engine == DatabaseEngine.MongoDb)
+            return childType == NodeType.Table
+                ? (selected?.Type == NodeType.Database ? selected : server.Children.FirstOrDefault(c => c.Type == NodeType.Database))
+                : null;
+
+        // SQL Server: server children are either Schema nodes (default-db layout) or Database nodes.
+        DbTreeNode? schema;
+        if (server.Children.Any(c => c.Type == NodeType.Schema))
+        {
+            schema = PickSchema(server, selected?.Schema);
+        }
+        else
+        {
+            var db = (selected?.Database is { } d ? server.Children.FirstOrDefault(c => c.Type == NodeType.Database && c.Name == d) : null)
+                     ?? server.Children.FirstOrDefault(c => c.Type == NodeType.Database);
+            if (db is null) return null;
+            await db.LoadChildrenAsync();
+            schema = PickSchema(db, selected?.Schema);
+        }
+        if (schema is null) return null;
+        await schema.LoadChildrenAsync();
+        return schema.Children.FirstOrDefault(c => c.Type == NodeType.Category && c.CategoryChildType == childType);
+    }
+
+    private static DbTreeNode? PickSchema(DbTreeNode parent, string? preferred) =>
+        (preferred is { } s ? parent.Children.FirstOrDefault(c => c.Type == NodeType.Schema && c.Name == s) : null)
+        ?? parent.Children.FirstOrDefault(c => c.Type == NodeType.Schema && c.Name == "dbo")
+        ?? parent.Children.FirstOrDefault(c => c.Type == NodeType.Schema);
 
     /// <summary>Row limit applied when opening a new tab.</summary>
 

@@ -70,6 +70,9 @@ Grab the latest **portable `.exe`** from the
   views to browse rows. For SQL Server, set a connection's **default database** to collapse the
   tree to *connection → schema → Tables* (the database level is skipped); leave it blank to browse
   all databases on the server.
+- **Command bar** — a Navicat-style toolbar across the top: **Connection**, **New Query**, and
+  **Table / View / Function** buttons that jump straight to the current database's tables, views or
+  functions section, plus **Refresh**.
 - **Objects tab** — click a **database**, a **schema**, or a **Tables** folder (or a MongoDB
   database) and its tables appear in a persistent **Objects** tab, Navicat-style: **Name, Schema,
   Rows, Modified Date, Comment**, with a toolbar (Open / Design / New / Delete / Refresh).

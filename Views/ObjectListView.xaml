@@ -39,13 +39,16 @@
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74D;"/><TextBlock Text="{loc:Tr OL_DeleteTable}"/>
                     </StackPanel>
                 </Button>
-                <Border Width="1" Background="{StaticResource B.Border}" Margin="6,2"/>
-                <Button Command="{Binding CopyCommand}" Style="{StaticResource ToolButton}">
+                <Border Width="1" Background="{StaticResource B.Border}" Margin="6,2"
+                        Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
+                <Button Command="{Binding CopyCommand}" Style="{StaticResource ToolButton}"
+                        Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8C8;"/><TextBlock Text="{loc:Tr Ctx_CopyTable}"/>
                     </StackPanel>
                 </Button>
-                <Button Command="{Binding PasteCommand}" Style="{StaticResource ToolButton}">
+                <Button Command="{Binding PasteCommand}" Style="{StaticResource ToolButton}"
+                        Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE77F;"/><TextBlock Text="{loc:Tr Ctx_PasteTable}"/>
                     </StackPanel>
@@ -70,9 +73,11 @@
                     <MenuItem Header="{loc:Tr OL_OpenTable}" Command="{Binding OpenCommand}"/>
                     <MenuItem Header="{loc:Tr OL_DesignTable}" Command="{Binding DesignCommand}"
                               Visibility="{Binding CanDesign, Converter={StaticResource BoolToVis}}"/>
-                    <Separator/>
-                    <MenuItem Header="{loc:Tr Ctx_CopyTable}" Command="{Binding CopyCommand}"/>
-                    <MenuItem Header="{loc:Tr Ctx_PasteTable}" Command="{Binding PasteCommand}"/>
+                    <Separator Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
+                    <MenuItem Header="{loc:Tr Ctx_CopyTable}" Command="{Binding CopyCommand}"
+                              Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
+                    <MenuItem Header="{loc:Tr Ctx_PasteTable}" Command="{Binding PasteCommand}"
+                              Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
                     <Separator/>
                     <MenuItem Header="{loc:Tr OL_DeleteTable}" Command="{Binding DeleteCommand}"/>
                 </ContextMenu>
