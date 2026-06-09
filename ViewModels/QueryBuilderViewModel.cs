@@ -3,10 +3,13 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Globalization;
+using System.Data.Common;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 using NavMeCat.Models;
 using NavMeCat.Services;
 
@@ -16,6 +19,7 @@ public partial class QueryBuilderViewModel : ObservableObject
 {
     private readonly ConnectionProfile _connection;
     private readonly string? _database;
+    private DatabaseEngine Engine => _connection.Engine;
 
     public ObservableCollection<string> AllTables { get; } = new();          // "schema.table"
     public ObservableCollection<BuilderTable> Tables { get; } = new();
@@ -51,14 +55,48 @@ public partial class QueryBuilderViewModel : ObservableObject
     {
         try
         {
-            var tables = await SqlServerService.GetAllTablesAsync(_connection.BuildConnectionString(), _database ?? "");
+            var cs = _connection.BuildConnectionString();
             AllTables.Clear();
-            foreach (var (s, t) in tables) AllTables.Add($"{s}.{t}");
+            switch (Engine)
+            {
+                case DatabaseEngine.Sqlite:
+                    foreach (var t in await SqliteService.GetTablesAsync(cs)) AllTables.Add(t);
+                    break;
+                case DatabaseEngine.Firebird:
+                    foreach (var t in await FirebirdService.GetTablesAsync(cs)) AllTables.Add(t);
+                    break;
+                default:
+                    foreach (var (s, t) in await SqlServerService.GetAllTablesAsync(cs, _database ?? ""))
+                        AllTables.Add($"{s}.{t}");
+                    break;
+            }
         }
         catch (Exception ex)
         {
             Messages = "Could not load tables: " + ex.Message;
         }
+    }
+
+    private async Task<List<string>> GetColumnsAsync(string schema, string table)
+    {
+        var cs = _connection.BuildConnectionString();
+        return Engine switch
+        {
+            DatabaseEngine.Sqlite => await SqliteService.GetColumnNamesAsync(cs, table),
+            DatabaseEngine.Firebird => await FirebirdService.GetColumnNamesAsync(cs, table),
+            _ => await SqlServerService.GetColumnNamesAsync(cs, _database ?? "", schema, table)
+        };
+    }
+
+    private DbConnection CreateConnection()
+    {
+        var cs = _connection.BuildConnectionString();
+        return Engine switch
+        {
+            DatabaseEngine.Sqlite => new SqliteConnection(cs),
+            DatabaseEngine.Firebird => new FbConnection(cs),
+            _ => new SqlConnection(string.IsNullOrEmpty(_database) ? cs : SqlServerService.WithDatabase(cs, _database))
+        };
     }
 
     // ---- tables ----------------------------------------------------------
@@ -67,18 +105,22 @@ public partial class QueryBuilderViewModel : ObservableObject
     private async Task AddTable()
     {
         if (string.IsNullOrEmpty(SelectedTableToAdd)) return;
+        string schema, table;
         var dot = SelectedTableToAdd.IndexOf('.');
-        if (dot <= 0) return;
-        var schema = SelectedTableToAdd[..dot];
-        var table = SelectedTableToAdd[(dot + 1)..];
+        if (Engine == DatabaseEngine.SqlServer && dot > 0)
+        {
+            schema = SelectedTableToAdd[..dot];
+            table = SelectedTableToAdd[(dot + 1)..];
+        }
+        else { schema = ""; table = SelectedTableToAdd; }
 
-        var bt = new BuilderTable { Schema = schema, Table = table };
+        var bt = new BuilderTable { Engine = Engine, Schema = schema, Table = table };
         try
         {
-            var cols = await SqlServerService.GetColumnNamesAsync(_connection.BuildConnectionString(), _database ?? "", schema, table);
+            var cols = await GetColumnsAsync(schema, table);
             foreach (var c in cols)
             {
-                var bc = new BuilderColumn { Table = table, Name = c };
+                var bc = new BuilderColumn { Engine = Engine, Table = table, Name = c };
                 bc.PropertyChanged += OnRowChanged;
                 bt.Columns.Add(bc);
             }
@@ -115,18 +157,40 @@ public partial class QueryBuilderViewModel : ObservableObject
     {
         try
         {
-            var fks = await SqlServerService.GetAllForeignKeysAsync(_connection.BuildConnectionString(), _database ?? "");
+            var cs = _connection.BuildConnectionString();
             var present = new HashSet<string>(Tables.Select(t => t.Table), StringComparer.OrdinalIgnoreCase);
             var added = 0;
-            foreach (var (ps, pt, pc, rs, rt, rc) in fks)
+
+            void TryAdd(string lt, string lc, string rt, string rc)
             {
-                if (!present.Contains(pt) || !present.Contains(rt)) continue;
-                var left = $"[{pt}].[{pc}]";
-                var right = $"[{rt}].[{rc}]";
-                if (Joins.Any(j => j.LeftColumn == left && j.RightColumn == right)) continue;
+                if (!present.Contains(lt) || !present.Contains(rt)) return;
+                var left = Qb.Col(Engine, lt, lc);
+                var right = Qb.Col(Engine, rt, rc);
+                if (Joins.Any(j => j.LeftColumn == left && j.RightColumn == right)) return;
                 Joins.Add(new JoinRow { LeftColumn = left, JoinType = JoinType.Inner, RightColumn = right });
                 added++;
             }
+
+            if (Engine == DatabaseEngine.SqlServer)
+            {
+                foreach (var (ps, pt, pc, rs, rt, rc) in await SqlServerService.GetAllForeignKeysAsync(cs, _database ?? ""))
+                    TryAdd(pt, pc, rt, rc);
+            }
+            else if (Engine == DatabaseEngine.Firebird)
+            {
+                foreach (var bt in Tables.ToList())
+                    foreach (var fk in await FirebirdService.GetForeignKeysAsync(cs, bt.Table))
+                        for (var i = 0; i < fk.Cols.Count && i < fk.RefCols.Count; i++)
+                            TryAdd(bt.Table, fk.Cols[i], fk.RefTable, fk.RefCols[i]);
+            }
+            else if (Engine == DatabaseEngine.Sqlite)
+            {
+                foreach (var bt in Tables.ToList())
+                    foreach (var fk in await SqliteService.GetForeignKeysAsync(cs, bt.Table))
+                        for (var i = 0; i < fk.Cols.Count && i < fk.RefCols.Count; i++)
+                            TryAdd(bt.Table, fk.Cols[i], fk.RefTable, fk.RefCols[i]);
+            }
+
             Messages = added > 0 ? $"Added {added} join(s) from foreign keys." : "No foreign keys found between the selected tables.";
         }
         catch (Exception ex)
@@ -144,15 +208,13 @@ public partial class QueryBuilderViewModel : ObservableObject
         Messages = "Running…";
         try
         {
-            var cs = string.IsNullOrEmpty(_database)
-                ? _connection.BuildConnectionString()
-                : SqlServerService.WithDatabase(_connection.BuildConnectionString(), _database);
-
             var data = new DataTable();
-            await using (var conn = new SqlConnection(cs))
+            await using (var conn = CreateConnection())
             {
                 await conn.OpenAsync();
-                await using var cmd = new SqlCommand(GeneratedSql, conn) { CommandTimeout = 0 };
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = GeneratedSql;
+                try { cmd.CommandTimeout = 0; } catch { /* provider may not allow 0 */ }
                 await using var reader = await cmd.ExecuteReaderAsync();
                 if (reader.FieldCount > 0) data.Load(reader);
             }
@@ -243,10 +305,12 @@ public partial class QueryBuilderViewModel : ObservableObject
         };
     }
 
-    private static string TableOf(string columnRef)
+    private string TableOf(string columnRef)
     {
-        var start = columnRef.IndexOf('[');
-        var end = columnRef.IndexOf(']');
+        var open = Engine == DatabaseEngine.Firebird ? '"' : '[';
+        var close = Engine == DatabaseEngine.Firebird ? '"' : ']';
+        var start = columnRef.IndexOf(open);
+        var end = columnRef.IndexOf(close, start + 1);
         return start >= 0 && end > start ? columnRef[(start + 1)..end] : "";
     }
 

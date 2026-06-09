@@ -76,6 +76,14 @@
                         <TextBlock Text="{loc:Tr Bar_NewQuery}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
+                <Button Style="{StaticResource RibbonButton}" Command="{Binding OpenQueryBuilderCommand}">
+                    <StackPanel>
+                        <Path Width="24" Height="24" Stretch="Uniform" HorizontalAlignment="Center"
+                              Data="M2,3 H6.5 V6.5 H2 Z M9.5,9.5 H14 V13 H9.5 Z M4.25,6.5 V9.5 H11.75 V9.5 M11.75,8 V11"
+                              Stroke="#FF1B9E8B" StrokeThickness="1.2" Fill="Transparent"/>
+                        <TextBlock Text="{loc:Tr Bar_VisualDesigner}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
                 <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToTablesCommand}">
                     <StackPanel>

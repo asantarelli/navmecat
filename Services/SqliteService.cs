@@ -101,6 +101,31 @@ public static class SqliteService
         return result;
     }
 
+    /// <summary>Foreign keys of a table: (local columns, referenced table, referenced columns).</summary>
+    public static async Task<List<(List<string> Cols, string RefTable, List<string> RefCols)>> GetForeignKeysAsync(
+        string connectionString, string table)
+    {
+        await using var conn = new SqliteConnection(connectionString);
+        await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"PRAGMA foreign_key_list({QuoteLiteral(table)})";
+        await using var r = await cmd.ExecuteReaderAsync();
+
+        var map = new Dictionary<long, (string RefTable, List<string> Cols, List<string> RefCols)>();
+        var order = new List<long>();
+        while (await r.ReadAsync())
+        {
+            var id = r.GetInt64(0);            // 0 = id (groups a composite FK)
+            var refTable = r.GetString(2);     // 2 = table
+            var from = r.GetString(3);         // 3 = from (local col)
+            var to = r.IsDBNull(4) ? from : r.GetString(4); // 4 = to (ref col)
+            if (!map.TryGetValue(id, out var d)) { d = (refTable, new(), new()); map[id] = d; order.Add(id); }
+            d.Cols.Add(from);
+            d.RefCols.Add(to);
+        }
+        return order.Select(id => (map[id].Cols, map[id].RefTable, map[id].RefCols)).ToList();
+    }
+
     /// <summary>Runs a (possibly multi-statement) script. Returns rows affected by the last statement.</summary>
     public static async Task<int> ExecuteScriptAsync(string connectionString, string sql)
     {

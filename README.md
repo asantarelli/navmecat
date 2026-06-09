@@ -84,8 +84,9 @@ Grab the latest **portable `.exe`** from the
   indexes + foreign keys), and **Relationships**.
 - **SQL query window** — **New Query** opens a window to run arbitrary SQL (Run / F5) with a
   results grid, row counts and timing.
-- **Graphical query builder** — compose SELECTs visually (tables, columns, joins with FK
-  auto-detect, filters, sort) with live SQL.
+- **Visual query designer** — compose SELECTs visually (tables, columns, joins with FK
+  auto-detect, filters, sort) with live SQL. Works with SQL Server, SQLite and Firebird; open it
+  from the **Visual Designer** button on the command bar.
 - **Export** — export the current grid to **CSV, TSV, JSON, XML, HTML or Excel (.xlsx)**, with
   column selection.
 - **Import data** — load a **CSV or Excel (.xlsx)** file into a table, with first-row-header
