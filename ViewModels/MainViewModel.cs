@@ -46,7 +46,9 @@ public partial class MainViewModel : ObservableObject
             open: OpenFromList,
             design: (c, item) => DesignTableCommand.Execute(NodeForItem(c, item)),
             delete: DeleteFromListAsync,
-            @new: c => NewTableCommand.Execute(c));
+            @new: c => NewTableCommand.Execute(c),
+            copy: (c, item) => CopyTableCommand.Execute(NodeForItem(c, item)),
+            paste: PasteFromListAsync);
 
         if (!Tabs.Contains(_objectsTab))
         {
@@ -66,6 +68,12 @@ public partial class MainViewModel : ObservableObject
     private async void DeleteFromListAsync(DbTreeNode container, ObjectListItem item)
     {
         await DropTable(NodeForItem(container, item));
+        if (_objectsTab is not null) await _objectsTab.LoadAsync();
+    }
+
+    private async void PasteFromListAsync(DbTreeNode container)
+    {
+        await PasteTable(container);
         if (_objectsTab is not null) await _objectsTab.LoadAsync();
     }
 

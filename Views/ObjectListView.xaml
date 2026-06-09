@@ -40,6 +40,17 @@
                     </StackPanel>
                 </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,2"/>
+                <Button Command="{Binding CopyCommand}" Style="{StaticResource ToolButton}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE8C8;"/><TextBlock Text="{loc:Tr Ctx_CopyTable}"/>
+                    </StackPanel>
+                </Button>
+                <Button Command="{Binding PasteCommand}" Style="{StaticResource ToolButton}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE77F;"/><TextBlock Text="{loc:Tr Ctx_PasteTable}"/>
+                    </StackPanel>
+                </Button>
+                <Border Width="1" Background="{StaticResource B.Border}" Margin="6,2"/>
                 <Button Command="{Binding RefreshCommand}" Style="{StaticResource ToolButton}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE72C;"/><TextBlock Text="{loc:Tr Btn_Refresh}"/>
@@ -52,7 +63,7 @@
                   SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                   SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column"
-                  MouseDoubleClick="Grid_DoubleClick">
+                  MouseDoubleClick="Grid_DoubleClick" KeyDown="Grid_KeyDown">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="{loc:Tr Col_Name}" Width="2*" SortMemberPath="Name">
                     <DataGridTemplateColumn.CellTemplate>

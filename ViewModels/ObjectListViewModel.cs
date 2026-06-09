@@ -13,6 +13,8 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
     private readonly Action<DbTreeNode, ObjectListItem> _design;
     private readonly Action<DbTreeNode, ObjectListItem> _delete;
     private readonly Action<DbTreeNode> _new;
+    private readonly Action<DbTreeNode, ObjectListItem> _copy;
+    private readonly Action<DbTreeNode> _paste;
 
     private DbTreeNode? _container;
 
@@ -33,12 +35,15 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
 
     public ObjectListViewModel(
         Action<DbTreeNode, ObjectListItem> open, Action<DbTreeNode, ObjectListItem> design,
-        Action<DbTreeNode, ObjectListItem> delete, Action<DbTreeNode> @new)
+        Action<DbTreeNode, ObjectListItem> delete, Action<DbTreeNode> @new,
+        Action<DbTreeNode, ObjectListItem> copy, Action<DbTreeNode> paste)
     {
         _open = open;
         _design = design;
         _delete = delete;
         _new = @new;
+        _copy = copy;
+        _paste = paste;
     }
 
     /// <summary>Points the Objects tab at a new container and reloads it.</summary>
@@ -103,6 +108,18 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
     private void New()
     {
         if (_container is not null) _new(_container);
+    }
+
+    [RelayCommand]
+    private void Copy()
+    {
+        if (_container is not null && SelectedItem is not null) _copy(_container, SelectedItem);
+    }
+
+    [RelayCommand]
+    private void Paste()
+    {
+        if (_container is not null) _paste(_container);
     }
 
     [RelayCommand]
