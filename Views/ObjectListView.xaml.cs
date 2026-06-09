@@ -1,5 +1,7 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using NavMeCat.ViewModels;
 
 namespace NavMeCat.Views;
@@ -9,6 +11,16 @@ public partial class ObjectListView : UserControl
     public ObjectListView()
     {
         InitializeComponent();
+    }
+
+    /// <summary>Select the row under the cursor before the context menu opens.</summary>
+    private void Grid_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        var dep = e.OriginalSource as DependencyObject;
+        while (dep is not null and not DataGridRow)
+            dep = VisualTreeHelper.GetParent(dep);
+        if (dep is DataGridRow row)
+            row.IsSelected = true;
     }
 
     private void Grid_DoubleClick(object sender, MouseButtonEventArgs e)

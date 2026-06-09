@@ -63,7 +63,20 @@
                   SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
                   SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column"
-                  MouseDoubleClick="Grid_DoubleClick" KeyDown="Grid_KeyDown">
+                  MouseDoubleClick="Grid_DoubleClick" KeyDown="Grid_KeyDown"
+                  PreviewMouseRightButtonDown="Grid_RightClick">
+            <DataGrid.ContextMenu>
+                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                    <MenuItem Header="{loc:Tr OL_OpenTable}" Command="{Binding OpenCommand}"/>
+                    <MenuItem Header="{loc:Tr OL_DesignTable}" Command="{Binding DesignCommand}"
+                              Visibility="{Binding CanDesign, Converter={StaticResource BoolToVis}}"/>
+                    <Separator/>
+                    <MenuItem Header="{loc:Tr Ctx_CopyTable}" Command="{Binding CopyCommand}"/>
+                    <MenuItem Header="{loc:Tr Ctx_PasteTable}" Command="{Binding PasteCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="{loc:Tr OL_DeleteTable}" Command="{Binding DeleteCommand}"/>
+                </ContextMenu>
+            </DataGrid.ContextMenu>
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="{loc:Tr Col_Name}" Width="2*" SortMemberPath="Name">
                     <DataGridTemplateColumn.CellTemplate>
