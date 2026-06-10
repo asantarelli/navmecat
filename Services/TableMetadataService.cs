@@ -31,6 +31,7 @@ public static class TableMetadataService
             DatabaseEngine.Firebird => GetFirebirdAsync(connectionString, table, connectionName),
             DatabaseEngine.MongoDb => MongoService.GetStructureAsync(connectionString, database, table, connectionName),
             DatabaseEngine.Tps => TpsService.GetStructureAsync(connectionString, table, connectionName),
+            DatabaseEngine.ClarionDat => DatService.GetStructureAsync(connectionString, table, connectionName),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => GetMySqlAsync(connectionString, database, table, connectionName),
             _ => GetSqlServerAsync(connectionString, database, schema, table, connectionName)
         };

@@ -1,3 +1,4 @@
+using System.Data;
 using System.Data.Common;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -24,6 +25,7 @@ public static class TableCopyService
             DatabaseEngine.Firebird => FirebirdService.GetTablesAsync(cs),
             DatabaseEngine.MongoDb => MongoService.ListCollectionsAsync(cs, database),
             DatabaseEngine.Tps => Task.FromResult(TpsService.ListTables(p.FilePath)),
+            DatabaseEngine.ClarionDat => Task.FromResult(DatService.ListTables(p.FilePath)),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => MySqlService.GetTablesAsync(cs, database),
             _ => SqlServerService.GetTablesAsync(cs, database, schema)
         };
@@ -158,18 +160,19 @@ public static class TableCopyService
 
     /// <summary>True if a table can be copied from one engine to the other.</summary>
     public static bool CanCopyBetween(DatabaseEngine a, DatabaseEngine b) =>
-        // TPS is read-only: never a copy target, but it can be a source into any relational engine.
-        b != DatabaseEngine.Tps &&
+        // Clarion files (TPS/DAT) are read-only: never a target, but a source into any relational engine.
+        !b.IsClarionFile() &&
         (a == b
             || (IsRelational(a) && IsRelational(b))
-            || (a == DatabaseEngine.Tps && IsRelational(b)));
+            || (a.IsClarionFile() && IsRelational(b)));
 
     public static Task CopyCrossAsync(
         ConnectionProfile src, string srcDb, string srcSchema, string srcName,
-        ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData)
+        ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData,
+        IReadOnlyList<ClarionColumnMap>? clarionMappings = null)
     {
-        if (src.Engine == DatabaseEngine.Tps)
-            return CopyTpsCrossAsync(src, srcName, tgt, tgtDb, tgtSchema, newName, includeData);
+        if (src.Engine.IsClarionFile())
+            return CopyClarionFileCrossAsync(src, srcName, tgt, tgtDb, tgtSchema, newName, includeData, clarionMappings);
 
         if (src.Engine == DatabaseEngine.MongoDb || tgt.Engine == DatabaseEngine.MongoDb)
         {
@@ -521,33 +524,77 @@ public static class TableCopyService
     }
 
     // =====================================================================
-    //  TPS (Clarion) → relational  (read-only source: decode the file, then
-    //  build the target table and stream the rows in)
+    //  Clarion file (TPS / DAT) → relational  (read-only source: decode the
+    //  file, build the target table and stream the rows in)
     // =====================================================================
 
-    private static async Task CopyTpsCrossAsync(
-        ConnectionProfile src, string srcName,
-        ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData)
+    /// <summary>One source column and the SQL type proposed for it (the user may edit <see cref="TargetType"/>).</summary>
+    public sealed record ClarionColumnMap(string Name, string SourceType, string TargetType);
+
+    private static DataTable ReadClarion(ConnectionProfile src, string srcName, int rowLimit) =>
+        src.Engine == DatabaseEngine.ClarionDat
+            ? DatService.ReadTable(src.FilePath ?? "", srcName, rowLimit)
+            : TpsService.ReadTable(src.FilePath ?? "", srcName, rowLimit);
+
+    private static CrossColumn ToCrossColumn(DataColumn c)
     {
-        if (!IsRelational(tgt.Engine))
-            throw new NotSupportedException($"A TPS file can only be copied into a SQL database, not {tgt.Engine.DisplayName()}.");
+        var prec = c.ExtendedProperties["prec"] is int p ? p : 0;
+        var scale = c.ExtendedProperties["scale"] is int s ? s : 0;
+        var size = c.DataType == typeof(string) ? c.MaxLength : 0;
+        return new CrossColumn(c.ColumnName, c.DataType, size, prec, scale, true);
+    }
 
-        // Decode the .tps file (structure-only when the user picked "structure only").
-        var table = await Task.Run(() =>
-            TpsService.ReadTable(src.FilePath ?? "", srcName, includeData ? int.MaxValue : 0));
-
-        var cols = table.Columns.Cast<System.Data.DataColumn>().Select(c =>
+    private static string FriendlySourceType(DataColumn c)
+    {
+        var t = c.DataType;
+        if (t == typeof(string)) return c.MaxLength > 0 ? $"String({c.MaxLength})" : "String";
+        if (t == typeof(decimal))
         {
             var prec = c.ExtendedProperties["prec"] is int p ? p : 0;
             var scale = c.ExtendedProperties["scale"] is int s ? s : 0;
-            var size = c.DataType == typeof(string) ? c.MaxLength : 0;
-            return new CrossColumn(c.ColumnName, c.DataType, size, prec, scale, true);
-        }).ToList();
+            return prec > 0 ? $"Decimal({prec},{scale})" : "Decimal";
+        }
+        return t.Name; // Int32, Int16, Byte, Double, Single, DateTime, TimeSpan, Byte[]
+    }
+
+    /// <summary>
+    /// Reads a Clarion file's structure and proposes a SQL type for each column (the default
+    /// auto-mapping). Callers can show this to the user, let them tweak the target types, and pass
+    /// the result back to <see cref="CopyCrossAsync"/>.
+    /// </summary>
+    public static async Task<List<ClarionColumnMap>> ProposeClarionMappingAsync(
+        ConnectionProfile src, string srcName, DatabaseEngine targetEngine)
+    {
+        var table = await Task.Run(() => ReadClarion(src, srcName, 0));
+        return table.Columns.Cast<DataColumn>()
+            .Select(c => new ClarionColumnMap(c.ColumnName, FriendlySourceType(c), MapType(targetEngine, ToCrossColumn(c))))
+            .ToList();
+    }
+
+    private static async Task CopyClarionFileCrossAsync(
+        ConnectionProfile src, string srcName,
+        ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData,
+        IReadOnlyList<ClarionColumnMap>? mappings = null)
+    {
+        if (!IsRelational(tgt.Engine))
+            throw new NotSupportedException($"A Clarion file can only be copied into a SQL database, not {tgt.Engine.DisplayName()}.");
+
+        // Decode the file (structure-only when the user picked "structure only").
+        var table = await Task.Run(() => ReadClarion(src, srcName, includeData ? int.MaxValue : 0));
+
+        var cols = table.Columns.Cast<DataColumn>().ToList();
         if (cols.Count == 0)
             throw new InvalidOperationException($"'{srcName}' has no readable columns.");
 
+        // Target type per column: the user's override if supplied, else the default auto-mapping.
+        var overrides = mappings?.ToDictionary(m => m.Name, m => m.TargetType, StringComparer.OrdinalIgnoreCase);
+        string TargetType(DataColumn c) =>
+            overrides is not null && overrides.TryGetValue(c.ColumnName, out var t) && !string.IsNullOrWhiteSpace(t)
+                ? t.Trim()
+                : MapType(tgt.Engine, ToCrossColumn(c));
+
         // Structure (all columns nullable — Clarion has no NULL concept and no primary key here).
-        var lines = cols.Select(c => $"  {Q(tgt.Engine, c.Name)} {MapType(tgt.Engine, c)}").ToList();
+        var lines = cols.Select(c => $"  {Q(tgt.Engine, c.ColumnName)} {TargetType(c)}").ToList();
         var ddl = $"CREATE TABLE {Fq(tgt.Engine, tgtSchema, newName)} (\n{string.Join(",\n", lines)}\n)";
         await ExecuteAsync(tgt, tgtDb, ddl);
 

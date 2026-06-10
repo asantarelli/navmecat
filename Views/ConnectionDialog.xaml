@@ -105,6 +105,15 @@
                             <TextBlock Text="TPS" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </RadioButton>
+                    <RadioButton x:Name="EngClarionDat" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="ClarionDat" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M4,2 H10 L13,5 V14 H4 Z M10,2 V5 H13 M6,8 H11 M6,10.5 H11 M6,5.5 H8"/>
+                            <TextBlock Text="Clarion DAT" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
                 </UniformGrid>
 
                 <!-- ===== SQL Server ===== -->
@@ -289,6 +298,23 @@
                     <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic"
                                Foreground="{StaticResource B.TextMuted}"
                                Text="Each .tps file in the folder appears as a table. Read-only viewer — use Copy to write a file to a SQL database."/>
+                </StackPanel>
+
+                <!-- ===== Clarion DAT ===== -->
+                <StackPanel x:Name="DatPanel" Visibility="Collapsed">
+                    <Label Content="Folder containing .dat files"/>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DatFolderBox" Grid.Column="0" VerticalContentAlignment="Center"/>
+                        <Button x:Name="DatBrowseButton" Grid.Column="1" Content="Browse…" MinWidth="90"
+                                Margin="8,0,0,0" Click="DatBrowse_Click"/>
+                    </Grid>
+                    <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic"
+                               Foreground="{StaticResource B.TextMuted}"
+                               Text="Classic Clarion (.dat) files, one per table. Read-only viewer — use Copy to write a file to a SQL database."/>
                 </StackPanel>
 
                 <!-- ===== Not-yet-supported engines ===== -->

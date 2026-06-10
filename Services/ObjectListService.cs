@@ -21,21 +21,22 @@ public static class ObjectListService
             DatabaseEngine.Firebird => LoadFirebirdAsync(p),
             DatabaseEngine.MongoDb => LoadMongoAsync(p, database),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => LoadMySqlAsync(p, database),
-            DatabaseEngine.Tps => LoadTpsAsync(p),
+            DatabaseEngine.Tps => LoadClarionFilesAsync(p, ".tps", TpsService.ListTables(p.FilePath)),
+            DatabaseEngine.ClarionDat => LoadClarionFilesAsync(p, ".dat", DatService.ListTables(p.FilePath)),
             _ => Task.FromResult(new List<ObjectListItem>())
         };
 
-    /// <summary>TPS: each .tps file in the connection's folder, with its size as a comment.</summary>
-    private static Task<List<ObjectListItem>> LoadTpsAsync(ConnectionProfile p)
+    /// <summary>Clarion flat files: each file in the connection's folder, with its size as a comment.</summary>
+    private static Task<List<ObjectListItem>> LoadClarionFilesAsync(ConnectionProfile p, string ext, List<string> names)
     {
         var folder = p.FilePath;
-        var result = TpsService.ListTables(folder).Select(n =>
+        var result = names.Select(n =>
         {
             DateTime? modified = null;
             string? size = null;
             try
             {
-                var fi = new FileInfo(System.IO.Path.Combine(folder!, n + ".tps"));
+                var fi = new FileInfo(System.IO.Path.Combine(folder!, n + ext));
                 if (fi.Exists) { modified = fi.LastWriteTime; size = FormatSize(fi.Length); }
             }
             catch { /* best effort */ }

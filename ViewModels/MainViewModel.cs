@@ -42,7 +42,7 @@ public partial class MainViewModel : ObservableObject
                                  or NodeType.Function or NodeType.Procedure }
                    or { Type: NodeType.Schema }
                    or { Type: NodeType.Database }
-                   or { Type: NodeType.Server, Connection.Engine: DatabaseEngine.Tps };
+                   or { Type: NodeType.Server, Connection.Engine: DatabaseEngine.Tps or DatabaseEngine.ClarionDat };
         if (!show) return;
 
         _objectsTab ??= new ObjectListViewModel(
@@ -465,6 +465,17 @@ public partial class MainViewModel : ObservableObject
             if (mode == Dialogs.CopyMode.Cancel) return;
             var withData = mode == Dialogs.CopyMode.StructureAndData;
 
+            // For a Clarion file (.tps/.dat) → SQL copy, let the user review/tweak the target column types.
+            IReadOnlyList<TableCopyService.ClarionColumnMap>? mappings = null;
+            if (_copied.Connection.Engine.IsClarionFile() && !inPlace)
+            {
+                var proposed = await TableCopyService.ProposeClarionMappingAsync(_copied.Connection, _copied.Name, conn.Engine);
+                var dlg = new Views.ColumnMappingDialog(_copied.Name, $"{conn.Name} ({conn.Engine.DisplayName()})", proposed)
+                    { Owner = System.Windows.Application.Current?.MainWindow };
+                if (dlg.ShowDialog() != true) { StatusText = "Copy canceled."; return; }
+                mappings = dlg.Result;
+            }
+
             IsBusy = true;
             var where = inPlace ? "" : $" into '{conn.Name}'";
             StatusText = $"Copying '{_copied.Name}' → '{newName}'{where}…";
@@ -476,7 +487,7 @@ public partial class MainViewModel : ObservableObject
             else
                 await TableCopyService.CopyCrossAsync(
                     _copied.Connection, _copied.Database ?? "", _copied.Schema ?? "", _copied.Name,
-                    conn, db ?? "", schema ?? "", newName, withData);
+                    conn, db ?? "", schema ?? "", newName, withData, mappings);
 
             // Refresh the folder that now contains the copy.
             var folder = node.Type == NodeType.Category ? node

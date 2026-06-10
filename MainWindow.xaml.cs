@@ -98,8 +98,8 @@ public partial class MainWindow : Window
                 AddCopyPaste(menu, node);
                 break;
 
-            // TPS is read-only: open it, or copy it out to a SQL database. No paste into TPS.
-            case NodeType.Table when node.Connection.Engine == DatabaseEngine.Tps:
+            // Clarion files are read-only: open, or copy out to a SQL database. No paste into them.
+            case NodeType.Table when node.Connection.Engine.IsClarionFile():
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_CopyTable", () => Run(Vm.CopyTableCommand, node)));

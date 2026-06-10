@@ -1,7 +1,7 @@
 # NavMeCat
 
 A lightweight, Navicat-style database manager for **SQL Server**, **SQLite**, **MySQL**,
-**MariaDB**, **Firebird**, **MongoDB** and **Clarion TPS** files, built with **C# / WPF (.NET 9)**.
+**MariaDB**, **Firebird**, **MongoDB** and **Clarion TPS / DAT** files, built with **C# / WPF (.NET 9)**.
 
 Add connection strings, browse the server tree (databases → schemas → tables), open a table, and
 view & edit its records in place — including adding and deleting rows — with changes pushed back to
@@ -24,7 +24,7 @@ Grab the latest **portable `.exe`** from the
 - **Multiple database engines** — pick the engine when creating a connection. Each connection is
   tagged with an engine icon in the tree so you can tell them apart at a glance.
   - **SQL Server**, **SQLite**, **MySQL**, **MariaDB**, **Firebird**, **MongoDB** and
-    **Clarion TPS** files are supported today; **PostgreSQL** is selectable now and being wired up next.
+    **Clarion TPS / DAT** files are supported today; **PostgreSQL** is selectable now and being wired up next.
   - **SQLite**: just point to a `.db` / `.sqlite` file — browse tables & views, view and edit rows
     (primary-key or rowid-safe), **design tables** (create new, or alter existing via a safe
     table-rebuild), and inspect structure/DDL.
@@ -51,6 +51,12 @@ Grab the latest **portable `.exe`** from the
     Clarion `LONG` date/time fields automatically. Use **Copy** on a `.tps` table and paste it onto
     any SQL database to migrate the data across (**TPS → SQL**); the schema and rows are created for
     you. TPS is read-only, so it's only ever a copy *source*.
+  - **Clarion DAT**: the *classic* Clarion ISAM format (pre-TopSpeed, `.dat`). Same folder model —
+    point at a folder and each `.dat` file is a table. NavMeCat decodes the format from its public
+    spec (Clarion Technical Bulletin 117): header, field descriptors and fixed-length records,
+    including packed-BCD `DECIMAL` fields, with dates/times surfaced as Clarion `LONG`s. Read-only,
+    and a copy *source* into SQL just like TPS. (Keys/indexes in `.K??`/`.I??` files and `.MEM`
+    memos aren't read.)
 - **Connection manager** — add, edit, and remove connections.
   - SQL Server: Windows Authentication or SQL Server login.
   - Field-based builder *or* a raw connection string.
@@ -116,10 +122,15 @@ Grab the latest **portable `.exe`** from the
   **structure + data**, and auto-names the copy (`name_copy`, `name_copy2`, …) if the name is taken.
   Paste **into the same connection**, **a different connection of the same engine**, or even
   **a different relational engine** (e.g. SQLite → SQL Server, Firebird → SQLite), or migrate a
-  **Clarion TPS file into any SQL database** (TPS → SQL): NavMeCat maps each column to a compatible
-  type, creates the table, and copies the rows. Cross-connection SQL Server copies use **SqlBulkCopy**
-  (streaming) so large tables move fast. (MongoDB ↔ relational isn't supported — documents and tables
-  aren't interchangeable; TPS is read-only, so it's a copy source only.)
+  **Clarion TPS / DAT file into any SQL database** (Clarion → SQL): NavMeCat maps each column to a
+  compatible type, creates the table, and copies the rows. Cross-connection SQL Server copies use
+  **SqlBulkCopy** (streaming) so large tables move fast. (MongoDB ↔ relational isn't supported —
+  documents and tables aren't interchangeable; Clarion files are read-only, so they're copy sources
+  only.)
+  - **Review & tweak the column types** — when copying a Clarion TPS/DAT file into SQL, a dialog
+    shows every column, its Clarion type, and the **SQL type** NavMeCat proposes. Edit any target
+    type (widen a string, switch `int`→`bigint`, adjust a `decimal` precision, choose `nvarchar`…)
+    before the table is created, or **Reset to suggested**.
 - **Users & roles** — a **User Manager** (command-bar **Users** button) to manage logins, users and
   roles across the relational engines:
   - **List** users and roles, **create** / **drop** them, **set/change passwords**, and

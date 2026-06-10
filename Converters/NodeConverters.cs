@@ -30,6 +30,9 @@ public class NodeIconConverter : IValueConverter
         // Stacked document files for a TPS (Clarion) folder connection.
         [DatabaseEngine.Tps] = Geometry.Parse(
             "M5,2 H10.5 L13,4.5 V12 H5 Z M10.5,2 V4.5 H13 M3,5 V14 H10.5"),
+        // Single document with lines for a classic Clarion DAT folder connection.
+        [DatabaseEngine.ClarionDat] = Geometry.Parse(
+            "M4,2 H10 L13,5 V14 H4 Z M10,2 V5 H13 M6,8 H11 M6,10.5 H11 M6,5.5 H8"),
     };
 
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -54,6 +57,7 @@ public class NodeIconBrushConverter : IValueConverter
     private static readonly Brush MySql = Frozen("#00758F");
     private static readonly Brush MariaDb = Frozen("#A0522D");
     private static readonly Brush Tps = Frozen("#D98E04");
+    private static readonly Brush ClarionDat = Frozen("#6E8B3D");
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
@@ -68,6 +72,7 @@ public class NodeIconBrushConverter : IValueConverter
                 DatabaseEngine.MySql => MySql,
                 DatabaseEngine.MariaDb => MariaDb,
                 DatabaseEngine.Tps => Tps,
+                DatabaseEngine.ClarionDat => ClarionDat,
                 _ => NodeTypeToBrushConverter.BrushFor(NodeType.Server)
             };
         return NodeTypeToBrushConverter.BrushFor(node.Type);

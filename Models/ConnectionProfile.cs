@@ -51,7 +51,8 @@ public class ConnectionProfile
             case DatabaseEngine.Sqlite:
                 return new SqliteConnectionStringBuilder { DataSource = FilePath ?? "" }.ToString();
             case DatabaseEngine.Tps:
-                // No real connection string — TPS reads .tps files directly from a folder.
+            case DatabaseEngine.ClarionDat:
+                // No real connection string — Clarion files are read directly from a folder.
                 return FilePath ?? "";
             case DatabaseEngine.MongoDb:
                 // The MongoDB URI is stored verbatim in Server (e.g. mongodb://localhost:27017).

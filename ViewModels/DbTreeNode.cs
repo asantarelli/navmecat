@@ -153,7 +153,8 @@ public partial class DbTreeNode : ObservableObject
                 DatabaseEngine.Sqlite => await LoadSqliteChildrenAsync(connStr),
                 DatabaseEngine.Firebird => await LoadFirebirdChildrenAsync(connStr),
                 DatabaseEngine.MongoDb => await LoadMongoChildrenAsync(connStr),
-                DatabaseEngine.Tps => LoadTpsChildren(),
+                DatabaseEngine.Tps => LoadClarionFileChildren(TpsService.ListTables(Connection.FilePath)),
+                DatabaseEngine.ClarionDat => LoadClarionFileChildren(DatService.ListTables(Connection.FilePath)),
                 DatabaseEngine.MySql or DatabaseEngine.MariaDb => await LoadMySqlChildrenAsync(connStr),
                 _ => await LoadSqlServerChildrenAsync(connStr)
             };
@@ -308,12 +309,12 @@ public partial class DbTreeNode : ObservableObject
         return items;
     }
 
-    /// <summary>TPS: the connection is a folder — each .tps file is shown directly as a table.</summary>
-    private List<DbTreeNode> LoadTpsChildren()
+    /// <summary>Clarion flat files (TPS/DAT): the connection is a folder — each file is a table.</summary>
+    private List<DbTreeNode> LoadClarionFileChildren(List<string> names)
     {
         var items = new List<DbTreeNode>();
         if (Type == NodeType.Server)
-            foreach (var name in TpsService.ListTables(Connection.FilePath))
+            foreach (var name in names)
                 items.Add(ObjectNode(NodeType.Table, Connection, "", "", name));
         return items;
     }

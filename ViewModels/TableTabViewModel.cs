@@ -595,7 +595,8 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         Key = MakeKey(node);
         Identifier = node.Connection.Engine switch
         {
-            DatabaseEngine.Sqlite or DatabaseEngine.Firebird or DatabaseEngine.Tps => node.Name,
+            DatabaseEngine.Sqlite or DatabaseEngine.Firebird
+                or DatabaseEngine.Tps or DatabaseEngine.ClarionDat => node.Name,
             DatabaseEngine.MongoDb or DatabaseEngine.MySql or DatabaseEngine.MariaDb => $"{node.Database}.{node.Name}",
             _ => $"{node.Database}.{node.Schema}.{node.Name}"
         };
@@ -617,7 +618,12 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
                 return await LoadMongoAsync();
 
             if (Node.Connection.Engine == DatabaseEngine.Tps)
-                return await LoadTpsAsync();
+                return await LoadClarionFileAsync(
+                    () => TpsService.ReadTable(Node.Connection.FilePath ?? "", Node.Name, RowLimit), "TPS file");
+
+            if (Node.Connection.Engine == DatabaseEngine.ClarionDat)
+                return await LoadClarionFileAsync(
+                    () => DatService.ReadTable(Node.Connection.FilePath ?? "", Node.Name, RowLimit), "Clarion DAT file");
 
             _session = await EditableTableSession.OpenAsync(
                 Node.Connection.Engine, Node.Connection.BuildConnectionString(),
@@ -707,13 +713,12 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         }
     }
 
-    /// <summary>Loads a Clarion .tps file into a read-only grid (records decoded to columns).</summary>
-    private async Task<bool> LoadTpsAsync()
+    /// <summary>Loads a Clarion flat file (.tps / .dat) into a read-only grid (records decoded to columns).</summary>
+    private async Task<bool> LoadClarionFileAsync(Func<DataTable> read, string noun)
     {
         try
         {
-            var folder = Node.Connection.FilePath ?? "";
-            _sourceData = await Task.Run(() => TpsService.ReadTable(folder, Node.Name, RowLimit));
+            _sourceData = await Task.Run(read);
 
             GridReadOnly = true;
 
@@ -732,13 +737,13 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
             ApplyDefaults();
             OnPropertyChanged(nameof(TabToolTip));
 
-            _setStatus($"Loaded {_sourceData.Rows.Count} record(s) from {Identifier} (limit {RowLimit}). Read-only TPS file.");
+            _setStatus($"Loaded {_sourceData.Rows.Count} record(s) from {Identifier} (limit {RowLimit}). Read-only {noun}.");
             return true;
         }
         catch (Exception ex)
         {
-            Dialogs.ShowError("Could not open TPS file", ex.Message);
-            _setStatus("Failed to open TPS file.");
+            Dialogs.ShowError($"Could not open {noun}", ex.Message);
+            _setStatus($"Failed to open {noun}.");
             return false;
         }
         finally
