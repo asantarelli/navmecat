@@ -32,7 +32,8 @@ public static class Strings
         ["Menu_CellDetailPanel"] = "Cell detail panel",
         // Menu — Help
         ["Menu_Help"] = "_Help",
-        ["Menu_Documentation"] = "Documentation",
+        ["Menu_Documentation"] = "User Guide",
+        ["Help_Title"] = "NavMeCat — User Guide",
         ["Menu_GitHub"] = "GitHub Repository",
         ["Menu_LatestRelease"] = "Latest Release",
         ["Menu_About"] = "About NavMeCat",
@@ -251,7 +252,8 @@ public static class Strings
         ["Menu_CellDetailPanel"] = "Panel de detalle de celda",
         // Menú — Ayuda
         ["Menu_Help"] = "A_yuda",
-        ["Menu_Documentation"] = "Documentación",
+        ["Menu_Documentation"] = "Guía del usuario",
+        ["Help_Title"] = "NavMeCat — Guía del usuario",
         ["Menu_GitHub"] = "Repositorio de GitHub",
         ["Menu_LatestRelease"] = "Última versión",
         ["Menu_About"] = "Acerca de NavMeCat",

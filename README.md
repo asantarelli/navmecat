@@ -155,6 +155,9 @@ Grab the latest **portable `.exe`** from the
   and warns you about objects that reference it.
 - **Localization** — the interface is fully translatable; ships with **English and Spanish**.
   Switch language in **Settings** and the UI updates live (no restart).
+- **Built-in User Guide** — **Help ▸ User Guide** opens full documentation inside the app (covering
+  connections, every engine, viewing/editing, queries, copy &amp; the Clarion → SQL mapping, export,
+  users and more), in **English or Spanish** to match the selected language.
 - **Settings** — defaults for row limit, which panels open with a table, and the UI language.
 - **Adaptive toolbar** — the per-table command bar is responsive: as the window narrows, button
   labels collapse to icons (with tooltips), and any buttons that still don't fit move into a

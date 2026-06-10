@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Version>1.53.2</Version>
+    <Version>1.54.0</Version>
     <AssemblyTitle>NavMeCat</AssemblyTitle>
   </PropertyGroup>
 
@@ -22,6 +22,14 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3967.48" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.8" />
     <PackageReference Include="TpsParser" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundle the user guide (EN/ES) inside the exe as WPF resources; loaded via HelpDocs. -->
+    <None Remove="Docs\help.en.html" />
+    <None Remove="Docs\help.es.html" />
+    <Resource Include="Docs\help.en.html" />
+    <Resource Include="Docs\help.es.html" />
   </ItemGroup>
 
 </Project>

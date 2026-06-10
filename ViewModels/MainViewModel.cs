@@ -297,7 +297,18 @@ public partial class MainViewModel : ObservableObject
     private void OpenReleases() => OpenUrl(RepoUrl + "/releases/latest");
 
     [RelayCommand]
-    private void OpenDocs() => OpenUrl(RepoUrl + "#readme");
+    private void OpenDocs()
+    {
+        try
+        {
+            new Views.HelpWindow { Owner = System.Windows.Application.Current?.MainWindow }.Show();
+        }
+        catch
+        {
+            // If the in-app help window can't open (e.g. WebView2 runtime missing), fall back to the online README.
+            OpenUrl(RepoUrl + "#readme");
+        }
+    }
 
     private static void OpenUrl(string url)
     {
