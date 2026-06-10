@@ -13,6 +13,43 @@ namespace NavMeCat.Services;
 
 public enum ExportFormat { Dbf, Txt, Csv, Tsv, Html, Xls, Xlsx, Sql, Xml, Json }
 
+public enum DateOrder { DMY, MDY, YMD }
+public enum BinaryEncoding { Base64, Hex }
+
+/// <summary>Format-specific options (currently used by JSON export).</summary>
+public sealed class ExportOptions
+{
+    public bool JsonLegacyRecordsKey { get; set; }
+    public bool ZeroPaddingDate { get; set; } = true;
+    public DateOrder DateOrder { get; set; } = DateOrder.DMY;
+    public string DateDelimiter { get; set; } = "/";
+    public string TimeDelimiter { get; set; } = ":";
+    public string DecimalSymbol { get; set; } = ".";
+    public BinaryEncoding Binary { get; set; } = BinaryEncoding.Base64;
+
+    public static readonly ExportOptions Default = new();
+
+    public string FormatDate(DateTime dt)
+    {
+        string d = ZeroPaddingDate ? dt.Day.ToString("00") : dt.Day.ToString(CultureInfo.InvariantCulture);
+        string m = ZeroPaddingDate ? dt.Month.ToString("00") : dt.Month.ToString(CultureInfo.InvariantCulture);
+        string y = dt.Year.ToString("0000");
+        var sep = DateDelimiter;
+        var date = DateOrder switch
+        {
+            DateOrder.MDY => $"{m}{sep}{d}{sep}{y}",
+            DateOrder.YMD => $"{y}{sep}{m}{sep}{d}",
+            _ => $"{d}{sep}{m}{sep}{y}",
+        };
+        if (dt.TimeOfDay != TimeSpan.Zero)
+        {
+            var td = TimeDelimiter;
+            date += $" {dt.Hour:00}{td}{dt.Minute:00}{td}{dt.Second:00}";
+        }
+        return date;
+    }
+}
+
 /// <summary>Exports a DataView's rows (respecting its filter/sort) to a file in various formats.</summary>
 public static class ExportService
 {
@@ -50,16 +87,18 @@ public static class ExportService
     /// <param name="display">Optional per-cell display override (e.g. Clarion date/time); null = use raw value.</param>
     /// <param name="objectName">Source table name, used as the target table for SQL export.</param>
     public static void Export(DataView view, IReadOnlyList<string> columns, ExportFormat format, string path,
-        bool includeHeaders, Func<string, object?, string?>? display = null, string? objectName = null)
+        bool includeHeaders, Func<string, object?, string?>? display = null, string? objectName = null,
+        ExportOptions? options = null)
     {
         var rows = view.Cast<DataRowView>().ToList();
+        options ??= ExportOptions.Default;
 
         switch (format)
         {
             case ExportFormat.Csv: WriteDelimited(path, columns, rows, ',', includeHeaders, display); break;
             case ExportFormat.Tsv: WriteDelimited(path, columns, rows, '\t', includeHeaders, display); break;
             case ExportFormat.Txt: WriteDelimited(path, columns, rows, '\t', includeHeaders, display); break;
-            case ExportFormat.Json: WriteJson(path, columns, rows, display); break;
+            case ExportFormat.Json: WriteJson(path, columns, rows, display, options); break;
             case ExportFormat.Xml: WriteXml(path, columns, rows, display); break;
             case ExportFormat.Html: WriteHtml(path, columns, rows, includeHeaders, display); break;
             case ExportFormat.Xlsx: WriteXlsx(path, columns, rows, includeHeaders, display); break;
@@ -92,11 +131,13 @@ public static class ExportService
     }
 
     private static void WriteJson(string path, IReadOnlyList<string> cols, List<DataRowView> rows,
-        Func<string, object?, string?>? display)
+        Func<string, object?, string?>? display, ExportOptions opt)
     {
         using var stream = File.Create(path);
         using var w = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
-        w.WriteStartArray();
+        if (opt.JsonLegacyRecordsKey) { w.WriteStartObject(); w.WriteStartArray("RECORDS"); }
+        else w.WriteStartArray();
+
         foreach (var r in rows)
         {
             w.WriteStartObject();
@@ -105,14 +146,16 @@ public static class ExportService
                 var raw = r[c];
                 var over = display?.Invoke(c, raw is DBNull ? null : raw);
                 if (over is not null) { w.WriteString(c, over); continue; }
-                WriteJsonValue(w, c, raw);
+                WriteJsonValue(w, c, raw, opt);
             }
             w.WriteEndObject();
         }
+
         w.WriteEndArray();
+        if (opt.JsonLegacyRecordsKey) w.WriteEndObject();
     }
 
-    private static void WriteJsonValue(Utf8JsonWriter w, string name, object value)
+    private static void WriteJsonValue(Utf8JsonWriter w, string name, object value, ExportOptions opt)
     {
         switch (value)
         {
@@ -122,10 +165,17 @@ public static class ExportService
                 w.WriteNumber(name, Convert.ToInt64(value)); break;
             case ulong ul: w.WriteNumber(name, ul); break;
             case float or double or decimal:
-                w.WriteNumber(name, Convert.ToDecimal(value)); break;
-            case DateTime dt: w.WriteString(name, dt.ToString("o", CultureInfo.InvariantCulture)); break;
+                // JSON numbers require '.'; honor a custom decimal symbol by emitting a string.
+                if (opt.DecimalSymbol == ".") w.WriteNumber(name, Convert.ToDecimal(value));
+                else w.WriteString(name, Convert.ToString(value, CultureInfo.InvariantCulture)?.Replace(".", opt.DecimalSymbol));
+                break;
+            case DateTime dt: w.WriteString(name, opt.FormatDate(dt)); break;
             case Guid g: w.WriteString(name, g.ToString()); break;
-            case byte[] bytes: w.WriteString(name, Convert.ToBase64String(bytes)); break;
+            case byte[] bytes:
+                w.WriteString(name, opt.Binary == BinaryEncoding.Hex
+                    ? "0x" + Convert.ToHexString(bytes)
+                    : Convert.ToBase64String(bytes));
+                break;
             default: w.WriteString(name, value.ToString()); break;
         }
     }

@@ -35,13 +35,52 @@ public partial class ExportDialog : Window
                 Margin = new Thickness(4, 4, 4, 4),
                 IsChecked = f == _format,
             };
-            rb.Checked += (_, _) => _format = (ExportFormat)rb.Tag;
+            rb.Checked += (_, _) =>
+            {
+                _format = (ExportFormat)rb.Tag;
+                JsonPanel.Visibility = _format == ExportFormat.Json ? Visibility.Visible : Visibility.Collapsed;
+            };
             FormatList.Children.Add(rb);
+        }
+
+        // JSON option combos.
+        DateOrderCombo.ItemsSource = Enum.GetValues(typeof(DateOrder));
+        DateOrderCombo.SelectedItem = DateOrder.DMY;
+        BinaryCombo.ItemsSource = Enum.GetValues(typeof(BinaryEncoding));
+        BinaryCombo.SelectedItem = BinaryEncoding.Base64;
+
+        // Rows-to-export scope, only meaningful when the grid is filtered.
+        var filtered = _view.Count;
+        var total = _view.Table?.Rows.Count ?? filtered;
+        if (!string.IsNullOrEmpty(_view.RowFilter) && total != filtered)
+        {
+            FilteredRadio.Content = $"Filtered rows only ({filtered:N0})";
+            AllRadio.Content = $"All rows ({total:N0})";
+            ScopePanel.Visibility = Visibility.Visible;
         }
 
         foreach (DataColumn c in view.Table!.Columns)
             Columns.Add(new ColumnChoice { Name = c.ColumnName, Enabled = true, IsChecked = true });
         ColumnList.ItemsSource = Columns;
+    }
+
+    private ExportOptions BuildOptions() => new()
+    {
+        JsonLegacyRecordsKey = JsonLegacyCheck.IsChecked == true,
+        ZeroPaddingDate = ZeroPadCheck.IsChecked == true,
+        DateOrder = DateOrderCombo.SelectedItem is DateOrder d ? d : DateOrder.DMY,
+        DateDelimiter = string.IsNullOrEmpty(DateDelimBox.Text) ? "/" : DateDelimBox.Text,
+        TimeDelimiter = string.IsNullOrEmpty(TimeDelimBox.Text) ? ":" : TimeDelimBox.Text,
+        DecimalSymbol = string.IsNullOrEmpty(DecimalBox.Text) ? "." : DecimalBox.Text,
+        Binary = BinaryCombo.SelectedItem is BinaryEncoding b ? b : BinaryEncoding.Base64,
+    };
+
+    /// <summary>The view to export from, honoring the All/Filtered choice.</summary>
+    private DataView ScopedView()
+    {
+        if (AllRadio.IsChecked == true && _view.Table is not null)
+            return new DataView(_view.Table) { Sort = _view.Sort };
+        return _view;
     }
 
     private void SelectAll_Click(object sender, RoutedEventArgs e) { foreach (var c in Columns) c.IsChecked = true; }
@@ -69,11 +108,12 @@ public partial class ExportDialog : Window
         try
         {
             var tableName = _suggestedName.Split('.').Last();
-            ExportService.Export(_view, cols, format, dialog.FileName, HeadersCheck.IsChecked == true,
-                _display, tableName);
+            var view = ScopedView();
+            ExportService.Export(view, cols, format, dialog.FileName, HeadersCheck.IsChecked == true,
+                _display, tableName, BuildOptions());
             DialogResult = true;
             Close();
-            Dialogs.ShowSuccess("Export complete", $"Exported {_view.Count:N0} row(s) to:\n{dialog.FileName}");
+            Dialogs.ShowSuccess("Export complete", $"Exported {view.Count:N0} row(s) to:\n{dialog.FileName}");
         }
         catch (Exception ex)
         {

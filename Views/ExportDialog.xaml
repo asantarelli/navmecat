@@ -26,6 +26,54 @@
                     </ScrollViewer>
                 </Border>
 
+                <!-- Rows to export (shown only when a filter is active) -->
+                <StackPanel x:Name="ScopePanel" Margin="0,0,0,12" Visibility="Collapsed">
+                    <TextBlock Text="Rows to export" FontWeight="SemiBold" FontSize="12"
+                               Foreground="{StaticResource B.TextMuted}" Margin="0,0,0,6"/>
+                    <RadioButton x:Name="FilteredRadio" GroupName="Scope" IsChecked="True" Margin="2,2"/>
+                    <RadioButton x:Name="AllRadio" GroupName="Scope" Margin="2,2"/>
+                </StackPanel>
+
+                <!-- JSON options (shown only when JSON is selected) -->
+                <Border x:Name="JsonPanel" Visibility="Collapsed" Margin="0,0,0,12"
+                        Background="{StaticResource B.SurfaceAlt}" CornerRadius="6"
+                        BorderBrush="{StaticResource B.Border}" BorderThickness="1" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Text="JSON options" FontWeight="SemiBold" FontSize="12"
+                                   Foreground="{StaticResource B.TextMuted}" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="JsonLegacyCheck" Content="Export as legacy format (with &quot;RECORDS&quot; key)"
+                                  Margin="0,0,0,8"/>
+                        <CheckBox x:Name="ZeroPadCheck" Content="Zero-pad date (dd / MM)" IsChecked="True" Margin="0,0,0,10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0" Content="Date order" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" x:Name="DateOrderCombo" Margin="0,2,0,2"/>
+                            <Label Grid.Row="0" Grid.Column="3" Content="Binary" VerticalAlignment="Center"/>
+                            <ComboBox Grid.Row="0" Grid.Column="4" x:Name="BinaryCombo" Margin="0,2,0,2"/>
+
+                            <Label Grid.Row="1" Grid.Column="0" Content="Date delim." VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="DateDelimBox" Text="/" Margin="0,2,0,2"/>
+                            <Label Grid.Row="1" Grid.Column="3" Content="Time delim." VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="1" Grid.Column="4" x:Name="TimeDelimBox" Text=":" Margin="0,2,0,2"/>
+
+                            <Label Grid.Row="2" Grid.Column="0" Content="Decimal" VerticalAlignment="Center"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="DecimalBox" Text="." Margin="0,2,0,2"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <CheckBox x:Name="HeadersCheck" Content="Include header row (text / CSV / HTML / Excel)"
                           IsChecked="True" Margin="0,0,0,12"/>
 
