@@ -60,6 +60,7 @@
     <a href="#users">Users &amp; roles</a>
     <a href="#settings">Settings</a>
     <a href="#shortcuts">Keyboard shortcuts</a>
+    <a href="#faq">FAQ</a>
     <a href="#help">Help &amp; About</a>
   </nav>
 
@@ -219,6 +220,52 @@
         <tr><td>Double-click</td><td>Open a table / view, or edit a function / procedure</td></tr>
         <tr><td>Right-click</td><td>Context menu for the selected node</td></tr>
       </table>
+
+      <h2 id="faq">Frequently asked questions</h2>
+
+      <h3>1. Do I need to install NavMeCat or .NET?</h3>
+      <p>No. NavMeCat is a single portable <code>NavMeCat.exe</code> — just download and run it. It's self-contained, so
+      no .NET installation is required. The first launch is a couple of seconds slower while it self-extracts.</p>
+
+      <h3>2. Where are my connections and passwords stored?</h3>
+      <p>Connections are saved on your PC and restored each time you start NavMeCat. Passwords are encrypted with Windows
+      data protection (tied to your Windows user account), not stored in plain text.</p>
+
+      <h3>3. Why can't I edit a MongoDB, TPS or DAT table?</h3>
+      <p>MongoDB, Clarion TPS and Clarion DAT are <strong>read-only</strong> in NavMeCat — you can browse, filter, sort,
+      export and copy their data <em>out</em> to a SQL database, but you can't edit them or write back to them.</p>
+
+      <h3>4. How do I switch between English and Spanish?</h3>
+      <p>Open <strong>File ▸ Settings</strong> and choose the language. The interface updates live (no restart), and this
+      User Guide opens in whichever language you've selected.</p>
+
+      <h3>5. My table only shows part of the rows — why?</h3>
+      <p>Tables open with a <strong>row limit</strong> so large tables load quickly. Raise the default limit in
+      <strong>File ▸ Settings</strong>, or apply a filter to narrow down to the rows you need.</p>
+
+      <h3>6. How do I move a Clarion TPS/DAT file into SQL Server?</h3>
+      <p>Create a Clarion connection pointing at the folder, right-click the file ▸ <strong>Copy</strong>, then
+      <strong>Paste</strong> onto the target database's <em>Tables</em> folder. Review the proposed SQL types in the
+      mapping dialog, adjust if needed, and click <strong>Apply &amp; copy</strong>.</p>
+
+      <h3>7. My Clarion dates/times show as numbers — how do I fix that?</h3>
+      <p>Clarion stores dates and times as integers. NavMeCat detects those columns and can display them as readable
+      dates/times — use the toggle on the table toolbar. When copying to SQL, those columns are pre-mapped to
+      <code>date</code>/<code>time</code> and the values are converted automatically.</p>
+
+      <h3>8. Can I copy a table between two different database types?</h3>
+      <p>Yes. You can copy between relational engines (for example SQLite → SQL Server, or Firebird → MySQL) and from
+      Clarion files into any SQL database. NavMeCat maps each column to a compatible type and copies the rows.</p>
+
+      <h3>9. When I edit a table it warns there's "no primary key" — what do I choose?</h3>
+      <p>Without a primary key, NavMeCat needs to know which column(s) uniquely identify a row so edits and deletes affect
+      the right one. Pick a column (or set) that is unique, or keep the default <strong>"all columns"</strong>, which is
+      the safest option.</p>
+
+      <h3>10. How do I update NavMeCat?</h3>
+      <p>Download the newest <code>NavMeCat.exe</code> from the <strong>Help ▸ Latest Release</strong> page and replace
+      your copy. Your saved connections and settings are kept. You can check your current version in
+      <strong>Help ▸ About</strong>.</p>
 
       <h2 id="help">Help &amp; About</h2>
       <p>The <strong>Help</strong> menu opens this guide, the project's GitHub repository, the latest release, and the

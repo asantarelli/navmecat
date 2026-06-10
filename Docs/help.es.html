@@ -60,6 +60,7 @@
     <a href="#users">Usuarios y roles</a>
     <a href="#settings">Configuración</a>
     <a href="#shortcuts">Atajos de teclado</a>
+    <a href="#faq">Preguntas frecuentes</a>
     <a href="#help">Ayuda y Acerca de</a>
   </nav>
 
@@ -224,6 +225,52 @@
         <tr><td>Doble clic</td><td>Abrir una tabla / vista, o editar una función / procedimiento</td></tr>
         <tr><td>Clic derecho</td><td>Menú contextual del nodo seleccionado</td></tr>
       </table>
+
+      <h2 id="faq">Preguntas frecuentes</h2>
+
+      <h3>1. ¿Necesito instalar NavMeCat o .NET?</h3>
+      <p>No. NavMeCat es un único <code>NavMeCat.exe</code> portátil — solo descárguelo y ejecútelo. Es autónomo, por lo
+      que no requiere instalar .NET. El primer inicio tarda un par de segundos mientras se autoextrae.</p>
+
+      <h3>2. ¿Dónde se guardan mis conexiones y contraseñas?</h3>
+      <p>Las conexiones se guardan en su PC y se restauran cada vez que inicia NavMeCat. Las contraseñas se cifran con la
+      protección de datos de Windows (vinculada a su cuenta de usuario de Windows), no se guardan en texto plano.</p>
+
+      <h3>3. ¿Por qué no puedo editar una tabla de MongoDB, TPS o DAT?</h3>
+      <p>MongoDB, Clarion TPS y Clarion DAT son de <strong>solo lectura</strong> en NavMeCat — puede explorar, filtrar,
+      ordenar, exportar y copiar sus datos <em>hacia</em> una base de datos SQL, pero no puede editarlos ni escribir en ellos.</p>
+
+      <h3>4. ¿Cómo cambio entre inglés y español?</h3>
+      <p>Abra <strong>Archivo ▸ Configuración</strong> y elija el idioma. La interfaz se actualiza en vivo (sin
+      reiniciar), y esta Guía del usuario se abre en el idioma que tenga seleccionado.</p>
+
+      <h3>5. Mi tabla solo muestra parte de las filas — ¿por qué?</h3>
+      <p>Las tablas se abren con un <strong>límite de filas</strong> para que las tablas grandes carguen rápido. Aumente
+      el límite predeterminado en <strong>Archivo ▸ Configuración</strong>, o aplique un filtro para reducir a las filas que necesita.</p>
+
+      <h3>6. ¿Cómo paso un archivo Clarion TPS/DAT a SQL Server?</h3>
+      <p>Cree una conexión Clarion apuntando a la carpeta, haga clic derecho en el archivo ▸ <strong>Copiar</strong>, y
+      luego <strong>Pegar</strong> sobre la carpeta <em>Tablas</em> de la base de destino. Revise los tipos SQL propuestos
+      en el diálogo de asignación, ajústelos si lo desea y haga clic en <strong>Aplicar y copiar</strong>.</p>
+
+      <h3>7. Mis fechas/horas Clarion aparecen como números — ¿cómo lo corrijo?</h3>
+      <p>Clarion guarda fechas y horas como enteros. NavMeCat detecta esas columnas y puede mostrarlas como fechas/horas
+      legibles — use el interruptor en la barra de la tabla. Al copiar a SQL, esas columnas se preasignan a
+      <code>date</code>/<code>time</code> y los valores se convierten automáticamente.</p>
+
+      <h3>8. ¿Puedo copiar una tabla entre dos tipos de base de datos distintos?</h3>
+      <p>Sí. Puede copiar entre motores relacionales (por ejemplo SQLite → SQL Server, o Firebird → MySQL) y desde
+      archivos Clarion a cualquier base de datos SQL. NavMeCat asigna a cada columna un tipo compatible y copia las filas.</p>
+
+      <h3>9. Al editar una tabla advierte que "no hay clave primaria" — ¿qué elijo?</h3>
+      <p>Sin clave primaria, NavMeCat necesita saber qué columna(s) identifican de forma única una fila para que las
+      ediciones y eliminaciones afecten la correcta. Elija una columna (o conjunto) que sea única, o mantenga la opción
+      predeterminada <strong>"todas las columnas"</strong>, que es la más segura.</p>
+
+      <h3>10. ¿Cómo actualizo NavMeCat?</h3>
+      <p>Descargue el <code>NavMeCat.exe</code> más reciente desde la página <strong>Ayuda ▸ Última versión</strong> y
+      reemplace su copia. Sus conexiones y configuración guardadas se conservan. Puede ver su versión actual en
+      <strong>Ayuda ▸ Acerca de</strong>.</p>
 
       <h2 id="help">Ayuda y Acerca de</h2>
       <p>El menú <strong>Ayuda</strong> abre esta guía, el repositorio de GitHub del proyecto, la última versión y el
