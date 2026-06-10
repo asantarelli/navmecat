@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using NavMeCat.Models;
 using NavMeCat.Services;
 
@@ -7,6 +8,25 @@ namespace NavMeCat.Views;
 public static class Dialogs
 {
     private static string L(string key) => LocalizationManager.Instance[key];
+
+    /// <summary>Success popup after an export, with Open file / Open folder shortcuts.</summary>
+    public static void ExportComplete(string path, int rowCount)
+    {
+        var choice = ModalDialog.Choose("Export complete",
+            $"Exported {rowCount:N0} row(s) to:\n{path}",
+            DialogKind.Success, "Open file", "Open folder", "Close");
+        try
+        {
+            if (choice == 1)
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            else if (choice == 2)
+                Process.Start("explorer.exe", $"/select,\"{path}\"");
+        }
+        catch (Exception ex)
+        {
+            ShowError("Couldn't open", ex.Message);
+        }
+    }
     public static void ShowMessage(string title, string message)
         => ModalDialog.Show(title, message, DialogKind.Info, "OK", null);
 

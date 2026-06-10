@@ -113,7 +113,7 @@ public partial class ExportDialog : Window
                 _display, tableName, BuildOptions());
             DialogResult = true;
             Close();
-            Dialogs.ShowSuccess("Export complete", $"Exported {view.Count:N0} row(s) to:\n{dialog.FileName}");
+            Dialogs.ExportComplete(dialog.FileName, view.Count);
         }
         catch (Exception ex)
         {
