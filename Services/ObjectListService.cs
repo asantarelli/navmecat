@@ -19,8 +19,23 @@ public static class ObjectListService
             DatabaseEngine.Sqlite => LoadSqliteAsync(p),
             DatabaseEngine.Firebird => LoadFirebirdAsync(p),
             DatabaseEngine.MongoDb => LoadMongoAsync(p, database),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => LoadMySqlAsync(p, database),
             _ => Task.FromResult(new List<ObjectListItem>())
         };
+
+    private static async Task<List<ObjectListItem>> LoadMySqlAsync(ConnectionProfile p, string database)
+    {
+        var cs = p.BuildConnectionString();
+        var names = await MySqlService.GetTablesAsync(cs, database);
+        var result = new List<ObjectListItem>();
+        foreach (var n in names)
+        {
+            long? rows = null;
+            try { rows = await MySqlService.GetRowCountAsync(cs, database, n); } catch { }
+            result.Add(new ObjectListItem(n, rows, null, null));
+        }
+        return result;
+    }
 
     /// <summary>Lists views / functions / procedures by name. kind = "view" | "function" | "procedure".</summary>
     public static async Task<List<ObjectListItem>> LoadNamesAsync(ConnectionProfile p, string database, string schema, string kind)
@@ -37,6 +52,13 @@ public static class ObjectListService
             },
             DatabaseEngine.Sqlite => kind == "view" ? await SqliteService.GetViewsAsync(cs) : new(),
             DatabaseEngine.Firebird => kind == "view" ? await FirebirdService.GetViewsAsync(cs) : new(),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => kind switch
+            {
+                "view" => await MySqlService.GetViewsAsync(cs, database),
+                "function" => await MySqlService.GetFunctionsAsync(cs, database),
+                "procedure" => await MySqlService.GetProceduresAsync(cs, database),
+                _ => new()
+            },
             _ => new()
         };
         return names.Select(n => new ObjectListItem(n, null, null, null, schema)).ToList();

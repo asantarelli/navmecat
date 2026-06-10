@@ -51,6 +51,15 @@ public partial class ConnectionDialog : Window
         if (_profile.Engine == DatabaseEngine.MongoDb)
             MongoUriBox.Text = string.IsNullOrWhiteSpace(_profile.Server) ? "mongodb://localhost:27017" : _profile.Server;
 
+        if (_profile.Engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb)
+        {
+            MyHostBox.Text = string.IsNullOrWhiteSpace(_profile.Server) ? "localhost" : _profile.Server;
+            MyPortBox.Text = (_profile.Port > 0 ? _profile.Port : 3306).ToString();
+            MyDatabaseBox.Text = _profile.Database ?? "";
+            MyUserBox.Text = string.IsNullOrWhiteSpace(_profile.Username) ? "root" : _profile.Username;
+            MyPassBox.Password = _profile.Password ?? "";
+        }
+
         _engine = _profile.Engine;
         (_engine switch
         {
@@ -58,6 +67,8 @@ public partial class ConnectionDialog : Window
             DatabaseEngine.PostgreSql => EngPostgres,
             DatabaseEngine.MongoDb => EngMongo,
             DatabaseEngine.Firebird => EngFirebird,
+            DatabaseEngine.MySql => EngMySql,
+            DatabaseEngine.MariaDb => EngMariaDb,
             _ => EngSqlServer
         }).IsChecked = true;
 
@@ -91,6 +102,17 @@ public partial class ConnectionDialog : Window
             return;
         }
 
+        if (_engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb)
+        {
+            p.Server = string.IsNullOrWhiteSpace(MyHostBox.Text) ? "localhost" : MyHostBox.Text.Trim();
+            p.Port = int.TryParse(MyPortBox.Text, out var myPort) ? myPort : 3306;
+            p.Database = string.IsNullOrWhiteSpace(MyDatabaseBox.Text) ? null : MyDatabaseBox.Text.Trim();
+            p.Username = string.IsNullOrWhiteSpace(MyUserBox.Text) ? "root" : MyUserBox.Text.Trim();
+            p.Password = string.IsNullOrEmpty(MyPassBox.Password) ? null : MyPassBox.Password;
+            p.UseRawConnectionString = false;
+            return;
+        }
+
         p.Server = ServerBox.Text.Trim();
         p.Database = string.IsNullOrWhiteSpace(DatabaseBox.Text) ? null : DatabaseBox.Text.Trim();
         p.IntegratedSecurity = WinAuthRadio.IsChecked == true;
@@ -113,6 +135,8 @@ public partial class ConnectionDialog : Window
             var s when s == EngPostgres => DatabaseEngine.PostgreSql,
             var s when s == EngMongo => DatabaseEngine.MongoDb,
             var s when s == EngFirebird => DatabaseEngine.Firebird,
+            var s when s == EngMySql => DatabaseEngine.MySql,
+            var s when s == EngMariaDb => DatabaseEngine.MariaDb,
             _ => DatabaseEngine.SqlServer
         };
         ApplyEngineState();
@@ -126,12 +150,14 @@ public partial class ConnectionDialog : Window
         var isSqlite = _engine == DatabaseEngine.Sqlite;
         var isFirebird = _engine == DatabaseEngine.Firebird;
         var isMongo = _engine == DatabaseEngine.MongoDb;
+        var isMySql = _engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb;
         var supported = _engine.IsSupported();
 
         SqlServerPanel.Visibility = isSql ? Visibility.Visible : Visibility.Collapsed;
         SqlitePanel.Visibility = isSqlite ? Visibility.Visible : Visibility.Collapsed;
         FirebirdPanel.Visibility = isFirebird ? Visibility.Visible : Visibility.Collapsed;
         MongoPanel.Visibility = isMongo ? Visibility.Visible : Visibility.Collapsed;
+        MySqlPanel.Visibility = isMySql ? Visibility.Visible : Visibility.Collapsed;
         if (isFirebird) ApplyFirebirdState();
         ComingSoonPanel.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
         if (!supported)
@@ -229,6 +255,8 @@ public partial class ConnectionDialog : Window
                 await FirebirdService.TestConnectionAsync(temp.BuildConnectionString());
             else if (_engine == DatabaseEngine.MongoDb)
                 await MongoService.TestConnectionAsync(temp.BuildConnectionString());
+            else if (_engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb)
+                await MySqlService.TestConnectionAsync(temp.BuildConnectionString());
             else
                 await SqlServerService.TestConnectionAsync(temp.BuildConnectionString());
             TestStatus.Text = "Connection succeeded.";
@@ -265,6 +293,14 @@ public partial class ConnectionDialog : Window
             if (string.IsNullOrWhiteSpace(MongoUriBox.Text))
             {
                 Dialogs.ShowError("Missing connection string", "Please enter a MongoDB connection string.");
+                return;
+            }
+        }
+        else if (_engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb)
+        {
+            if (string.IsNullOrWhiteSpace(MyHostBox.Text))
+            {
+                Dialogs.ShowError("Missing host", "Please enter a host name.");
                 return;
             }
         }

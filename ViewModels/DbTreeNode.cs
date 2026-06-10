@@ -153,6 +153,7 @@ public partial class DbTreeNode : ObservableObject
                 DatabaseEngine.Sqlite => await LoadSqliteChildrenAsync(connStr),
                 DatabaseEngine.Firebird => await LoadFirebirdChildrenAsync(connStr),
                 DatabaseEngine.MongoDb => await LoadMongoChildrenAsync(connStr),
+                DatabaseEngine.MySql or DatabaseEngine.MariaDb => await LoadMySqlChildrenAsync(connStr),
                 _ => await LoadSqlServerChildrenAsync(connStr)
             };
 
@@ -244,6 +245,38 @@ public partial class DbTreeNode : ObservableObject
                 };
                 foreach (var n in names)
                     items.Add(ObjectNode(CategoryChildType, Connection, main, main, n));
+                break;
+        }
+        return items;
+    }
+
+    /// <summary>MySQL/MariaDB: Server → databases → Tables/Views/Functions/Procedures (db == schema).</summary>
+    private async Task<List<DbTreeNode>> LoadMySqlChildrenAsync(string connStr)
+    {
+        var items = new List<DbTreeNode>();
+        switch (Type)
+        {
+            case NodeType.Server:
+                foreach (var db in await MySqlService.GetDatabasesAsync(connStr))
+                    items.Add(DatabaseNode(Connection, db));
+                break;
+            case NodeType.Database:
+                items.Add(CategoryNode(Connection, Name, Name, "Tables", NodeType.Table));
+                items.Add(CategoryNode(Connection, Name, Name, "Views", NodeType.View));
+                items.Add(CategoryNode(Connection, Name, Name, "Functions", NodeType.Function));
+                items.Add(CategoryNode(Connection, Name, Name, "Procedures", NodeType.Procedure));
+                break;
+            case NodeType.Category:
+                var names = CategoryChildType switch
+                {
+                    NodeType.Table => await MySqlService.GetTablesAsync(connStr, Database!),
+                    NodeType.View => await MySqlService.GetViewsAsync(connStr, Database!),
+                    NodeType.Function => await MySqlService.GetFunctionsAsync(connStr, Database!),
+                    NodeType.Procedure => await MySqlService.GetProceduresAsync(connStr, Database!),
+                    _ => new List<string>()
+                };
+                foreach (var n in names)
+                    items.Add(ObjectNode(CategoryChildType, Connection, Database!, Schema!, n));
                 break;
         }
         return items;

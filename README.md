@@ -1,7 +1,7 @@
 # NavMeCat
 
-A lightweight, Navicat-style database manager for **SQL Server**, **SQLite** and **Firebird**,
-built with **C# / WPF (.NET 9)**.
+A lightweight, Navicat-style database manager for **SQL Server**, **SQLite**, **MySQL**,
+**MariaDB** and **Firebird**, built with **C# / WPF (.NET 9)**.
 
 Add connection strings, browse the server tree (databases → schemas → tables), open a table, and
 view & edit its records in place — including adding and deleting rows — with changes pushed back to
@@ -23,8 +23,8 @@ Grab the latest **portable `.exe`** from the
 
 - **Multiple database engines** — pick the engine when creating a connection. Each connection is
   tagged with an engine icon in the tree so you can tell them apart at a glance.
-  - **SQL Server**, **SQLite**, **Firebird** and **MongoDB** are supported today; **PostgreSQL**
-    is selectable now and being wired up next.
+  - **SQL Server**, **SQLite**, **MySQL**, **MariaDB**, **Firebird** and **MongoDB** are supported
+    today; **PostgreSQL** is selectable now and being wired up next.
   - **SQLite**: just point to a `.db` / `.sqlite` file — browse tables & views, view and edit rows
     (primary-key or rowid-safe), **design tables** (create new, or alter existing via a safe
     table-rebuild), and inspect structure/DDL.
@@ -32,6 +32,12 @@ Grab the latest **portable `.exe`** from the
     **databases → collections → documents**. Documents are flattened into a **read-only** grid
     (top-level fields become columns; nested objects/arrays show as JSON), with filter, sort and
     export. The structure panel samples the collection and lists its fields & types.
+  - **MySQL** / **MariaDB**: connect to a server (host / port / database / user / password) — browse
+    **databases → tables / views / functions / procedures**, view and edit rows (primary-key keyed,
+    `LIMIT`-paged), inspect structure (Info, the `SHOW CREATE TABLE` DDL, and foreign-key
+    relationships), run ad-hoc SQL in the query window, build joins visually, and copy/paste tables
+    (`CREATE TABLE … LIKE` + `INSERT … SELECT`). Both engines share the same high-performance
+    driver, with backtick (`` ` ``) identifier quoting.
   - **Firebird**: connect to a server (host / port / database path or alias / user / password) —
     browse tables & views, view and edit rows (primary-key keyed), and inspect structure (Info,
     a reconstructed DDL, and foreign-key relationships). Tick **Embedded (no server)** to open a
@@ -85,8 +91,8 @@ Grab the latest **portable `.exe`** from the
 - **SQL query window** — **New Query** opens a window to run arbitrary SQL (Run / F5) with a
   results grid, row counts and timing.
 - **Visual query designer** — compose SELECTs visually (tables, columns, joins with FK
-  auto-detect, filters, sort) with live SQL. Works with SQL Server, SQLite and Firebird; open it
-  from the **Visual Designer** button on the command bar.
+  auto-detect, filters, sort) with live SQL. Works with SQL Server, SQLite, MySQL/MariaDB and
+  Firebird; open it from the **Visual Designer** button on the command bar.
 - **Export** — export the current grid to **CSV, TSV, JSON, XML, HTML or Excel (.xlsx)**, with
   column selection.
 - **Import data** — load a **CSV or Excel (.xlsx)** file into a table, with first-row-header
@@ -187,4 +193,4 @@ Themes/      Theme.xaml (palette + control styles)
 - Ad-hoc SQL query editor with results grid
 - Filtering / sorting / paging on large tables
 - Export (CSV / JSON), and view table structure (columns, indexes, keys)
-- Support for other engines (PostgreSQL, MySQL)
+- Support for other engines (PostgreSQL)

@@ -5,6 +5,7 @@ using System.Text;
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using MySqlConnector;
 using NavMeCat.Models;
 
 namespace NavMeCat.Services;
@@ -47,8 +48,10 @@ public sealed class EditableTableSession : IDisposable
     public bool HasNaturalKey { get; }
     public bool IsCustomIdentity { get; private set; }
 
-    public string Identifier => _engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird
-        ? Table : $"{Database}.{Schema}.{Table}";
+    public string Identifier =>
+        _engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird ? Table
+        : _engine.IsMySql() ? $"{Database}.{Table}"
+        : $"{Database}.{Schema}.{Table}";
     public IReadOnlyList<string> AllColumnNames => Data.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
     public IReadOnlyList<string> KeyColumnNames => _keyColumns.Select(c => c.ColumnName).ToList();
     public IReadOnlyCollection<string> NonComparableColumns => _nonComparable;
@@ -79,9 +82,12 @@ public sealed class EditableTableSession : IDisposable
         _nonComparable = nonComparable;
     }
 
-    private static string Quote(DatabaseEngine engine, string identifier) => engine == DatabaseEngine.Firebird
-        ? "\"" + identifier.Replace("\"", "\"\"") + "\""
-        : "[" + identifier.Replace("]", "]]") + "]";
+    private static string Quote(DatabaseEngine engine, string identifier) => engine switch
+    {
+        DatabaseEngine.Firebird => "\"" + identifier.Replace("\"", "\"\"") + "\"",
+        DatabaseEngine.MySql or DatabaseEngine.MariaDb => "`" + identifier.Replace("`", "``") + "`",
+        _ => "[" + identifier.Replace("]", "]]") + "]"
+    };
 
     /// <summary>Quote an identifier using this session's engine.</summary>
     private string Q(string identifier) => Quote(_engine, identifier);
@@ -92,6 +98,7 @@ public sealed class EditableTableSession : IDisposable
         {
             DatabaseEngine.Sqlite => OpenSqliteAsync(connectionString, table, rowLimit),
             DatabaseEngine.Firebird => OpenFirebirdAsync(connectionString, table, rowLimit),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => OpenMySqlAsync(engine, connectionString, database, table, rowLimit),
             _ => OpenSqlServerAsync(connectionString, database, schema, table, rowLimit)
         };
 
@@ -234,6 +241,42 @@ public sealed class EditableTableSession : IDisposable
         // Firebird has no TOP/LIMIT on UPDATE/DELETE.
         return new EditableTableSession(connection, null, data, DatabaseEngine.Firebird, fq,
             "firebird", "firebird", table, rowLimit, keys, useTopOne: false, description, naturalKey, nonComparable);
+    }
+
+    private static async Task<EditableTableSession> OpenMySqlAsync(
+        DatabaseEngine engine, string connectionString, string database, string table, int rowLimit)
+    {
+        var connection = new MySqlConnection(MySqlService.WithDatabase(connectionString, database));
+        await connection.OpenAsync();
+
+        var fq = Quote(engine, table);
+        var data = new DataTable(table);
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = $"SELECT * FROM {fq} LIMIT {rowLimit}";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            data.Load(reader);
+        }
+
+        var cols = await MySqlService.GetColumnsAsync(connectionString, database, table);
+        var nonComparable = new HashSet<string>(cols.Where(c => c.IsBlob).Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
+        foreach (DataColumn c in data.Columns)
+            if (c.DataType == typeof(byte[])) nonComparable.Add(c.ColumnName);
+
+        DataColumn[] keys;
+        string description;
+        bool naturalKey;
+        var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name).Where(data.Columns.Contains).Select(n => data.Columns[n]!).ToArray();
+        if (pk.Length > 0) { keys = pk; description = "primary key"; naturalKey = true; }
+        else
+        {
+            keys = data.Columns.Cast<DataColumn>()
+                .Where(c => c.DataType != typeof(byte[]) && !nonComparable.Contains(c.ColumnName)).ToArray();
+            description = "all columns"; naturalKey = false;
+        }
+
+        return new EditableTableSession(connection, null, data, engine, fq,
+            database, database, table, rowLimit, keys, useTopOne: false, description, naturalKey, nonComparable);
     }
 
     public bool HasChanges => Data.GetChanges() is not null;

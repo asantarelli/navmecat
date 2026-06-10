@@ -7,7 +7,9 @@ public enum DatabaseEngine
     Sqlite,
     PostgreSql,
     MongoDb,
-    Firebird
+    Firebird,
+    MySql,
+    MariaDb
 }
 
 public static class DatabaseEngineInfo
@@ -20,11 +22,18 @@ public static class DatabaseEngineInfo
         DatabaseEngine.PostgreSql => "PostgreSQL",
         DatabaseEngine.MongoDb => "MongoDB",
         DatabaseEngine.Firebird => "Firebird",
+        DatabaseEngine.MySql => "MySQL",
+        DatabaseEngine.MariaDb => "MariaDB",
         _ => e.ToString()
     };
+
+    /// <summary>MySQL and MariaDB share the same driver and SQL.</summary>
+    public static bool IsMySql(this DatabaseEngine e) =>
+        e is DatabaseEngine.MySql or DatabaseEngine.MariaDb;
 
     /// <summary>True for engines that are fully implemented today.</summary>
     public static bool IsSupported(this DatabaseEngine e) =>
         e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite
-            or DatabaseEngine.Firebird or DatabaseEngine.MongoDb;
+            or DatabaseEngine.Firebird or DatabaseEngine.MongoDb
+            or DatabaseEngine.MySql or DatabaseEngine.MariaDb;
 }

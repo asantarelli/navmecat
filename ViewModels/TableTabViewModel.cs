@@ -27,7 +27,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
             var location = c.Engine switch
             {
                 DatabaseEngine.Sqlite or DatabaseEngine.Firebird => Node.Name,
-                DatabaseEngine.MongoDb => $"{Node.Database}.{Node.Name}",
+                DatabaseEngine.MongoDb or DatabaseEngine.MySql or DatabaseEngine.MariaDb => $"{Node.Database}.{Node.Name}",
                 _ => $"{Node.Database}.{Node.Schema}.{Node.Name}"
             };
             var sb = new System.Text.StringBuilder();
@@ -596,7 +596,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         Identifier = node.Connection.Engine switch
         {
             DatabaseEngine.Sqlite or DatabaseEngine.Firebird => node.Name,
-            DatabaseEngine.MongoDb => $"{node.Database}.{node.Name}",
+            DatabaseEngine.MongoDb or DatabaseEngine.MySql or DatabaseEngine.MariaDb => $"{node.Database}.{node.Name}",
             _ => $"{node.Database}.{node.Schema}.{node.Name}"
         };
         Header = node.Name;

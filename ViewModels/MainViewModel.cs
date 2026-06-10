@@ -132,6 +132,17 @@ public partial class MainViewModel : ObservableObject
                 ? (selected?.Type == NodeType.Database ? selected : server.Children.FirstOrDefault(c => c.Type == NodeType.Database))
                 : null;
 
+        if (engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb)
+        {
+            // MySQL/MariaDB: server children are Database nodes; each holds the categories (db == schema).
+            var myDb = (selected?.Database is { } sd ? server.Children.FirstOrDefault(c => c.Type == NodeType.Database && c.Name == sd) : null)
+                       ?? (selected?.Type == NodeType.Database ? selected : null)
+                       ?? server.Children.FirstOrDefault(c => c.Type == NodeType.Database);
+            if (myDb is null) return null;
+            await myDb.LoadChildrenAsync();
+            return myDb.Children.FirstOrDefault(c => c.Type == NodeType.Category && c.CategoryChildType == childType);
+        }
+
         // SQL Server: server children are either Schema nodes (default-db layout) or Database nodes.
         DbTreeNode? schema;
         if (server.Children.Any(c => c.Type == NodeType.Schema))
@@ -521,8 +532,7 @@ public partial class MainViewModel : ObservableObject
             return;
         try
         {
-            await SqlServerService.ExecuteAsync(node.Connection.BuildConnectionString(), node.Database ?? "",
-                $"DROP TABLE [{node.Schema}].[{node.Name}]");
+            await ExecuteDropAsync(node, "TABLE");
             StatusText = $"Dropped table {node.Schema}.{node.Name}.";
             if (node.Parent is not null) await RefreshNode(node.Parent);
         }
@@ -583,8 +593,7 @@ public partial class MainViewModel : ObservableObject
             return;
         try
         {
-            await SqlServerService.ExecuteAsync(node.Connection.BuildConnectionString(), node.Database ?? "",
-                $"DROP {keyword} [{node.Schema}].[{node.Name}]");
+            await ExecuteDropAsync(node, keyword);
             StatusText = $"Dropped {keyword.ToLowerInvariant()} {node.Schema}.{node.Name}.";
             if (node.Parent is not null) await RefreshNode(node.Parent);
         }
@@ -592,6 +601,23 @@ public partial class MainViewModel : ObservableObject
         {
             Dialogs.ShowError("Drop failed", ex.Message);
         }
+    }
+
+    /// <summary>Engine-aware DROP of a table/view/function/procedure node.</summary>
+    private static Task ExecuteDropAsync(DbTreeNode node, string keyword)
+    {
+        var cs = node.Connection.BuildConnectionString();
+        var db = node.Database ?? "";
+        return node.Connection.Engine switch
+        {
+            DatabaseEngine.Sqlite =>
+                SqliteService.ExecuteScriptAsync(cs, $"DROP {keyword} \"{node.Name}\""),
+            DatabaseEngine.Firebird =>
+                FirebirdService.ExecuteAsync(cs, $"DROP {keyword} \"{node.Name}\""),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb =>
+                MySqlService.ExecuteAsync(cs, db, $"DROP {keyword} `{node.Name}`"),
+            _ => SqlServerService.ExecuteAsync(cs, db, $"DROP {keyword} [{node.Schema}].[{node.Name}]")
+        };
     }
 
     private void CloseTab(TableTabViewModel tab)

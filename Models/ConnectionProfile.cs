@@ -1,6 +1,7 @@
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using MySqlConnector;
 
 namespace NavMeCat.Models;
 
@@ -52,6 +53,19 @@ public class ConnectionProfile
             case DatabaseEngine.MongoDb:
                 // The MongoDB URI is stored verbatim in Server (e.g. mongodb://localhost:27017).
                 return string.IsNullOrWhiteSpace(Server) ? "mongodb://localhost:27017" : Server.Trim();
+            case DatabaseEngine.MySql:
+            case DatabaseEngine.MariaDb:
+                var my = new MySqlConnectionStringBuilder
+                {
+                    Server = string.IsNullOrWhiteSpace(Server) ? "localhost" : Server,
+                    Port = (uint)(Port > 0 ? Port : 3306),
+                    UserID = string.IsNullOrWhiteSpace(Username) ? "root" : Username,
+                    Password = Password ?? "",
+                    Database = Database ?? "",
+                    AllowUserVariables = true,
+                    ConnectionTimeout = 15
+                };
+                return my.ConnectionString;
             case DatabaseEngine.Firebird:
                 var fb = new FbConnectionStringBuilder
                 {

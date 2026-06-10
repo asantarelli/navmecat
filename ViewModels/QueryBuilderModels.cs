@@ -11,10 +11,13 @@ public enum BoolConnector { And, Or }
 public static class Qb
 {
     public static string Col(DatabaseEngine e, string table, string name) =>
-        e == DatabaseEngine.Firebird ? $"\"{table}\".\"{name}\"" : $"[{table}].[{name}]";
+        e == DatabaseEngine.Firebird ? $"\"{table}\".\"{name}\""
+        : e.IsMySql() ? $"`{table}`.`{name}`"
+        : $"[{table}].[{name}]";
 
     public static string From(DatabaseEngine e, string schema, string table) =>
         e == DatabaseEngine.Firebird ? $"\"{table}\""
+        : e.IsMySql() ? $"`{table}`"
         : string.IsNullOrEmpty(schema) ? $"[{table}]"
         : $"[{schema}].[{table}]";
 }

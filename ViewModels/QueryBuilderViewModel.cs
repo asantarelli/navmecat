@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using MySqlConnector;
 using NavMeCat.Models;
 using NavMeCat.Services;
 
@@ -65,6 +66,10 @@ public partial class QueryBuilderViewModel : ObservableObject
                 case DatabaseEngine.Firebird:
                     foreach (var t in await FirebirdService.GetTablesAsync(cs)) AllTables.Add(t);
                     break;
+                case DatabaseEngine.MySql:
+                case DatabaseEngine.MariaDb:
+                    foreach (var t in await MySqlService.GetTablesAsync(cs, _database ?? "")) AllTables.Add(t);
+                    break;
                 default:
                     foreach (var (s, t) in await SqlServerService.GetAllTablesAsync(cs, _database ?? ""))
                         AllTables.Add($"{s}.{t}");
@@ -84,6 +89,7 @@ public partial class QueryBuilderViewModel : ObservableObject
         {
             DatabaseEngine.Sqlite => await SqliteService.GetColumnNamesAsync(cs, table),
             DatabaseEngine.Firebird => await FirebirdService.GetColumnNamesAsync(cs, table),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => await MySqlService.GetColumnNamesAsync(cs, _database ?? "", table),
             _ => await SqlServerService.GetColumnNamesAsync(cs, _database ?? "", schema, table)
         };
     }
@@ -95,6 +101,8 @@ public partial class QueryBuilderViewModel : ObservableObject
         {
             DatabaseEngine.Sqlite => new SqliteConnection(cs),
             DatabaseEngine.Firebird => new FbConnection(cs),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb =>
+                new MySqlConnection(string.IsNullOrEmpty(_database) ? cs : MySqlService.WithDatabase(cs, _database)),
             _ => new SqlConnection(string.IsNullOrEmpty(_database) ? cs : SqlServerService.WithDatabase(cs, _database))
         };
     }
@@ -187,6 +195,13 @@ public partial class QueryBuilderViewModel : ObservableObject
             {
                 foreach (var bt in Tables.ToList())
                     foreach (var fk in await SqliteService.GetForeignKeysAsync(cs, bt.Table))
+                        for (var i = 0; i < fk.Cols.Count && i < fk.RefCols.Count; i++)
+                            TryAdd(bt.Table, fk.Cols[i], fk.RefTable, fk.RefCols[i]);
+            }
+            else if (Engine.IsMySql())
+            {
+                foreach (var bt in Tables.ToList())
+                    foreach (var fk in await MySqlService.GetForeignKeysAsync(cs, _database ?? "", bt.Table))
                         for (var i = 0; i < fk.Cols.Count && i < fk.RefCols.Count; i++)
                             TryAdd(bt.Table, fk.Cols[i], fk.RefTable, fk.RefCols[i]);
             }
@@ -309,8 +324,8 @@ public partial class QueryBuilderViewModel : ObservableObject
 
     private string TableOf(string columnRef)
     {
-        var open = Engine == DatabaseEngine.Firebird ? '"' : '[';
-        var close = Engine == DatabaseEngine.Firebird ? '"' : ']';
+        var open = Engine == DatabaseEngine.Firebird ? '"' : Engine.IsMySql() ? '`' : '[';
+        var close = Engine == DatabaseEngine.Firebird ? '"' : Engine.IsMySql() ? '`' : ']';
         var start = columnRef.IndexOf(open);
         var end = columnRef.IndexOf(close, start + 1);
         return start >= 0 && end > start ? columnRef[(start + 1)..end] : "";

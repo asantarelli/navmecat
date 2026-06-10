@@ -6,6 +6,7 @@ using System.Windows.Input;
 using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using MySqlConnector;
 using NavMeCat.Models;
 using NavMeCat.Services;
 
@@ -98,6 +99,8 @@ public partial class QueryWindow : Window
         {
             DatabaseEngine.Sqlite => new SqliteConnection(cs),
             DatabaseEngine.Firebird => new FbConnection(cs),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb =>
+                new MySqlConnection(string.IsNullOrEmpty(_database) ? cs : MySqlService.WithDatabase(cs, _database)),
             _ => new SqlConnection(string.IsNullOrEmpty(_database) ? cs : SqlServerService.WithDatabase(cs, _database))
         };
     }

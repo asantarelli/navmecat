@@ -30,8 +30,46 @@ public static class TableMetadataService
             DatabaseEngine.Sqlite => GetSqliteAsync(connectionString, table, connectionName),
             DatabaseEngine.Firebird => GetFirebirdAsync(connectionString, table, connectionName),
             DatabaseEngine.MongoDb => MongoService.GetStructureAsync(connectionString, database, table, connectionName),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => GetMySqlAsync(connectionString, database, table, connectionName),
             _ => GetSqlServerAsync(connectionString, database, schema, table, connectionName)
         };
+
+    private static async Task<TableStructure> GetMySqlAsync(string cs, string db, string table, string connectionName)
+    {
+        var loc = LocalizationManager.Instance;
+        var cols = await MySqlService.GetColumnsAsync(cs, db, table);
+        var indexes = await MySqlService.GetIndexesAsync(cs, db, table);
+        var fks = await MySqlService.GetForeignKeysAsync(cs, db, table);
+        var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name).ToList();
+        long rows = -1;
+        try { rows = await MySqlService.GetRowCountAsync(cs, db, table); } catch { }
+
+        var ddl = await MySqlService.GetCreateTableAsync(cs, db, table) ?? "-- (definition not available)";
+
+        const int w = -18;
+        var info = new StringBuilder();
+        if (!string.IsNullOrEmpty(connectionName)) info.AppendLine($"{loc["Info_Connection"],w}{connectionName}");
+        info.AppendLine($"{loc["Info_Database"],w}{db}");
+        info.AppendLine($"{loc["Info_Table"],w}{table}");
+        info.AppendLine($"{loc["Info_PrimaryKey"],w}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
+        info.AppendLine($"{loc["Info_Indexes"],w}{indexes.Count}");
+        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],w}{rows:N0}");
+        info.AppendLine();
+        info.AppendLine($"{loc["Info_Columns"],w}{cols.Count}");
+        info.AppendLine();
+        info.AppendLine(loc["Info_Columns"]);
+        foreach (var c in cols)
+            info.AppendLine($"  • {c.Name}  {c.TypeName}  {(c.Nullable ? "NULL" : "NOT NULL")}");
+
+        var rels = new StringBuilder();
+        foreach (var fk in fks)
+        {
+            if (rels.Length == 0) rels.AppendLine(loc["Rel_References"]);
+            rels.AppendLine($"  {fk.Name}: ({string.Join(", ", fk.Cols)}) → {fk.RefTable} ({string.Join(", ", fk.RefCols)})");
+        }
+        var relationships = rels.Length == 0 ? loc["Rel_None"] : rels.ToString().TrimEnd();
+        return new TableStructure(ddl, info.ToString().TrimEnd(), relationships);
+    }
 
     private static async Task<TableStructure> GetFirebirdAsync(string connectionString, string table, string connectionName)
     {

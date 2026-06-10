@@ -6,6 +6,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using MySqlConnector;
 using NavMeCat.Models;
 
 namespace NavMeCat.Services;
@@ -22,6 +23,7 @@ public static class TableCopyService
             DatabaseEngine.Sqlite => SqliteService.GetTablesAsync(cs),
             DatabaseEngine.Firebird => FirebirdService.GetTablesAsync(cs),
             DatabaseEngine.MongoDb => MongoService.ListCollectionsAsync(cs, database),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => MySqlService.GetTablesAsync(cs, database),
             _ => SqlServerService.GetTablesAsync(cs, database, schema)
         };
     }
@@ -46,8 +48,20 @@ public static class TableCopyService
             DatabaseEngine.Sqlite => CopySqliteAsync(p, srcName, newName, includeData),
             DatabaseEngine.Firebird => CopyFirebirdAsync(p, srcName, newName, includeData),
             DatabaseEngine.MongoDb => CopyMongoAsync(p, tgtDatabase, srcName, newName, includeData),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => CopyMySqlAsync(p, srcDatabase, srcName, newName, includeData),
             _ => CopySqlServerAsync(p, tgtDatabase, srcSchema, srcName, tgtSchema, newName, includeData)
         };
+
+    // ---- MySQL / MariaDB (CREATE TABLE … LIKE + INSERT SELECT) ----------
+    private static async Task CopyMySqlAsync(ConnectionProfile p, string db, string srcName, string newName, bool includeData)
+    {
+        var cs = p.BuildConnectionString();
+        var src = MySqlService.Quote(srcName);
+        var dst = MySqlService.Quote(newName);
+        await MySqlService.ExecuteAsync(cs, db, $"CREATE TABLE {dst} LIKE {src}");
+        if (includeData)
+            await MySqlService.ExecuteAsync(cs, db, $"INSERT INTO {dst} SELECT * FROM {src}");
+    }
 
     private static string B(string id) => "[" + id.Replace("]", "]]") + "]";
 
@@ -138,7 +152,8 @@ public static class TableCopyService
     // =====================================================================
 
     public static bool IsRelational(DatabaseEngine e) =>
-        e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite or DatabaseEngine.Firebird;
+        e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite or DatabaseEngine.Firebird
+          or DatabaseEngine.MySql or DatabaseEngine.MariaDb;
 
     /// <summary>True if a table can be copied from one engine to the other.</summary>
     public static bool CanCopyBetween(DatabaseEngine a, DatabaseEngine b) =>
@@ -159,7 +174,9 @@ public static class TableCopyService
 
     private static string Q(DatabaseEngine e, string id) => e == DatabaseEngine.Firebird
         ? "\"" + id.Replace("\"", "\"\"") + "\""
-        : "[" + id.Replace("]", "]]") + "]";
+        : e.IsMySql()
+            ? "`" + id.Replace("`", "``") + "`"
+            : "[" + id.Replace("]", "]]") + "]";
 
     private static string Fq(DatabaseEngine e, string schema, string name) =>
         e == DatabaseEngine.SqlServer ? $"{Q(e, schema)}.{Q(e, name)}" : Q(e, name);
@@ -171,6 +188,8 @@ public static class TableCopyService
             DatabaseEngine.SqlServer => new SqlConnection(SqlServerService.WithDatabase(p.BuildConnectionString(), db)),
             DatabaseEngine.Sqlite => new SqliteConnection(p.BuildConnectionString()),
             DatabaseEngine.Firebird => new FbConnection(p.BuildConnectionString()),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb =>
+                new MySqlConnection(string.IsNullOrEmpty(db) ? p.BuildConnectionString() : MySqlService.WithDatabase(p.BuildConnectionString(), db)),
             _ => throw new NotSupportedException($"{p.Engine.DisplayName()} cross-copy is not supported.")
         };
         await conn.OpenAsync();
@@ -284,6 +303,17 @@ public static class TableCopyService
                 if (pk.Count > 0) lines.Add($"  PRIMARY KEY ({string.Join(", ", pk)})");
                 return $"CREATE TABLE {Q(src.Engine, newName)} (\n{string.Join(",\n", lines)}\n)";
             }
+            case DatabaseEngine.MySql or DatabaseEngine.MariaDb:
+            {
+                var cols = await MySqlService.GetColumnsAsync(cs, srcDb, srcName);
+                if (cols.Count == 0)
+                    throw new InvalidOperationException($"Could not read the columns of '{srcName}'.");
+                // Clone column types verbatim; drop AUTO_INCREMENT so explicit values can be inserted.
+                var lines = cols.Select(c => $"  {Q(src.Engine, c.Name)} {c.TypeName}{(c.Nullable ? "" : " NOT NULL")}").ToList();
+                var pk = cols.Where(c => c.IsPrimaryKey).Select(c => Q(src.Engine, c.Name)).ToList();
+                if (pk.Count > 0) lines.Add($"  PRIMARY KEY ({string.Join(", ", pk)})");
+                return $"CREATE TABLE {Q(src.Engine, newName)} (\n{string.Join(",\n", lines)}\n)";
+            }
             default: // SQL Server
             {
                 var cols = await SqlServerService.GetColumnDetailsAsync(cs, srcDb, srcSchema, srcName);
@@ -372,6 +402,7 @@ public static class TableCopyService
             DatabaseEngine.Firebird => FirebirdService.GetPrimaryKeyAsync(cs, name),
             DatabaseEngine.Sqlite => SqliteService.GetColumnDetailsAsync(cs, name)
                 .ContinueWith(t => t.Result.Where(c => c.Pk > 0).OrderBy(c => c.Pk).Select(c => c.Name).ToList()),
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => MySqlService.GetPrimaryKeyAsync(cs, db, name),
             _ => Task.FromResult(new List<string>())
         };
     }
@@ -409,6 +440,24 @@ public static class TableCopyService
                 "Byte[]" => "BLOB",
                 "String" or "Char" => IsLarge(c.Size, 8191) ? "BLOB SUB_TYPE TEXT" : $"VARCHAR({c.Size})",
                 _ => "BLOB SUB_TYPE TEXT"
+            },
+            DatabaseEngine.MySql or DatabaseEngine.MariaDb => tn switch
+            {
+                "Int64" => "BIGINT",
+                "Int32" => "INT",
+                "Int16" => "SMALLINT",
+                "Byte" or "SByte" => "TINYINT",
+                "Boolean" => "TINYINT(1)",
+                "Decimal" => $"DECIMAL({ClampPrec(c.Precision, 65)},{ClampScale(c.Scale, c.Precision, 65)})",
+                "Double" => "DOUBLE",
+                "Single" => "FLOAT",
+                "Guid" => "CHAR(36)",
+                "DateTime" or "DateTimeOffset" => "DATETIME",
+                "DateOnly" => "DATE",
+                "TimeSpan" or "TimeOnly" => "TIME",
+                "Byte[]" => "LONGBLOB",
+                "String" or "Char" => IsLarge(c.Size, 4000) ? "LONGTEXT" : $"VARCHAR({c.Size})",
+                _ => "LONGTEXT"
             },
             _ => tn switch // SQL Server
             {
@@ -458,6 +507,7 @@ public static class TableCopyService
         {
             case DatabaseEngine.Sqlite: await SqliteService.ExecuteScriptAsync(p.BuildConnectionString(), sql); break;
             case DatabaseEngine.Firebird: await FirebirdService.ExecuteAsync(p.BuildConnectionString(), sql); break;
+            case DatabaseEngine.MySql or DatabaseEngine.MariaDb: await MySqlService.ExecuteAsync(p.BuildConnectionString(), db, sql); break;
             default: await SqlServerService.ExecuteAsync(p.BuildConnectionString(), db, sql); break;
         }
     }

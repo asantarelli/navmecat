@@ -32,7 +32,7 @@
                 <TextBox x:Name="NameBox" Margin="0,0,0,14"/>
 
                 <Label Content="Database type"/>
-                <UniformGrid Columns="5" Margin="0,2,0,14">
+                <UniformGrid Columns="4" Margin="0,2,0,14">
                     <RadioButton x:Name="EngSqlServer" GroupName="Engine" Style="{StaticResource EngineCard}"
                                  Tag="SqlServer" Checked="Engine_Changed">
                         <StackPanel HorizontalAlignment="Center">
@@ -76,6 +76,24 @@
                                   Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
                                   Data="M8,1.5 C9,4 12,5 11.5,8.5 C11.2,11 9.5,13.5 8,13.5 C6.5,13.5 4.8,12 5,9.5 C5.1,8 6,7.7 6.6,8.6 C6.9,6 8,4.5 8,1.5 Z"/>
                             <TextBlock Text="Firebird" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="EngMySql" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="MySql" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M2,11 C3,7 5,4.5 8,4.5 C7.4,5.6 7.6,7 8.6,7.8 C10,9 11.5,8.6 12.5,9.6 C13.3,10.4 13.4,11.6 13,12.5 M5,12.2 C6.5,12 8,12 9.2,12.6"/>
+                            <TextBlock Text="MySQL" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="EngMariaDb" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="MariaDb" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M2,11 C3,7 5,4.5 8,4.5 C7.4,5.6 7.6,7 8.6,7.8 C10,9 11.5,8.6 12.5,9.6 C13.3,10.4 13.4,11.6 13,12.5 M5,12.2 C6.5,12 8,12 9.2,12.6"/>
+                            <TextBlock Text="MariaDB" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </RadioButton>
                 </UniformGrid>
@@ -207,6 +225,44 @@
                     <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="11"
                                Foreground="{StaticResource B.TextMuted}"
                                Text="Read-only viewer: browse databases, collections and documents."/>
+                </StackPanel>
+
+                <!-- ===== MySQL / MariaDB ===== -->
+                <StackPanel x:Name="MySqlPanel" Visibility="Collapsed">
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="100"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <Label Content="Host"/>
+                            <TextBox x:Name="MyHostBox" Text="localhost"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <Label Content="Port"/>
+                            <TextBox x:Name="MyPortBox" Text="3306"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Label Content="Default database  (optional)"/>
+                    <TextBox x:Name="MyDatabaseBox" Margin="0,0,0,14"/>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <Label Content="Username"/>
+                            <TextBox x:Name="MyUserBox" Text="root"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <Label Content="Password"/>
+                            <PasswordBox x:Name="MyPassBox"/>
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
 
                 <!-- ===== Not-yet-supported engines ===== -->

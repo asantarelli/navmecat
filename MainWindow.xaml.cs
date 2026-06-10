@@ -88,6 +88,13 @@ public partial class MainWindow : Window
                 AddCopyPaste(menu, node);
                 break;
 
+            case NodeType.Table when node.Connection.Engine.IsMySql():
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                AddCopyPaste(menu, node);
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
+                break;
+
             case NodeType.Table:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
@@ -101,6 +108,16 @@ public partial class MainWindow : Window
 
             case NodeType.View when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                break;
+
+            case NodeType.View when node.Connection.Engine.IsMySql():
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
+                break;
+
+            case NodeType.Function or NodeType.Procedure when node.Connection.Engine.IsMySql():
+                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
                 break;
 
             case NodeType.View:
@@ -126,6 +143,11 @@ public partial class MainWindow : Window
                 break;
 
             case NodeType.Category when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird:
+                if (node.CategoryChildType is NodeType.Table) AddPaste(menu, node);
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
+                break;
+
+            case NodeType.Category when node.Connection.Engine.IsMySql():
                 if (node.CategoryChildType is NodeType.Table) AddPaste(menu, node);
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
