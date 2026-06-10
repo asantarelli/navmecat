@@ -12,9 +12,15 @@ public static class MySqlService
     public static string WithDatabase(string connectionString, string database) =>
         new MySqlConnectionStringBuilder(connectionString) { Database = database }.ConnectionString;
 
+    /// <summary>Connection string with no default schema — for server-level work (test, list databases).</summary>
+    public static string WithoutDatabase(string connectionString) =>
+        new MySqlConnectionStringBuilder(connectionString) { Database = "" }.ConnectionString;
+
     public static async Task TestConnectionAsync(string connectionString)
     {
-        await using var conn = new MySqlConnection(connectionString);
+        // Test server reachability + credentials only; don't require a valid default database
+        // (a bogus/empty "Default database" must not fail the test).
+        await using var conn = new MySqlConnection(WithoutDatabase(connectionString));
         await conn.OpenAsync();
     }
 
@@ -23,7 +29,8 @@ public static class MySqlService
     public static async Task<List<string>> GetDatabasesAsync(string connectionString)
     {
         var result = new List<string>();
-        await using var conn = new MySqlConnection(connectionString);
+        // List every schema on the server — never pin to the (optional) default database.
+        await using var conn = new MySqlConnection(WithoutDatabase(connectionString));
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME";
@@ -51,7 +58,7 @@ public static class MySqlService
     private static async Task<List<string>> ListAsync(string cs, string sql, string db)
     {
         var result = new List<string>();
-        await using var conn = new MySqlConnection(cs);
+        await using var conn = new MySqlConnection(WithoutDatabase(cs));
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
@@ -64,7 +71,7 @@ public static class MySqlService
     public static async Task<List<string>> GetColumnNamesAsync(string cs, string db, string table)
     {
         var result = new List<string>();
-        await using var conn = new MySqlConnection(cs);
+        await using var conn = new MySqlConnection(WithoutDatabase(cs));
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=@d AND TABLE_NAME=@t ORDER BY ORDINAL_POSITION";
@@ -80,7 +87,7 @@ public static class MySqlService
     public static async Task<List<MyColumn>> GetColumnsAsync(string cs, string db, string table)
     {
         var result = new List<MyColumn>();
-        await using var conn = new MySqlConnection(cs);
+        await using var conn = new MySqlConnection(WithoutDatabase(cs));
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
@@ -109,7 +116,7 @@ public static class MySqlService
     public static async Task<List<string>> GetPrimaryKeyAsync(string cs, string db, string table)
     {
         var pk = new List<string>();
-        await using var conn = new MySqlConnection(cs);
+        await using var conn = new MySqlConnection(WithoutDatabase(cs));
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
@@ -126,7 +133,7 @@ public static class MySqlService
 
     public static async Task<List<(string Name, bool Unique, List<string> Columns)>> GetIndexesAsync(string cs, string db, string table)
     {
-        await using var conn = new MySqlConnection(cs);
+        await using var conn = new MySqlConnection(WithoutDatabase(cs));
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
@@ -151,7 +158,7 @@ public static class MySqlService
     public static async Task<List<(string Name, List<string> Cols, string RefTable, List<string> RefCols)>>
         GetForeignKeysAsync(string cs, string db, string table)
     {
-        await using var conn = new MySqlConnection(cs);
+        await using var conn = new MySqlConnection(WithoutDatabase(cs));
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
