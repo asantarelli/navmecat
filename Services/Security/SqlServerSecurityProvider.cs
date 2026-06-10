@@ -57,7 +57,7 @@ public sealed class SqlServerSecurityProvider : SecurityProvider
         await using var conn = new SqlConnection(Cs);
         await conn.OpenAsync();
         await using var cmd = new SqlCommand(
-            @"SELECT name, type, ISNULL(is_disabled,0)
+            @"SELECT name, type, CAST(ISNULL(is_disabled,0) AS int)
               FROM sys.server_principals
               WHERE type IN ('S','U','G','R') AND name NOT LIKE '##%'
               ORDER BY type, name", conn);
@@ -66,7 +66,7 @@ public sealed class SqlServerSecurityProvider : SecurityProvider
         {
             var name = r.GetString(0);
             var type = r.GetString(1).Trim();
-            var disabled = !r.IsDBNull(2) && r.GetInt32(2) != 0;
+            var disabled = !r.IsDBNull(2) && Convert.ToInt32(r.GetValue(2)) != 0;
             var isRole = type == "R";
             list.Add(new SecurityPrincipal
             {
