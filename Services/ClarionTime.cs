@@ -27,6 +27,14 @@ public static class ClarionTime
             : $"{h:00}:{m:00}:{s:00}";
     }
 
+    /// <summary>Returns the time-of-day for a Clarion value, or null for empty/out-of-range.</summary>
+    public static TimeSpan? ToTimeSpan(long value)
+    {
+        if (value <= 0 || value > MaxValue) return null;
+        var ts = TimeSpan.FromTicks((value - 1) * 100_000L); // 1 centisecond = 100,000 ticks
+        return ts >= TimeSpan.FromHours(24) ? null : ts;
+    }
+
     /// <summary>Parses HH:mm[:ss[.ff]] back into a Clarion time value. Blank -> 0 (empty).</summary>
     public static bool TryParse(string? text, out long clarion)
     {

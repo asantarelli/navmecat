@@ -558,17 +558,33 @@ public static class TableCopyService
     }
 
     /// <summary>
-    /// Reads a Clarion file's structure and proposes a SQL type for each column (the default
-    /// auto-mapping). Callers can show this to the user, let them tweak the target types, and pass
-    /// the result back to <see cref="CopyCrossAsync"/>.
+    /// Reads a Clarion file and proposes a SQL type for each column. Columns that look like Clarion
+    /// dates/times (stored as LONGs) are pre-mapped to SQL <c>date</c>/<c>time</c> so the copy
+    /// converts them; everything else gets the default type mapping. Callers can show this to the
+    /// user, let them tweak the target types, and pass the result back to <see cref="CopyCrossAsync"/>.
     /// </summary>
     public static async Task<List<ClarionColumnMap>> ProposeClarionMappingAsync(
         ConnectionProfile src, string srcName, DatabaseEngine targetEngine)
     {
-        var table = await Task.Run(() => ReadClarion(src, srcName, 0));
-        return table.Columns.Cast<DataColumn>()
-            .Select(c => new ClarionColumnMap(c.ColumnName, FriendlySourceType(c), MapType(targetEngine, ToCrossColumn(c))))
-            .ToList();
+        // Sample some rows so ClarionDetector can spot LONG date/time columns by value + name.
+        var table = await Task.Run(() => ReadClarion(src, srcName, 1000));
+        var clarion = ClarionDetector.Detect(table);
+
+        return table.Columns.Cast<DataColumn>().Select(c =>
+        {
+            var source = FriendlySourceType(c);
+            string target;
+            if (IsIntegral(c.DataType) && clarion.TryGetValue(c.ColumnName, out var kind) && kind != ClarionKind.Timestamp)
+            {
+                target = kind == ClarionKind.Time ? "time" : "date";
+                source += $"  ·  Clarion {kind}";
+            }
+            else
+            {
+                target = MapType(targetEngine, ToCrossColumn(c));
+            }
+            return new ClarionColumnMap(c.ColumnName, source, target);
+        }).ToList();
     }
 
     private static async Task CopyClarionFileCrossAsync(
@@ -600,11 +616,85 @@ public static class TableCopyService
 
         if (!includeData) return;
 
-        using var reader = table.CreateDataReader();
+        // When a Clarion LONG (integer) column is mapped to a date/time SQL type, convert the raw
+        // Clarion value into a real DateTime/TimeSpan so it lands in the temporal column.
+        var pump = ConvertClarionTemporalColumns(table, c => TargetType(c), tgt.Engine);
+
+        using var reader = pump.CreateDataReader();
         if (tgt.Engine == DatabaseEngine.SqlServer)
             await BulkCopyReaderToSqlServerAsync(reader, tgt, tgtDb, tgtSchema, newName);
         else
             await PumpReaderAsync(reader, tgt, tgtDb, tgtSchema, newName);
+    }
+
+    private enum Temporal { None, Date, Time }
+
+    /// <summary>Classifies a SQL type string as a date/datetime, a time, or neither.</summary>
+    private static Temporal ClassifyTemporal(string sqlType, DatabaseEngine target)
+    {
+        var t = sqlType.Trim().ToLowerInvariant();
+        var paren = t.IndexOf('(');
+        if (paren >= 0) t = t[..paren].Trim();
+
+        if (t is "time") return Temporal.Time;
+        if (t is "date" or "datetime" or "datetime2" or "smalldatetime" or "datetimeoffset") return Temporal.Date;
+        // 'timestamp' is a datetime in MySQL/MariaDB/Firebird/Postgres, but a binary rowversion in SQL Server.
+        if (t is "timestamp" && target != DatabaseEngine.SqlServer) return Temporal.Date;
+        return Temporal.None;
+    }
+
+    private static bool IsIntegral(Type t) =>
+        t == typeof(int) || t == typeof(short) || t == typeof(long) || t == typeof(byte);
+
+    /// <summary>
+    /// Returns a copy of <paramref name="source"/> in which integer columns the user mapped to a
+    /// date/time SQL type are re-typed to DateTime/TimeSpan and decoded from Clarion Standard
+    /// Date/Time values. Columns that need no conversion are carried over unchanged. If nothing
+    /// needs converting, the original table is returned untouched.
+    /// </summary>
+    private static DataTable ConvertClarionTemporalColumns(
+        DataTable source, Func<DataColumn, string> targetType, DatabaseEngine target)
+    {
+        // Decide each column's conversion: 0 = none, 1 = Clarion date, 2 = Clarion time.
+        var convert = new int[source.Columns.Count];
+        var any = false;
+        for (var i = 0; i < source.Columns.Count; i++)
+        {
+            var c = source.Columns[i];
+            if (!IsIntegral(c.DataType)) continue;
+            switch (ClassifyTemporal(targetType(c), target))
+            {
+                case Temporal.Date: convert[i] = 1; any = true; break;
+                case Temporal.Time: convert[i] = 2; any = true; break;
+            }
+        }
+        if (!any) return source;
+
+        var result = new DataTable(source.TableName);
+        for (var i = 0; i < source.Columns.Count; i++)
+        {
+            var c = source.Columns[i];
+            var type = convert[i] switch { 1 => typeof(DateTime), 2 => typeof(TimeSpan), _ => c.DataType };
+            result.Columns.Add(c.ColumnName, type);
+        }
+
+        foreach (DataRow sr in source.Rows)
+        {
+            var dr = result.NewRow();
+            for (var i = 0; i < source.Columns.Count; i++)
+            {
+                var v = sr[i];
+                if (convert[i] == 0) { dr[i] = v; continue; }
+                if (v is null or DBNull) { dr[i] = DBNull.Value; continue; }
+
+                var n = Convert.ToInt64(v);
+                object? converted = convert[i] == 1 ? ClarionDate.FromClarion(n) : ClarionTime.ToTimeSpan(n);
+                dr[i] = converted ?? (object)DBNull.Value;
+            }
+            result.Rows.Add(dr);
+        }
+        result.AcceptChanges();
+        return result;
     }
 
     /// <summary>Bulk-loads an already-open reader into a SQL Server target.</summary>

@@ -131,6 +131,11 @@ Grab the latest **portable `.exe`** from the
     shows every column, its Clarion type, and the **SQL type** NavMeCat proposes. Edit any target
     type (widen a string, switch `int`→`bigint`, adjust a `decimal` precision, choose `nvarchar`…)
     before the table is created, or **Reset to suggested**.
+  - **Clarion date/time → real SQL `date`/`time`** — Clarion stores dates and times as `LONG`
+    integers. NavMeCat auto-detects those columns and pre-maps them to SQL `date` / `time`, and the
+    copy **converts the value** (Clarion Standard Date/Time → a real `DateTime`/`TimeSpan`) instead
+    of dumping the raw number. Don't want the conversion? Just set the column back to `int` in the
+    dialog.
 - **Users & roles** — a **User Manager** (command-bar **Users** button) to manage logins, users and
   roles across the relational engines:
   - **List** users and roles, **create** / **drop** them, **set/change passwords**, and
