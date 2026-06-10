@@ -229,6 +229,45 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenUserManager()
+    {
+        var node = SelectedNode;
+        var connection = node?.Connection
+            ?? Roots.FirstOrDefault(r => r.Type == NodeType.Server)?.Connection;
+        if (connection is null)
+        {
+            StatusText = "Add a connection first.";
+            return;
+        }
+        if (!Services.Security.SecurityProvider.IsSupported(connection.Engine))
+        {
+            Dialogs.ShowMessage("Not available",
+                $"User & role management isn't available for {connection.Engine.DisplayName()}.");
+            return;
+        }
+        new Views.UserManagerWindow(connection).Show();
+        StatusText = $"Opened the user manager for '{connection.Name}'.";
+    }
+
+    [RelayCommand]
+    private void NewUserShortcut()
+    {
+        OpenUserManager();
+        if (System.Windows.Application.Current?.Windows.OfType<Views.UserManagerWindow>().LastOrDefault() is { } w
+            && w.DataContext is UserManagerViewModel vm && vm.NewUserCommand.CanExecute(null))
+            vm.NewUserCommand.Execute(null);
+    }
+
+    [RelayCommand]
+    private void NewRoleShortcut()
+    {
+        OpenUserManager();
+        if (System.Windows.Application.Current?.Windows.OfType<Views.UserManagerWindow>().LastOrDefault() is { } w
+            && w.DataContext is UserManagerViewModel vm && vm.NewRoleCommand.CanExecute(null))
+            vm.NewRoleCommand.Execute(null);
+    }
+
+    [RelayCommand]
     private void OpenSettings()
     {
         if (new Views.SettingsDialog().ShowDialog() == true)

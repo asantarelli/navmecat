@@ -108,6 +108,17 @@ Grab the latest **portable `.exe`** from the
   each column to a compatible type, creates the table, and copies the rows. Cross-connection SQL
   Server copies use **SqlBulkCopy** (streaming) so large tables move fast. (MongoDB ↔ relational
   isn't supported — documents and tables aren't interchangeable.)
+- **Users & roles** — a **User Manager** (command-bar **Users** button) to manage logins, users and
+  roles across the relational engines:
+  - **List** users and roles, **create** / **drop** them, **set/change passwords**, and
+    **lock/unlock** accounts.
+  - **Role membership** — tick the roles a principal belongs to (granted/revoked on save).
+  - **Privilege editor** — a checkbox grid to **grant/revoke** privileges, scoped **globally** or
+    **per database** (with *Grant all* / *Revoke all*).
+  - **MySQL/MariaDB**: `user@host` accounts, global (`*.*`) and per-database privileges, MySQL 8 &
+    MariaDB roles. **SQL Server**: server logins & roles, server-level permissions, and
+    per-database permissions (granted to the mapped database user). **Firebird**: server-level
+    users and role membership (per-table grants stay in the query window).
 - **Table designer** — create and alter tables: columns, types, nullability, defaults, primary
   key and indexes, with a copyable generated script.
 - **Edit routines & views** — open and edit **functions, stored procedures and views**; create

@@ -27,6 +27,16 @@ public partial class MainWindow : Window
         Vm.SelectedNode = e.NewValue as DbTreeNode;
     }
 
+    private void UsersButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { ContextMenu: { } menu } b)
+        {
+            menu.PlacementTarget = b;
+            menu.Placement = PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
+    }
+
     private void Tree_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         var node = Vm.SelectedNode;

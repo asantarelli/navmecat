@@ -43,7 +43,11 @@
         </LinearGradientBrush>
         <LinearGradientBrush x:Key="GPurple" StartPoint="0.1,0" EndPoint="0.9,1">
             <GradientStop Color="#BC81DF" Offset="0"/><GradientStop Color="#9A52B8" Offset="0.5"/><GradientStop Color="#7C399A" Offset="1"/>
-        </LinearGradientBrush>        <conv:IsNullToVisibilityConverter x:Key="NullToVis"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="GAmber" StartPoint="0.1,0" EndPoint="0.9,1">
+            <GradientStop Color="#F6C56B" Offset="0"/><GradientStop Color="#E8943A" Offset="0.5"/><GradientStop Color="#C9701C" Offset="1"/>
+        </LinearGradientBrush>
+        <conv:IsNullToVisibilityConverter x:Key="NullToVis"/>
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
@@ -151,6 +155,32 @@
                                        Text="ƒx" Foreground="White" FontSize="13" FontWeight="SemiBold"/>
                         </Canvas>
                         <TextBlock Text="{loc:Tr Bar_Function}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
+                <!-- Users & Roles (amber person, dropdown) -->
+                <Button Style="{StaticResource RibbonButton}" Click="UsersButton_Click">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="{loc:Tr Bar_ManageUsers}"
+                                      Command="{Binding PlacementTarget.DataContext.OpenUserManagerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                            <Separator/>
+                            <MenuItem Header="{loc:Tr Bar_NewUser}"
+                                      Command="{Binding PlacementTarget.DataContext.NewUserShortcutCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                            <MenuItem Header="{loc:Tr Bar_NewRole}"
+                                      Command="{Binding PlacementTarget.DataContext.NewRoleShortcutCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                    <StackPanel>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="{StaticResource GAmber}" Data="M12,4.2 A3.4,3.4 0 1 1 11.99,4.2 Z"/>
+                            <Path Fill="#40FFFFFF" Data="M10.6,5.2 A1.2,1.2 0 1 1 10.59,5.2 Z"/>
+                            <Path Fill="{StaticResource GAmber}" Data="M5.2,20 C5.2,14.8 18.8,14.8 18.8,20 A0.6,0.6 0 0 1 18.2,20.6 H5.8 A0.6,0.6 0 0 1 5.2,20 Z"/>
+                            <Path Fill="#33FFFFFF" Data="M7.4,16.6 C9.8,15.1 14.2,15.1 16.6,16.6 C14.2,15.6 9.8,15.6 7.4,16.6 Z"/>
+                            <Path Stroke="#7A5320" StrokeThickness="0.7" Fill="Transparent"
+                                  Data="M19.2,18.5 L21.4,18.5 M20.3,17.4 L20.3,19.6"/>
+                        </Canvas>
+                        <TextBlock Text="{loc:Tr Bar_Users}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
