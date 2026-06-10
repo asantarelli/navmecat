@@ -68,7 +68,7 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
             NodeType.Procedure => loc["OL_Procedures"],
             _ => engine == DatabaseEngine.MongoDb ? loc["OL_Collections"] : loc["OL_Tables"]
         };
-        var where = container.Type == NodeType.Database
+        var where = container.Type is NodeType.Database or NodeType.Server
             ? container.Name
             : $"{container.Database}.{(container.Type == NodeType.Schema ? container.Name : container.Schema)}";
         Title = $"{where} — {kindWord}";

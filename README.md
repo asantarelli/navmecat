@@ -45,7 +45,8 @@ Grab the latest **portable `.exe`** from the
     `intl\`, `tzdata\`, `firebird.conf`/`firebird.msg`, `ib_util.dll`) from the official Firebird
     **ZIP kit** (64-bit) placed next to `NavMeCat.exe`.
   - **Clarion TPS**: point a connection at a **folder** and every `.tps` file in it shows up as a
-    table — pick one like you'd pick a table. NavMeCat decodes the TopSpeed binary format directly
+    table — pick one like you'd pick a table. Selecting the connection lists its files (with size and
+    date) in the **Objects** tab. NavMeCat decodes the TopSpeed binary format directly
     (no ODBC driver, no install) into a **read-only** grid with filter, sort and export, and detects
     Clarion `LONG` date/time fields automatically. Use **Copy** on a `.tps` table and paste it onto
     any SQL database to migrate the data across (**TPS → SQL**); the schema and rows are created for

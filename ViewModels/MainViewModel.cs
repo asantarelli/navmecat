@@ -37,10 +37,12 @@ public partial class MainViewModel : ObservableObject
     private async Task UpdateObjectListAsync(DbTreeNode? node)
     {
         // The Objects tab tracks the selected Tables/Views/Functions folder, schema, or database.
+        // TPS connections are flat (no folders), so the Server node itself lists the .tps files.
         var show = node is { Type: NodeType.Category, CategoryChildType: NodeType.Table or NodeType.View
                                  or NodeType.Function or NodeType.Procedure }
                    or { Type: NodeType.Schema }
-                   or { Type: NodeType.Database };
+                   or { Type: NodeType.Database }
+                   or { Type: NodeType.Server, Connection.Engine: DatabaseEngine.Tps };
         if (!show) return;
 
         _objectsTab ??= new ObjectListViewModel(

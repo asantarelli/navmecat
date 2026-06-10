@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using MongoDB.Bson;
@@ -20,8 +21,37 @@ public static class ObjectListService
             DatabaseEngine.Firebird => LoadFirebirdAsync(p),
             DatabaseEngine.MongoDb => LoadMongoAsync(p, database),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => LoadMySqlAsync(p, database),
+            DatabaseEngine.Tps => LoadTpsAsync(p),
             _ => Task.FromResult(new List<ObjectListItem>())
         };
+
+    /// <summary>TPS: each .tps file in the connection's folder, with its size as a comment.</summary>
+    private static Task<List<ObjectListItem>> LoadTpsAsync(ConnectionProfile p)
+    {
+        var folder = p.FilePath;
+        var result = TpsService.ListTables(folder).Select(n =>
+        {
+            DateTime? modified = null;
+            string? size = null;
+            try
+            {
+                var fi = new FileInfo(System.IO.Path.Combine(folder!, n + ".tps"));
+                if (fi.Exists) { modified = fi.LastWriteTime; size = FormatSize(fi.Length); }
+            }
+            catch { /* best effort */ }
+            return new ObjectListItem(n, null, modified, size);
+        }).ToList();
+        return Task.FromResult(result);
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        var kb = bytes / 1024.0;
+        if (kb < 1024) return $"{kb:N0} KB";
+        var mb = kb / 1024.0;
+        return mb < 1024 ? $"{mb:N1} MB" : $"{mb / 1024.0:N2} GB";
+    }
 
     private static async Task<List<ObjectListItem>> LoadMySqlAsync(ConnectionProfile p, string database)
     {
