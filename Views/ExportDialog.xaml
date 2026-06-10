@@ -17,16 +17,16 @@
             </Border>
 
             <StackPanel Margin="22,16,22,8">
-                <Grid Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0" Content="Format" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <ComboBox Grid.Column="1" x:Name="FormatCombo" Width="180" HorizontalAlignment="Left"/>
-                </Grid>
+                <TextBlock Text="Export format" FontWeight="SemiBold" FontSize="12"
+                           Foreground="{StaticResource B.TextMuted}" Margin="0,0,0,6"/>
+                <Border BorderBrush="{StaticResource B.Border}" BorderThickness="1" CornerRadius="6"
+                        Margin="0,0,0,12">
+                    <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="FormatList" Margin="8"/>
+                    </ScrollViewer>
+                </Border>
 
-                <CheckBox x:Name="HeadersCheck" Content="Include header row (CSV / TSV / HTML / Excel)"
+                <CheckBox x:Name="HeadersCheck" Content="Include header row (text / CSV / HTML / Excel)"
                           IsChecked="True" Margin="0,0,0,12"/>
 
                 <Grid Margin="0,0,0,6">

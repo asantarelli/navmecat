@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
 using NavMeCat.Services;
@@ -12,6 +13,7 @@ public partial class ExportDialog : Window
     private readonly DataView _view;
     private readonly Func<string, object?, string?>? _display;
     private readonly string _suggestedName;
+    private ExportFormat _format = ExportFormat.Csv;
 
     public ObservableCollection<ColumnChoice> Columns { get; } = new();
 
@@ -23,8 +25,19 @@ public partial class ExportDialog : Window
         _suggestedName = suggestedName;
         Owner = Application.Current?.MainWindow is { IsLoaded: true } w ? w : null;
 
-        FormatCombo.ItemsSource = Enum.GetValues(typeof(ExportFormat));
-        FormatCombo.SelectedItem = ExportFormat.Csv;
+        foreach (ExportFormat f in Enum.GetValues(typeof(ExportFormat)))
+        {
+            var rb = new RadioButton
+            {
+                Content = ExportService.Label(f),
+                GroupName = "Format",
+                Tag = f,
+                Margin = new Thickness(4, 4, 4, 4),
+                IsChecked = f == _format,
+            };
+            rb.Checked += (_, _) => _format = (ExportFormat)rb.Tag;
+            FormatList.Children.Add(rb);
+        }
 
         foreach (DataColumn c in view.Table!.Columns)
             Columns.Add(new ColumnChoice { Name = c.ColumnName, Enabled = true, IsChecked = true });
@@ -42,20 +55,22 @@ public partial class ExportDialog : Window
             Dialogs.ShowError("No columns", "Select at least one column to export.");
             return;
         }
-        if (FormatCombo.SelectedItem is not ExportFormat format) return;
+        var format = _format;
 
         var ext = ExportService.Extension(format);
         var dialog = new SaveFileDialog
         {
             FileName = $"{Sanitize(_suggestedName)}.{ext}",
             DefaultExt = ext,
-            Filter = $"{format} file (*.{ext})|*.{ext}|All files (*.*)|*.*"
+            Filter = $"{ExportService.Label(format)}|*.{ext}|All files (*.*)|*.*"
         };
         if (dialog.ShowDialog(this) != true) return;
 
         try
         {
-            ExportService.Export(_view, cols, format, dialog.FileName, HeadersCheck.IsChecked == true, _display);
+            var tableName = _suggestedName.Split('.').Last();
+            ExportService.Export(_view, cols, format, dialog.FileName, HeadersCheck.IsChecked == true,
+                _display, tableName);
             DialogResult = true;
             Close();
             Dialogs.ShowSuccess("Export complete", $"Exported {_view.Count:N0} row(s) to:\n{dialog.FileName}");

@@ -93,8 +93,9 @@ Grab the latest **portable `.exe`** from the
 - **Visual query designer** — compose SELECTs visually (tables, columns, joins with FK
   auto-detect, filters, sort) with live SQL. Works with SQL Server, SQLite, MySQL/MariaDB and
   Firebird; open it from the **Visual Designer** button on the command bar.
-- **Export** — export the current grid to **CSV, TSV, JSON, XML, HTML or Excel (.xlsx)**, with
-  column selection.
+- **Export** — export the current grid (respecting its filter/sort) to **DBase (.dbf), Text (.txt),
+  CSV, TSV, HTML, Excel 97-2003 (.xls), Excel (.xlsx), SQL script (INSERTs), XML or JSON**, with
+  per-column selection and an optional header row.
 - **Import data** — load a **CSV or Excel (.xlsx)** file into a table, with first-row-header
   detection and a source-to-column mapping that auto-maps by name. The whole import runs in a
   single transaction (all-or-nothing).

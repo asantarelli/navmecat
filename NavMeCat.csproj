@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Version>1.49.1</Version>
+    <Version>1.50.0</Version>
     <AssemblyTitle>NavMeCat</AssemblyTitle>
   </PropertyGroup>
 
@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     <PackageReference Include="MongoDB.Driver" Version="3.1.0" />
+    <PackageReference Include="NPOI" Version="2.7.1" />
     <PackageReference Include="MySqlConnector" Version="2.4.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3967.48" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.8" />

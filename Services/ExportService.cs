@@ -6,28 +6,51 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using ClosedXML.Excel;
+using NPOI.HSSF.UserModel;
+using NPOI.SS.UserModel;
 
 namespace NavMeCat.Services;
 
-public enum ExportFormat { Csv, Tsv, Json, Xml, Html, Xlsx }
+public enum ExportFormat { Dbf, Txt, Csv, Tsv, Html, Xls, Xlsx, Sql, Xml, Json }
 
 /// <summary>Exports a DataView's rows (respecting its filter/sort) to a file in various formats.</summary>
 public static class ExportService
 {
     public static string Extension(ExportFormat f) => f switch
     {
+        ExportFormat.Dbf => "dbf",
+        ExportFormat.Txt => "txt",
         ExportFormat.Csv => "csv",
         ExportFormat.Tsv => "tsv",
-        ExportFormat.Json => "json",
-        ExportFormat.Xml => "xml",
         ExportFormat.Html => "html",
+        ExportFormat.Xls => "xls",
         ExportFormat.Xlsx => "xlsx",
+        ExportFormat.Sql => "sql",
+        ExportFormat.Xml => "xml",
+        ExportFormat.Json => "json",
         _ => "txt"
     };
 
+    /// <summary>Human label with extension, for the format picker.</summary>
+    public static string Label(ExportFormat f) => f switch
+    {
+        ExportFormat.Dbf => "DBase file (*.dbf)",
+        ExportFormat.Txt => "Text file (*.txt)",
+        ExportFormat.Csv => "CSV file (*.csv)",
+        ExportFormat.Tsv => "Tab-separated (*.tsv)",
+        ExportFormat.Html => "HTML file (*.html)",
+        ExportFormat.Xls => "Excel 97-2003 (*.xls)",
+        ExportFormat.Xlsx => "Excel file (*.xlsx)",
+        ExportFormat.Sql => "SQL script (*.sql)",
+        ExportFormat.Xml => "XML file (*.xml)",
+        ExportFormat.Json => "JSON file (*.json)",
+        _ => f.ToString()
+    };
+
     /// <param name="display">Optional per-cell display override (e.g. Clarion date/time); null = use raw value.</param>
+    /// <param name="objectName">Source table name, used as the target table for SQL export.</param>
     public static void Export(DataView view, IReadOnlyList<string> columns, ExportFormat format, string path,
-        bool includeHeaders, Func<string, object?, string?>? display = null)
+        bool includeHeaders, Func<string, object?, string?>? display = null, string? objectName = null)
     {
         var rows = view.Cast<DataRowView>().ToList();
 
@@ -35,10 +58,14 @@ public static class ExportService
         {
             case ExportFormat.Csv: WriteDelimited(path, columns, rows, ',', includeHeaders, display); break;
             case ExportFormat.Tsv: WriteDelimited(path, columns, rows, '\t', includeHeaders, display); break;
+            case ExportFormat.Txt: WriteDelimited(path, columns, rows, '\t', includeHeaders, display); break;
             case ExportFormat.Json: WriteJson(path, columns, rows, display); break;
             case ExportFormat.Xml: WriteXml(path, columns, rows, display); break;
             case ExportFormat.Html: WriteHtml(path, columns, rows, includeHeaders, display); break;
             case ExportFormat.Xlsx: WriteXlsx(path, columns, rows, includeHeaders, display); break;
+            case ExportFormat.Xls: WriteXls(path, columns, rows, includeHeaders, display); break;
+            case ExportFormat.Dbf: WriteDbf(path, columns, rows, display); break;
+            case ExportFormat.Sql: WriteSql(path, columns, rows, objectName ?? "exported_data", display); break;
         }
     }
 
@@ -186,5 +213,256 @@ public static class ExportService
             case DateTime dt: cell.Value = dt; break;
             default: cell.Value = value.ToString(); break;
         }
+    }
+
+    // ---- Excel 97-2003 (.xls, BIFF8 via NPOI) ---------------------------
+    private static void WriteXls(string path, IReadOnlyList<string> cols, List<DataRowView> rows,
+        bool headers, Func<string, object?, string?>? display)
+    {
+        var wb = new HSSFWorkbook();
+        var sheet = wb.CreateSheet("Data");
+
+        var boldFont = wb.CreateFont();
+        boldFont.IsBold = true;
+        var headStyle = wb.CreateCellStyle();
+        headStyle.SetFont(boldFont);
+        var dateStyle = wb.CreateCellStyle();
+        dateStyle.DataFormat = wb.CreateDataFormat().GetFormat("yyyy-mm-dd hh:mm:ss");
+
+        var rowIdx = 0;
+        if (headers)
+        {
+            var hr = sheet.CreateRow(rowIdx++);
+            for (var c = 0; c < cols.Count; c++)
+            {
+                var cell = hr.CreateCell(c);
+                cell.SetCellValue(cols[c]);
+                cell.CellStyle = headStyle;
+            }
+        }
+
+        foreach (var r in rows)
+        {
+            var xr = sheet.CreateRow(rowIdx++);
+            for (var c = 0; c < cols.Count; c++)
+            {
+                var cell = xr.CreateCell(c);
+                var raw = r[cols[c]];
+                var over = display?.Invoke(cols[c], raw is DBNull ? null : raw);
+                if (over is not null) { cell.SetCellValue(over); continue; }
+                switch (raw)
+                {
+                    case null or DBNull: break;
+                    case bool b: cell.SetCellValue(b); break;
+                    case byte or sbyte or short or ushort or int or uint or long or ulong
+                         or float or double or decimal: cell.SetCellValue(Convert.ToDouble(raw)); break;
+                    case DateTime dt: cell.SetCellValue(dt); cell.CellStyle = dateStyle; break;
+                    default: cell.SetCellValue(raw.ToString()); break;
+                }
+            }
+        }
+
+        for (var c = 0; c < cols.Count; c++) sheet.AutoSizeColumn(c);
+        using var fs = File.Create(path);
+        wb.Write(fs);
+    }
+
+    // ---- SQL script (INSERT statements) ---------------------------------
+    private static void WriteSql(string path, IReadOnlyList<string> cols, List<DataRowView> rows,
+        string tableName, Func<string, object?, string?>? display)
+    {
+        var table = "\"" + tableName.Replace("\"", "\"\"") + "\"";
+        var colList = string.Join(", ", cols.Select(c => "\"" + c.Replace("\"", "\"\"") + "\""));
+        var sb = new StringBuilder();
+        sb.Append("-- Export of ").Append(tableName).Append(" — ").Append(rows.Count).AppendLine(" row(s)");
+
+        foreach (var r in rows)
+        {
+            sb.Append("INSERT INTO ").Append(table).Append(" (").Append(colList).Append(") VALUES (");
+            for (var i = 0; i < cols.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                var raw = r[cols[i]];
+                var over = display?.Invoke(cols[i], raw is DBNull ? null : raw);
+                sb.Append(over is not null ? SqlLiteral(over) : SqlValue(raw));
+            }
+            sb.AppendLine(");");
+        }
+        File.WriteAllText(path, sb.ToString(), new UTF8Encoding(true));
+    }
+
+    private static string SqlLiteral(string s) => "'" + s.Replace("'", "''") + "'";
+
+    private static string SqlValue(object value) => value switch
+    {
+        null or DBNull => "NULL",
+        bool b => b ? "1" : "0",
+        byte or sbyte or short or ushort or int or uint or long or ulong
+            => Convert.ToInt64(value).ToString(CultureInfo.InvariantCulture),
+        decimal d => d.ToString(CultureInfo.InvariantCulture),
+        float or double => Convert.ToDouble(value).ToString("R", CultureInfo.InvariantCulture),
+        DateTime dt => "'" + dt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + "'",
+        Guid g => "'" + g + "'",
+        byte[] bytes => "0x" + Convert.ToHexString(bytes),
+        _ => SqlLiteral(value.ToString() ?? "")
+    };
+
+    // ---- dBASE III+ (.dbf) ----------------------------------------------
+    private static void WriteDbf(string path, IReadOnlyList<string> cols, List<DataRowView> rows,
+        Func<string, object?, string?>? display)
+    {
+        var enc = Encoding.Latin1; // DBF is single-byte ANSI; Latin1 is built-in and close to cp1252.
+        var fields = PlanDbfFields(cols, rows, display);
+        var recordLen = 1 + fields.Sum(f => f.Length); // 1 = deletion flag
+
+        using var fs = File.Create(path);
+        using var w = new BinaryWriter(fs, enc);
+
+        // Header (32 bytes) + field descriptors (32 each) + terminator (1).
+        var headerLen = 32 + fields.Count * 32 + 1;
+        var now = DateTime.Now;
+        w.Write((byte)0x03);                       // dBASE III without memo
+        w.Write((byte)(now.Year % 100));
+        w.Write((byte)now.Month);
+        w.Write((byte)now.Day);
+        w.Write((uint)rows.Count);                 // record count
+        w.Write((ushort)headerLen);
+        w.Write((ushort)recordLen);
+        w.Write(new byte[20]);                     // reserved
+
+        foreach (var f in fields)
+        {
+            var name = new byte[11];
+            var nb = enc.GetBytes(f.Name);
+            Array.Copy(nb, name, Math.Min(nb.Length, 10));
+            w.Write(name);
+            w.Write((byte)f.Type);
+            w.Write(new byte[4]);                  // field data address
+            w.Write((byte)f.Length);
+            w.Write((byte)f.Decimals);
+            w.Write(new byte[14]);                 // reserved
+        }
+        w.Write((byte)0x0D);                       // header terminator
+
+        foreach (var r in rows)
+        {
+            w.Write((byte)0x20);                   // not deleted
+            foreach (var f in fields)
+            {
+                var raw = r[f.Source];
+                var over = display?.Invoke(f.Source, raw is DBNull ? null : raw);
+                w.Write(FormatDbfField(f, raw, over, enc));
+            }
+        }
+        w.Write((byte)0x1A);                       // EOF marker
+    }
+
+    private sealed record DbfField(string Source, string Name, char Type, int Length, int Decimals);
+
+    private static List<DbfField> PlanDbfFields(IReadOnlyList<string> cols, List<DataRowView> rows,
+        Func<string, object?, string?>? display)
+    {
+        var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var fields = new List<DbfField>();
+        foreach (var col in cols)
+        {
+            // Decide type from the column, sizing from the widest formatted value.
+            var type = 'C';
+            var dec = 0;
+            var maxLen = 1;
+            // Inspect non-null values to classify.
+            char Classify(object? v) => v switch
+            {
+                bool => 'L',
+                DateTime => 'D',
+                byte or sbyte or short or ushort or int or uint or long or ulong => 'N',
+                float or double or decimal => 'F',
+                _ => 'C'
+            };
+            var cls = 'C';
+            foreach (DataRowView r in rows)
+            {
+                var v = r[col];
+                if (v is null or DBNull) continue;
+                cls = Classify(v);
+                break;
+            }
+            switch (cls)
+            {
+                case 'L': type = 'L'; maxLen = 1; break;
+                case 'D': type = 'D'; maxLen = 8; break;
+                case 'N': type = 'N'; dec = 0; break;
+                case 'F': type = 'N'; dec = 6; break;
+                default: type = 'C'; break;
+            }
+
+            // Width from widest formatted value (display override wins).
+            foreach (DataRowView r in rows)
+            {
+                var raw = r[col];
+                var over = display?.Invoke(col, raw is DBNull ? null : raw);
+                var s = over ?? DbfText(type, dec, raw);
+                if (s.Length > maxLen) maxLen = s.Length;
+            }
+            var len = type switch
+            {
+                'L' => 1,
+                'D' => 8,
+                'N' => Math.Clamp(maxLen, 1, 20),
+                _ => Math.Clamp(maxLen, 1, 254)
+            };
+            if (type == 'N' && dec > 0 && len < dec + 2) len = dec + 2;
+
+            fields.Add(new DbfField(col, UniqueDbfName(col, used), type, len, type == 'N' ? dec : 0));
+        }
+        return fields;
+    }
+
+    private static string UniqueDbfName(string col, HashSet<string> used)
+    {
+        var sb = new StringBuilder();
+        foreach (var ch in col.ToUpperInvariant())
+            if (char.IsLetterOrDigit(ch) || ch == '_') sb.Append(ch);
+        if (sb.Length == 0) sb.Append('F');
+        var baseName = sb.ToString();
+        if (baseName.Length > 10) baseName = baseName[..10];
+        var name = baseName;
+        var n = 1;
+        while (!used.Add(name))
+        {
+            var suffix = (++n).ToString();
+            name = baseName[..Math.Min(baseName.Length, 10 - suffix.Length)] + suffix;
+        }
+        return name;
+    }
+
+    private static string DbfText(char type, int dec, object? raw) => raw switch
+    {
+        null or DBNull => "",
+        bool b => b ? "T" : "F",
+        DateTime dt => dt.ToString("yyyyMMdd"),
+        _ when type == 'N' => Convert.ToDecimal(raw, CultureInfo.InvariantCulture)
+                                     .ToString(dec > 0 ? "F" + dec : "F0", CultureInfo.InvariantCulture),
+        _ => raw.ToString() ?? ""
+    };
+
+    private static byte[] FormatDbfField(DbfField f, object? raw, string? over, Encoding enc)
+    {
+        string text;
+        if (over is not null && f.Type == 'C') text = over;
+        else text = DbfText(f.Type, f.Decimals, raw);
+
+        // Numbers are right-aligned; everything else left-aligned. All space-padded to width.
+        if (text.Length > f.Length) text = text[..f.Length];
+        text = f.Type == 'N' ? text.PadLeft(f.Length) : text.PadRight(f.Length);
+        var bytes = enc.GetBytes(text);
+        if (bytes.Length != f.Length)
+        {
+            var fixedBytes = new byte[f.Length];
+            Array.Fill(fixedBytes, (byte)0x20);
+            Array.Copy(bytes, fixedBytes, Math.Min(bytes.Length, f.Length));
+            return fixedBytes;
+        }
+        return bytes;
     }
 }
