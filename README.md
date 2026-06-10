@@ -128,9 +128,9 @@ Grab the latest **portable `.exe`** from the
   documents and tables aren't interchangeable; Clarion files are read-only, so they're copy sources
   only.)
   - **Review & tweak the column types** — when copying a Clarion TPS/DAT file into SQL, a dialog
-    shows every column, its Clarion type, and the **SQL type** NavMeCat proposes. Edit any target
-    type (widen a string, switch `int`→`bigint`, adjust a `decimal` precision, choose `nvarchar`…)
-    before the table is created, or **Reset to suggested**.
+    shows every column and its Clarion type next to the proposed **SQL type**, chosen from an
+    engine-specific **dropdown** plus a **size / precision** box (length for text, `precision,scale`
+    for decimal). Adjust anything before the table is created, or **Reset to suggested**.
   - **Clarion date/time → real SQL `date`/`time`** — Clarion stores dates and times as `LONG`
     integers. NavMeCat auto-detects those columns and pre-maps them to SQL `date` / `time`, and the
     copy **converts the value** (Clarion Standard Date/Time → a real `DateTime`/`TimeSpan`) instead

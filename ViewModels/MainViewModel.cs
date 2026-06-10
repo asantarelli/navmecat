@@ -470,7 +470,7 @@ public partial class MainViewModel : ObservableObject
             if (_copied.Connection.Engine.IsClarionFile() && !inPlace)
             {
                 var proposed = await TableCopyService.ProposeClarionMappingAsync(_copied.Connection, _copied.Name, conn.Engine);
-                var dlg = new Views.ColumnMappingDialog(_copied.Name, $"{conn.Name} ({conn.Engine.DisplayName()})", proposed)
+                var dlg = new Views.ColumnMappingDialog(_copied.Name, $"{conn.Name} ({conn.Engine.DisplayName()})", conn.Engine, proposed)
                     { Owner = System.Windows.Application.Current?.MainWindow };
                 if (dlg.ShowDialog() != true) { StatusText = "Copy canceled."; return; }
                 mappings = dlg.Result;
