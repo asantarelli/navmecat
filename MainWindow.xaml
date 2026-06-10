@@ -23,6 +23,7 @@
         <KeyBinding Modifiers="Control" Key="Q" Command="{Binding OpenQueryCommand}"/>
         <KeyBinding Modifiers="Control" Key="B" Command="{Binding OpenQueryBuilderCommand}"/>
         <KeyBinding Key="F5" Command="{Binding RefreshNodeCommand}"/>
+        <KeyBinding Key="F1" Command="{Binding OpenDocsCommand}"/>
     </Window.InputBindings>
 
     <Window.Resources>
@@ -245,7 +246,8 @@
                                       IsEnabled="{Binding SelectedTab, Converter={StaticResource NotNull}}"/>
                         </MenuItem>
                         <MenuItem Header="{loc:Tr Menu_Help}">
-                            <MenuItem Header="{loc:Tr Menu_Documentation}" Command="{Binding OpenDocsCommand}"/>
+                            <MenuItem Header="{loc:Tr Menu_Documentation}" Command="{Binding OpenDocsCommand}"
+                                      InputGestureText="F1"/>
                             <MenuItem Header="{loc:Tr Menu_GitHub}" Command="{Binding OpenGitHubCommand}"/>
                             <MenuItem Header="{loc:Tr Menu_LatestRelease}" Command="{Binding OpenReleasesCommand}"/>
                             <Separator/>
