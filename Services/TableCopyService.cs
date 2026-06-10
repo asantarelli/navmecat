@@ -23,6 +23,7 @@ public static class TableCopyService
             DatabaseEngine.Sqlite => SqliteService.GetTablesAsync(cs),
             DatabaseEngine.Firebird => FirebirdService.GetTablesAsync(cs),
             DatabaseEngine.MongoDb => MongoService.ListCollectionsAsync(cs, database),
+            DatabaseEngine.Tps => Task.FromResult(TpsService.ListTables(p.FilePath)),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => MySqlService.GetTablesAsync(cs, database),
             _ => SqlServerService.GetTablesAsync(cs, database, schema)
         };
@@ -157,12 +158,19 @@ public static class TableCopyService
 
     /// <summary>True if a table can be copied from one engine to the other.</summary>
     public static bool CanCopyBetween(DatabaseEngine a, DatabaseEngine b) =>
-        a == b || (IsRelational(a) && IsRelational(b));
+        // TPS is read-only: never a copy target, but it can be a source into any relational engine.
+        b != DatabaseEngine.Tps &&
+        (a == b
+            || (IsRelational(a) && IsRelational(b))
+            || (a == DatabaseEngine.Tps && IsRelational(b)));
 
     public static Task CopyCrossAsync(
         ConnectionProfile src, string srcDb, string srcSchema, string srcName,
         ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData)
     {
+        if (src.Engine == DatabaseEngine.Tps)
+            return CopyTpsCrossAsync(src, srcName, tgt, tgtDb, tgtSchema, newName, includeData);
+
         if (src.Engine == DatabaseEngine.MongoDb || tgt.Engine == DatabaseEngine.MongoDb)
         {
             if (src.Engine == DatabaseEngine.MongoDb && tgt.Engine == DatabaseEngine.MongoDb)
@@ -510,6 +518,97 @@ public static class TableCopyService
             case DatabaseEngine.MySql or DatabaseEngine.MariaDb: await MySqlService.ExecuteAsync(p.BuildConnectionString(), db, sql); break;
             default: await SqlServerService.ExecuteAsync(p.BuildConnectionString(), db, sql); break;
         }
+    }
+
+    // =====================================================================
+    //  TPS (Clarion) → relational  (read-only source: decode the file, then
+    //  build the target table and stream the rows in)
+    // =====================================================================
+
+    private static async Task CopyTpsCrossAsync(
+        ConnectionProfile src, string srcName,
+        ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName, bool includeData)
+    {
+        if (!IsRelational(tgt.Engine))
+            throw new NotSupportedException($"A TPS file can only be copied into a SQL database, not {tgt.Engine.DisplayName()}.");
+
+        // Decode the .tps file (structure-only when the user picked "structure only").
+        var table = await Task.Run(() =>
+            TpsService.ReadTable(src.FilePath ?? "", srcName, includeData ? int.MaxValue : 0));
+
+        var cols = table.Columns.Cast<System.Data.DataColumn>().Select(c =>
+        {
+            var prec = c.ExtendedProperties["prec"] is int p ? p : 0;
+            var scale = c.ExtendedProperties["scale"] is int s ? s : 0;
+            var size = c.DataType == typeof(string) ? c.MaxLength : 0;
+            return new CrossColumn(c.ColumnName, c.DataType, size, prec, scale, true);
+        }).ToList();
+        if (cols.Count == 0)
+            throw new InvalidOperationException($"'{srcName}' has no readable columns.");
+
+        // Structure (all columns nullable — Clarion has no NULL concept and no primary key here).
+        var lines = cols.Select(c => $"  {Q(tgt.Engine, c.Name)} {MapType(tgt.Engine, c)}").ToList();
+        var ddl = $"CREATE TABLE {Fq(tgt.Engine, tgtSchema, newName)} (\n{string.Join(",\n", lines)}\n)";
+        await ExecuteAsync(tgt, tgtDb, ddl);
+
+        if (!includeData) return;
+
+        using var reader = table.CreateDataReader();
+        if (tgt.Engine == DatabaseEngine.SqlServer)
+            await BulkCopyReaderToSqlServerAsync(reader, tgt, tgtDb, tgtSchema, newName);
+        else
+            await PumpReaderAsync(reader, tgt, tgtDb, tgtSchema, newName);
+    }
+
+    /// <summary>Bulk-loads an already-open reader into a SQL Server target.</summary>
+    private static async Task BulkCopyReaderToSqlServerAsync(
+        DbDataReader reader, ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName)
+    {
+        await using var tgtConn = (SqlConnection)await OpenAsync(tgt, tgtDb);
+        using var bulk = new SqlBulkCopy(tgtConn)
+        {
+            DestinationTableName = $"{Q(DatabaseEngine.SqlServer, tgtSchema)}.{Q(DatabaseEngine.SqlServer, newName)}",
+            BulkCopyTimeout = 0,
+            BatchSize = 10_000,
+            EnableStreaming = true
+        };
+        for (var i = 0; i < reader.FieldCount; i++)
+            bulk.ColumnMappings.Add(reader.GetName(i), reader.GetName(i));
+        await bulk.WriteToServerAsync(reader);
+    }
+
+    /// <summary>Streams an already-open reader into a non-SQL-Server target via one prepared INSERT.</summary>
+    private static async Task PumpReaderAsync(
+        DbDataReader reader, ConnectionProfile tgt, string tgtDb, string tgtSchema, string newName)
+    {
+        var cols = Enumerable.Range(0, reader.FieldCount).Select(reader.GetName).ToList();
+        if (cols.Count == 0) return;
+
+        await using var tgtConn = await OpenAsync(tgt, tgtDb);
+        await using var tx = await tgtConn.BeginTransactionAsync();
+
+        var colList = string.Join(", ", cols.Select(c => Q(tgt.Engine, c)));
+        var paramList = string.Join(", ", cols.Select((_, i) => "@p" + i));
+        await using var insert = tgtConn.CreateCommand();
+        insert.Transaction = (DbTransaction)tx;
+        insert.CommandText = $"INSERT INTO {Fq(tgt.Engine, tgtSchema, newName)} ({colList}) VALUES ({paramList})";
+
+        var ps = new DbParameter[cols.Count];
+        for (var i = 0; i < cols.Count; i++)
+        {
+            var p = insert.CreateParameter();
+            p.ParameterName = "@p" + i;
+            insert.Parameters.Add(p);
+            ps[i] = p;
+        }
+
+        while (await reader.ReadAsync())
+        {
+            for (var i = 0; i < cols.Count; i++)
+                ps[i].Value = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
+            await insert.ExecuteNonQueryAsync();
+        }
+        await tx.CommitAsync();
     }
 
     private static async Task CopyMongoCrossAsync(

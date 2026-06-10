@@ -9,7 +9,8 @@ public enum DatabaseEngine
     MongoDb,
     Firebird,
     MySql,
-    MariaDb
+    MariaDb,
+    Tps
 }
 
 public static class DatabaseEngineInfo
@@ -24,6 +25,7 @@ public static class DatabaseEngineInfo
         DatabaseEngine.Firebird => "Firebird",
         DatabaseEngine.MySql => "MySQL",
         DatabaseEngine.MariaDb => "MariaDB",
+        DatabaseEngine.Tps => "TPS (Clarion)",
         _ => e.ToString()
     };
 
@@ -35,5 +37,10 @@ public static class DatabaseEngineInfo
     public static bool IsSupported(this DatabaseEngine e) =>
         e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite
             or DatabaseEngine.Firebird or DatabaseEngine.MongoDb
-            or DatabaseEngine.MySql or DatabaseEngine.MariaDb;
+            or DatabaseEngine.MySql or DatabaseEngine.MariaDb
+            or DatabaseEngine.Tps;
+
+    /// <summary>Read-only engines: browse and copy out, but no editing, designing or writing back.</summary>
+    public static bool IsReadOnly(this DatabaseEngine e) =>
+        e is DatabaseEngine.MongoDb or DatabaseEngine.Tps;
 }

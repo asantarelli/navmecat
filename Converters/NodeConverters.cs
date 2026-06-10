@@ -27,6 +27,9 @@ public class NodeIconConverter : IValueConverter
             "M2,11 C3,7 5,4.5 8,4.5 C7.4,5.6 7.6,7 8.6,7.8 C10,9 11.5,8.6 12.5,9.6 C13.3,10.4 13.4,11.6 13,12.5 M5,12.2 C6.5,12 8,12 9.2,12.6"),
         [DatabaseEngine.MariaDb] = Geometry.Parse(
             "M2,11 C3,7 5,4.5 8,4.5 C7.4,5.6 7.6,7 8.6,7.8 C10,9 11.5,8.6 12.5,9.6 C13.3,10.4 13.4,11.6 13,12.5 M5,12.2 C6.5,12 8,12 9.2,12.6"),
+        // Stacked document files for a TPS (Clarion) folder connection.
+        [DatabaseEngine.Tps] = Geometry.Parse(
+            "M5,2 H10.5 L13,4.5 V12 H5 Z M10.5,2 V4.5 H13 M3,5 V14 H10.5"),
     };
 
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -50,6 +53,7 @@ public class NodeIconBrushConverter : IValueConverter
     private static readonly Brush Firebird = Frozen("#C92E2E");
     private static readonly Brush MySql = Frozen("#00758F");
     private static readonly Brush MariaDb = Frozen("#A0522D");
+    private static readonly Brush Tps = Frozen("#D98E04");
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
@@ -63,6 +67,7 @@ public class NodeIconBrushConverter : IValueConverter
                 DatabaseEngine.Firebird => Firebird,
                 DatabaseEngine.MySql => MySql,
                 DatabaseEngine.MariaDb => MariaDb,
+                DatabaseEngine.Tps => Tps,
                 _ => NodeTypeToBrushConverter.BrushFor(NodeType.Server)
             };
         return NodeTypeToBrushConverter.BrushFor(node.Type);

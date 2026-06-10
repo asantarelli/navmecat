@@ -50,6 +50,9 @@ public class ConnectionProfile
         {
             case DatabaseEngine.Sqlite:
                 return new SqliteConnectionStringBuilder { DataSource = FilePath ?? "" }.ToString();
+            case DatabaseEngine.Tps:
+                // No real connection string — TPS reads .tps files directly from a folder.
+                return FilePath ?? "";
             case DatabaseEngine.MongoDb:
                 // The MongoDB URI is stored verbatim in Server (e.g. mongodb://localhost:27017).
                 return string.IsNullOrWhiteSpace(Server) ? "mongodb://localhost:27017" : Server.Trim();

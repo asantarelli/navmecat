@@ -60,6 +60,9 @@ public partial class ConnectionDialog : Window
             MyPassBox.Password = _profile.Password ?? "";
         }
 
+        if (_profile.Engine == DatabaseEngine.Tps)
+            TpsFolderBox.Text = _profile.FilePath ?? "";
+
         _engine = _profile.Engine;
         (_engine switch
         {
@@ -69,6 +72,7 @@ public partial class ConnectionDialog : Window
             DatabaseEngine.Firebird => EngFirebird,
             DatabaseEngine.MySql => EngMySql,
             DatabaseEngine.MariaDb => EngMariaDb,
+            DatabaseEngine.Tps => EngTps,
             _ => EngSqlServer
         }).IsChecked = true;
 
@@ -113,6 +117,13 @@ public partial class ConnectionDialog : Window
             return;
         }
 
+        if (_engine == DatabaseEngine.Tps)
+        {
+            p.FilePath = string.IsNullOrWhiteSpace(TpsFolderBox.Text) ? null : TpsFolderBox.Text.Trim();
+            p.UseRawConnectionString = false;
+            return;
+        }
+
         p.Server = ServerBox.Text.Trim();
         p.Database = string.IsNullOrWhiteSpace(DatabaseBox.Text) ? null : DatabaseBox.Text.Trim();
         p.IntegratedSecurity = WinAuthRadio.IsChecked == true;
@@ -137,6 +148,7 @@ public partial class ConnectionDialog : Window
             var s when s == EngFirebird => DatabaseEngine.Firebird,
             var s when s == EngMySql => DatabaseEngine.MySql,
             var s when s == EngMariaDb => DatabaseEngine.MariaDb,
+            var s when s == EngTps => DatabaseEngine.Tps,
             _ => DatabaseEngine.SqlServer
         };
         ApplyEngineState();
@@ -151,6 +163,7 @@ public partial class ConnectionDialog : Window
         var isFirebird = _engine == DatabaseEngine.Firebird;
         var isMongo = _engine == DatabaseEngine.MongoDb;
         var isMySql = _engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb;
+        var isTps = _engine == DatabaseEngine.Tps;
         var supported = _engine.IsSupported();
 
         SqlServerPanel.Visibility = isSql ? Visibility.Visible : Visibility.Collapsed;
@@ -158,6 +171,7 @@ public partial class ConnectionDialog : Window
         FirebirdPanel.Visibility = isFirebird ? Visibility.Visible : Visibility.Collapsed;
         MongoPanel.Visibility = isMongo ? Visibility.Visible : Visibility.Collapsed;
         MySqlPanel.Visibility = isMySql ? Visibility.Visible : Visibility.Collapsed;
+        TpsPanel.Visibility = isTps ? Visibility.Visible : Visibility.Collapsed;
         if (isFirebird) ApplyFirebirdState();
         ComingSoonPanel.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
         if (!supported)
@@ -227,6 +241,19 @@ public partial class ConnectionDialog : Window
         }
     }
 
+    private void TpsBrowse_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFolderDialog { Title = "Select the folder containing .tps files" };
+        if (!string.IsNullOrWhiteSpace(TpsFolderBox.Text) && System.IO.Directory.Exists(TpsFolderBox.Text))
+            dlg.InitialDirectory = TpsFolderBox.Text;
+        if (dlg.ShowDialog(this) == true)
+        {
+            TpsFolderBox.Text = dlg.FolderName;
+            if (string.IsNullOrWhiteSpace(NameBox.Text) || NameBox.Text == "New Connection")
+                NameBox.Text = new System.IO.DirectoryInfo(dlg.FolderName).Name;
+        }
+    }
+
     private void Header_MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed) DragMove();
@@ -257,6 +284,8 @@ public partial class ConnectionDialog : Window
                 await MongoService.TestConnectionAsync(temp.BuildConnectionString());
             else if (_engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb)
                 await MySqlService.TestConnectionAsync(temp.BuildConnectionString());
+            else if (_engine == DatabaseEngine.Tps)
+                TpsService.TestConnection(temp.FilePath);
             else
                 await SqlServerService.TestConnectionAsync(temp.BuildConnectionString());
             TestStatus.Text = "Connection succeeded.";
@@ -301,6 +330,14 @@ public partial class ConnectionDialog : Window
             if (string.IsNullOrWhiteSpace(MyHostBox.Text))
             {
                 Dialogs.ShowError("Missing host", "Please enter a host name.");
+                return;
+            }
+        }
+        else if (_engine == DatabaseEngine.Tps)
+        {
+            if (string.IsNullOrWhiteSpace(TpsFolderBox.Text))
+            {
+                Dialogs.ShowError("Missing folder", "Please choose the folder that contains your .tps files.");
                 return;
             }
         }

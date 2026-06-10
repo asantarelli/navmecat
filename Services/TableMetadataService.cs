@@ -30,6 +30,7 @@ public static class TableMetadataService
             DatabaseEngine.Sqlite => GetSqliteAsync(connectionString, table, connectionName),
             DatabaseEngine.Firebird => GetFirebirdAsync(connectionString, table, connectionName),
             DatabaseEngine.MongoDb => MongoService.GetStructureAsync(connectionString, database, table, connectionName),
+            DatabaseEngine.Tps => TpsService.GetStructureAsync(connectionString, table, connectionName),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => GetMySqlAsync(connectionString, database, table, connectionName),
             _ => GetSqlServerAsync(connectionString, database, schema, table, connectionName)
         };

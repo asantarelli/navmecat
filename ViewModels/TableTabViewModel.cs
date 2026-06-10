@@ -595,7 +595,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         Key = MakeKey(node);
         Identifier = node.Connection.Engine switch
         {
-            DatabaseEngine.Sqlite or DatabaseEngine.Firebird => node.Name,
+            DatabaseEngine.Sqlite or DatabaseEngine.Firebird or DatabaseEngine.Tps => node.Name,
             DatabaseEngine.MongoDb or DatabaseEngine.MySql or DatabaseEngine.MariaDb => $"{node.Database}.{node.Name}",
             _ => $"{node.Database}.{node.Schema}.{node.Name}"
         };
@@ -615,6 +615,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
 
             if (Node.Connection.Engine == DatabaseEngine.MongoDb)
                 return await LoadMongoAsync();
+
+            if (Node.Connection.Engine == DatabaseEngine.Tps)
+                return await LoadTpsAsync();
 
             _session = await EditableTableSession.OpenAsync(
                 Node.Connection.Engine, Node.Connection.BuildConnectionString(),
@@ -696,6 +699,46 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         {
             Dialogs.ShowError("Could not open collection", ex.Message);
             _setStatus("Failed to open collection.");
+            return false;
+        }
+        finally
+        {
+            _setBusy(false);
+        }
+    }
+
+    /// <summary>Loads a Clarion .tps file into a read-only grid (records decoded to columns).</summary>
+    private async Task<bool> LoadTpsAsync()
+    {
+        try
+        {
+            var folder = Node.Connection.FilePath ?? "";
+            _sourceData = await Task.Run(() => TpsService.ReadTable(folder, Node.Name, RowLimit));
+
+            GridReadOnly = true;
+
+            // Decode any Clarion long/date/time columns the same way as SQL-sourced tables.
+            ClarionColumns = ClarionDetector.Detect(_sourceData);
+            OnPropertyChanged(nameof(HasClarionTypes));
+            OnPropertyChanged(nameof(ClarionToggleLabel));
+
+            ColumnNames.Clear();
+            foreach (DataColumn c in _sourceData.Columns)
+                ColumnNames.Add(c.ColumnName);
+            OnPropertyChanged(nameof(CanPickRowIdentity));
+
+            ProjectView();
+            HasUnsavedChanges = false;
+            ApplyDefaults();
+            OnPropertyChanged(nameof(TabToolTip));
+
+            _setStatus($"Loaded {_sourceData.Rows.Count} record(s) from {Identifier} (limit {RowLimit}). Read-only TPS file.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Could not open TPS file", ex.Message);
+            _setStatus("Failed to open TPS file.");
             return false;
         }
         finally

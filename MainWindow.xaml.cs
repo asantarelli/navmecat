@@ -98,6 +98,13 @@ public partial class MainWindow : Window
                 AddCopyPaste(menu, node);
                 break;
 
+            // TPS is read-only: open it, or copy it out to a SQL database. No paste into TPS.
+            case NodeType.Table when node.Connection.Engine == DatabaseEngine.Tps:
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Ctx_CopyTable", () => Run(Vm.CopyTableCommand, node)));
+                break;
+
             case NodeType.Table when node.Connection.Engine.IsMySql():
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 AddCopyPaste(menu, node);

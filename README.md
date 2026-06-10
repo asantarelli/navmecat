@@ -1,7 +1,7 @@
 # NavMeCat
 
 A lightweight, Navicat-style database manager for **SQL Server**, **SQLite**, **MySQL**,
-**MariaDB** and **Firebird**, built with **C# / WPF (.NET 9)**.
+**MariaDB**, **Firebird**, **MongoDB** and **Clarion TPS** files, built with **C# / WPF (.NET 9)**.
 
 Add connection strings, browse the server tree (databases → schemas → tables), open a table, and
 view & edit its records in place — including adding and deleting rows — with changes pushed back to
@@ -23,8 +23,8 @@ Grab the latest **portable `.exe`** from the
 
 - **Multiple database engines** — pick the engine when creating a connection. Each connection is
   tagged with an engine icon in the tree so you can tell them apart at a glance.
-  - **SQL Server**, **SQLite**, **MySQL**, **MariaDB**, **Firebird** and **MongoDB** are supported
-    today; **PostgreSQL** is selectable now and being wired up next.
+  - **SQL Server**, **SQLite**, **MySQL**, **MariaDB**, **Firebird**, **MongoDB** and
+    **Clarion TPS** files are supported today; **PostgreSQL** is selectable now and being wired up next.
   - **SQLite**: just point to a `.db` / `.sqlite` file — browse tables & views, view and edit rows
     (primary-key or rowid-safe), **design tables** (create new, or alter existing via a safe
     table-rebuild), and inspect structure/DDL.
@@ -44,6 +44,12 @@ Grab the latest **portable `.exe`** from the
     local `.fdb` directly — this needs Firebird's native engine DLLs (`fbclient.dll` + `plugins\`,
     `intl\`, `tzdata\`, `firebird.conf`/`firebird.msg`, `ib_util.dll`) from the official Firebird
     **ZIP kit** (64-bit) placed next to `NavMeCat.exe`.
+  - **Clarion TPS**: point a connection at a **folder** and every `.tps` file in it shows up as a
+    table — pick one like you'd pick a table. NavMeCat decodes the TopSpeed binary format directly
+    (no ODBC driver, no install) into a **read-only** grid with filter, sort and export, and detects
+    Clarion `LONG` date/time fields automatically. Use **Copy** on a `.tps` table and paste it onto
+    any SQL database to migrate the data across (**TPS → SQL**); the schema and rows are created for
+    you. TPS is read-only, so it's only ever a copy *source*.
 - **Connection manager** — add, edit, and remove connections.
   - SQL Server: Windows Authentication or SQL Server login.
   - Field-based builder *or* a raw connection string.
@@ -108,10 +114,11 @@ Grab the latest **portable `.exe`** from the
   (Ctrl+V) onto a Tables folder / database. It asks whether to copy the **structure only** or
   **structure + data**, and auto-names the copy (`name_copy`, `name_copy2`, …) if the name is taken.
   Paste **into the same connection**, **a different connection of the same engine**, or even
-  **a different relational engine** (e.g. SQLite → SQL Server, Firebird → SQLite): NavMeCat maps
-  each column to a compatible type, creates the table, and copies the rows. Cross-connection SQL
-  Server copies use **SqlBulkCopy** (streaming) so large tables move fast. (MongoDB ↔ relational
-  isn't supported — documents and tables aren't interchangeable.)
+  **a different relational engine** (e.g. SQLite → SQL Server, Firebird → SQLite), or migrate a
+  **Clarion TPS file into any SQL database** (TPS → SQL): NavMeCat maps each column to a compatible
+  type, creates the table, and copies the rows. Cross-connection SQL Server copies use **SqlBulkCopy**
+  (streaming) so large tables move fast. (MongoDB ↔ relational isn't supported — documents and tables
+  aren't interchangeable; TPS is read-only, so it's a copy source only.)
 - **Users & roles** — a **User Manager** (command-bar **Users** button) to manage logins, users and
   roles across the relational engines:
   - **List** users and roles, **create** / **drop** them, **set/change passwords**, and

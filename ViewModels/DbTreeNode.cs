@@ -153,6 +153,7 @@ public partial class DbTreeNode : ObservableObject
                 DatabaseEngine.Sqlite => await LoadSqliteChildrenAsync(connStr),
                 DatabaseEngine.Firebird => await LoadFirebirdChildrenAsync(connStr),
                 DatabaseEngine.MongoDb => await LoadMongoChildrenAsync(connStr),
+                DatabaseEngine.Tps => LoadTpsChildren(),
                 DatabaseEngine.MySql or DatabaseEngine.MariaDb => await LoadMySqlChildrenAsync(connStr),
                 _ => await LoadSqlServerChildrenAsync(connStr)
             };
@@ -304,6 +305,16 @@ public partial class DbTreeNode : ObservableObject
                     items.Add(ObjectNode(CategoryChildType, Connection, fb, fb, n));
                 break;
         }
+        return items;
+    }
+
+    /// <summary>TPS: the connection is a folder — each .tps file is shown directly as a table.</summary>
+    private List<DbTreeNode> LoadTpsChildren()
+    {
+        var items = new List<DbTreeNode>();
+        if (Type == NodeType.Server)
+            foreach (var name in TpsService.ListTables(Connection.FilePath))
+                items.Add(ObjectNode(NodeType.Table, Connection, "", "", name));
         return items;
     }
 
