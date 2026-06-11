@@ -34,7 +34,8 @@
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE710;"/><TextBlock Text="{loc:Tr OL_NewTable}"/>
                     </StackPanel>
                 </Button>
-                <Button Command="{Binding DeleteCommand}" Style="{StaticResource ToolButton}">
+                <Button Command="{Binding DeleteCommand}" Style="{StaticResource ToolButton}"
+                        Visibility="{Binding CanDelete, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74D;"/><TextBlock Text="{loc:Tr OL_DeleteTable}"/>
                     </StackPanel>
@@ -78,8 +79,9 @@
                               Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
                     <MenuItem Header="{loc:Tr Ctx_PasteTable}" Command="{Binding PasteCommand}"
                               Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
-                    <Separator/>
-                    <MenuItem Header="{loc:Tr OL_DeleteTable}" Command="{Binding DeleteCommand}"/>
+                    <Separator Visibility="{Binding CanDelete, Converter={StaticResource BoolToVis}}"/>
+                    <MenuItem Header="{loc:Tr OL_DeleteTable}" Command="{Binding DeleteCommand}"
+                              Visibility="{Binding CanDelete, Converter={StaticResource BoolToVis}}"/>
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>

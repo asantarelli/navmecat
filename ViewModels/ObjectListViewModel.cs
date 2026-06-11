@@ -26,6 +26,7 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
     [ObservableProperty] private string countText = "";
     [ObservableProperty] private bool canDesign;
     [ObservableProperty] private bool canCreate;
+    [ObservableProperty] private bool canDelete = true;
     [ObservableProperty] private bool isTables = true;
 
     /// <summary>The kind of objects listed: Table, View, Function, or Procedure.</summary>
@@ -59,6 +60,8 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
         var engine = container.Connection.Engine;
         CanDesign = IsTables && engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
         CanCreate = CanDesign;
+        // Read-only engines (MongoDB, Clarion TPS/DAT) can't be dropped — hide the Drop action.
+        CanDelete = !engine.IsReadOnly();
 
         var loc = LocalizationManager.Instance;
         var kindWord = ChildType switch
