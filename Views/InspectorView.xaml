@@ -45,10 +45,10 @@
                           IsChecked="{Binding IsDdlSection, Mode=OneWay}"
                           Command="{Binding SetInspectorSectionCommand}"
                           CommandParameter="{x:Static vm:InspectorSection.Ddl}"/>
-            <ToggleButton Content="{loc:Tr Insp_Relationships}" Style="{StaticResource ToolToggle}"
-                          IsChecked="{Binding IsRelSection, Mode=OneWay}"
+            <ToggleButton Content="{loc:Tr Insp_Indexes}" Style="{StaticResource ToolToggle}"
+                          IsChecked="{Binding IsIndexSection, Mode=OneWay}"
                           Command="{Binding SetInspectorSectionCommand}"
-                          CommandParameter="{x:Static vm:InspectorSection.Relationships}"/>
+                          CommandParameter="{x:Static vm:InspectorSection.Indexes}"/>
         </StackPanel>
 
         <Border Grid.Row="3" BorderBrush="{StaticResource B.Border}" BorderThickness="1" CornerRadius="6">

@@ -113,6 +113,6 @@ public static class MongoService
         var ddl = "// MongoDB is schemaless — collections have no fixed DDL.\n" +
                   $"// '{collection}' currently holds {count:N0} document(s).";
 
-        return new TableStructure(ddl, info.ToString().TrimEnd(), loc["Mongo_NoRelationships"]);
+        return new TableStructure(ddl, info.ToString().TrimEnd(), loc["Mongo_NoIndexes"]);
     }
 }

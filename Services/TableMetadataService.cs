@@ -6,7 +6,7 @@ using NavMeCat.Models;
 
 namespace NavMeCat.Services;
 
-public record TableStructure(string Ddl, string Info, string Relationships);
+public record TableStructure(string Ddl, string Info, string Indexes);
 
 /// <summary>Builds a CREATE TABLE script, summary info, and foreign-key relationships for a table.</summary>
 public static class TableMetadataService
@@ -41,7 +41,6 @@ public static class TableMetadataService
         var loc = LocalizationManager.Instance;
         var cols = await MySqlService.GetColumnsAsync(cs, db, table);
         var indexes = await MySqlService.GetIndexesAsync(cs, db, table);
-        var fks = await MySqlService.GetForeignKeysAsync(cs, db, table);
         var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name).ToList();
         long rows = -1;
         try { rows = await MySqlService.GetRowCountAsync(cs, db, table); } catch { }
@@ -63,14 +62,7 @@ public static class TableMetadataService
         foreach (var c in cols)
             info.AppendLine($"  • {c.Name}  {c.TypeName}  {(c.Nullable ? "NULL" : "NOT NULL")}");
 
-        var rels = new StringBuilder();
-        foreach (var fk in fks)
-        {
-            if (rels.Length == 0) rels.AppendLine(loc["Rel_References"]);
-            rels.AppendLine($"  {fk.Name}: ({string.Join(", ", fk.Cols)}) → {fk.RefTable} ({string.Join(", ", fk.RefCols)})");
-        }
-        var relationships = rels.Length == 0 ? loc["Rel_None"] : rels.ToString().TrimEnd();
-        return new TableStructure(ddl, info.ToString().TrimEnd(), relationships);
+        return new TableStructure(ddl, info.ToString().TrimEnd(), BuildIndexText(indexes));
     }
 
     private static async Task<TableStructure> GetFirebirdAsync(string connectionString, string table, string connectionName)
@@ -78,7 +70,6 @@ public static class TableMetadataService
         var loc = LocalizationManager.Instance;
         var cols = await FirebirdService.GetColumnsAsync(connectionString, table);
         var indexes = await FirebirdService.GetIndexesAsync(connectionString, table);
-        var fks = await FirebirdService.GetForeignKeysAsync(connectionString, table);
         var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name).ToList();
 
         long rows = -1;
@@ -109,16 +100,7 @@ public static class TableMetadataService
         foreach (var c in cols)
             info.AppendLine($"  • {c.Name}  {c.TypeName}  {(c.Nullable ? "NULL" : "NOT NULL")}");
 
-        // Relationships (outgoing FKs).
-        var rels = new StringBuilder();
-        foreach (var fk in fks)
-        {
-            if (rels.Length == 0) rels.AppendLine(loc["Rel_References"]);
-            rels.AppendLine($"  {fk.Name}: ({string.Join(", ", fk.Cols)}) → {fk.RefTable} ({string.Join(", ", fk.RefCols)})");
-        }
-        var relationships = rels.Length == 0 ? loc["Rel_None"] : rels.ToString().TrimEnd();
-
-        return new TableStructure(ddl.ToString(), info.ToString().TrimEnd(), relationships);
+        return new TableStructure(ddl.ToString(), info.ToString().TrimEnd(), BuildIndexText(indexes));
     }
 
     private static async Task<TableStructure> GetSqlServerAsync(string connectionString, string database, string schema, string table, string connectionName)
@@ -134,9 +116,8 @@ public static class TableMetadataService
 
         var ddl = BuildDdl(schema, table, columns, identity, indexes, fks);
         var info = await BuildInfoAsync(conn, fq, schema, table, columns, indexes, database, connectionName);
-        var relationships = BuildRelationships(schema, table, fks);
 
-        return new TableStructure(ddl, info, relationships);
+        return new TableStructure(ddl, info, BuildIndexText(indexes));
     }
 
     // ---- queries ---------------------------------------------------------
@@ -426,35 +407,30 @@ public static class TableMetadataService
         return sb.ToString().TrimEnd();
     }
 
-    private static string BuildRelationships(string schema, string table, List<FkDef> fks)
+    /// <summary>Formats a list of (name, unique, columns) indexes for the structure panel.</summary>
+    private static string BuildIndexText(IReadOnlyList<(string Name, bool Unique, List<string> Columns)> indexes)
     {
         var loc = LocalizationManager.Instance;
-        if (fks.Count == 0) return loc["Rel_None"];
-
+        if (indexes.Count == 0) return loc["Insp_NoIndexes"];
         var sb = new StringBuilder();
-        var outgoing = fks.Where(f => f.ParentSchema == schema && f.ParentTable == table).ToList();
-        var incoming = fks.Where(f => f.RefSchema == schema && f.RefTable == table).ToList();
+        sb.AppendLine(loc["Info_Indexes"]);
+        foreach (var ix in indexes)
+            sb.AppendLine($"  • {ix.Name}{(ix.Unique ? " (UNIQUE)" : "")}  ({string.Join(", ", ix.Columns)})");
+        return sb.ToString().TrimEnd();
+    }
 
-        if (outgoing.Count > 0)
+    /// <summary>Formats SQL Server indexes (with PK / unique flags and type) for the structure panel.</summary>
+    private static string BuildIndexText(List<IndexDef> indexes)
+    {
+        var loc = LocalizationManager.Instance;
+        if (indexes.Count == 0) return loc["Insp_NoIndexes"];
+        var sb = new StringBuilder();
+        sb.AppendLine(loc["Info_Indexes"]);
+        foreach (var ix in indexes)
         {
-            sb.AppendLine(loc["Rel_References"]);
-            foreach (var fk in outgoing)
-            {
-                var pc = string.Join(", ", fk.Columns.Select(c => c.ParentCol));
-                var rc = string.Join(", ", fk.Columns.Select(c => c.RefCol));
-                sb.AppendLine($"  {fk.Name}: ({pc}) → {fk.RefSchema}.{fk.RefTable} ({rc})");
-            }
-            sb.AppendLine();
-        }
-        if (incoming.Count > 0)
-        {
-            sb.AppendLine(loc["Rel_ReferencedBy"]);
-            foreach (var fk in incoming)
-            {
-                var pc = string.Join(", ", fk.Columns.Select(c => c.ParentCol));
-                var rc = string.Join(", ", fk.Columns.Select(c => c.RefCol));
-                sb.AppendLine($"  {fk.Name}: {fk.ParentSchema}.{fk.ParentTable} ({pc}) → ({rc})");
-            }
+            var flags = ix.IsPrimaryKey ? " (PRIMARY KEY)" : ix.IsUnique ? " (UNIQUE)" : "";
+            var cols = string.Join(", ", ix.Columns.Select(c => c.Col + (c.Desc ? " DESC" : "")));
+            sb.AppendLine($"  • {ix.Name}{flags}  ({cols})  [{ix.TypeDesc}]");
         }
         return sb.ToString().TrimEnd();
     }
@@ -479,14 +455,7 @@ public static class TableMetadataService
                     r.GetInt32(3) != 0, r.GetInt32(5), r.IsDBNull(4) ? null : r.GetValue(4)?.ToString()));
         }
 
-        var indexes = new List<string>();
-        await using (var cmd = conn.CreateCommand())
-        {
-            cmd.CommandText = $"PRAGMA index_list('{table.Replace("'", "''")}')";
-            await using var r = await cmd.ExecuteReaderAsync();
-            while (await r.ReadAsync())
-                indexes.Add(r.GetString(1)); // name
-        }
+        var indexes = await SqliteService.GetIndexesAsync(connectionString, table);
 
         long rows = -1;
         try { rows = Convert.ToInt64(await SqliteScalarObjAsync(conn, $"SELECT COUNT(*) FROM {Quote(table)}")); }
@@ -508,24 +477,8 @@ public static class TableMetadataService
         foreach (var c in columns)
             info.AppendLine($"  • {c.Name}  {(string.IsNullOrEmpty(c.Type) ? "" : c.Type)}  {(c.NotNull ? "NOT NULL" : "NULL")}".TrimEnd());
 
-        // Relationships via foreign_key_list.
-        var rels = new StringBuilder();
-        await using (var cmd = conn.CreateCommand())
-        {
-            cmd.CommandText = $"PRAGMA foreign_key_list('{table.Replace("'", "''")}')";
-            await using var r = await cmd.ExecuteReaderAsync();
-            while (await r.ReadAsync())
-            {
-                var refTable = r.GetString(2);
-                var from = r.GetString(3);
-                var to = r.IsDBNull(4) ? "" : r.GetString(4);
-                if (rels.Length == 0) rels.AppendLine(loc["Rel_References"]);
-                rels.AppendLine($"  ({from}) → {refTable} ({to})");
-            }
-        }
-        var relationships = rels.Length == 0 ? loc["Rel_None"] : rels.ToString().TrimEnd();
-
-        return new TableStructure(ddl.TrimEnd() + (ddl.TrimEnd().EndsWith(";") ? "" : ";"), info.ToString().TrimEnd(), relationships);
+        return new TableStructure(ddl.TrimEnd() + (ddl.TrimEnd().EndsWith(";") ? "" : ";"),
+            info.ToString().TrimEnd(), BuildIndexText(indexes));
     }
 
     private static async Task<string?> SqliteScalarAsync(SqliteConnection conn, string sql, string tableParam)

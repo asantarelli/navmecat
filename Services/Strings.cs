@@ -58,7 +58,7 @@ public static class Strings
         ["Btn_SQL"] = "SQL",
         ["Tip_SQL"] = "Show the SQL that Save will run for pending changes",
         ["Btn_Structure"] = "Structure",
-        ["Tip_Structure"] = "Show the table structure: Info, DDL and Relationships",
+        ["Tip_Structure"] = "Show the table structure: Info, DDL and Indexes",
         ["Lbl_RowLimit"] = "Row limit",
         ["Btn_Export"] = "Export",
         ["Tip_Export"] = "Export the current rows to CSV, JSON, XML, HTML or Excel",
@@ -180,7 +180,8 @@ public static class Strings
         ["Insp_Structure"] = "Structure",
         ["Insp_Info"] = "Info",
         ["Insp_Ddl"] = "DDL",
-        ["Insp_Relationships"] = "Relationships",
+        ["Insp_Indexes"] = "Indexes",
+        ["Insp_NoIndexes"] = "No indexes.",
         ["Tip_Pin"] = "Pin / pop out to a floating window",
         ["Hdr_Table"] = "Table",
         ["Hdr_View"] = "View",
@@ -226,6 +227,7 @@ public static class Strings
         ["Info_SampledFields"] = "Fields:",
         ["Info_Fields"] = "Fields (sampled):",
         ["Mongo_NoRelationships"] = "MongoDB collections have no foreign-key relationships.",
+        ["Mongo_NoIndexes"] = "Index details aren't shown for MongoDB collections.",
         ["Mongo_ReadOnly"] = "Read-only view — MongoDB editing isn't supported yet.",
     };
 
@@ -278,7 +280,7 @@ public static class Strings
         ["Btn_SQL"] = "SQL",
         ["Tip_SQL"] = "Mostrar el SQL que ejecutará Guardar para los cambios pendientes",
         ["Btn_Structure"] = "Estructura",
-        ["Tip_Structure"] = "Mostrar la estructura de la tabla: Info, DDL y Relaciones",
+        ["Tip_Structure"] = "Mostrar la estructura de la tabla: Info, DDL e Índices",
         ["Lbl_RowLimit"] = "Límite de filas",
         ["Btn_Export"] = "Exportar",
         ["Tip_Export"] = "Exportar las filas actuales a CSV, JSON, XML, HTML o Excel",
@@ -400,7 +402,8 @@ public static class Strings
         ["Insp_Structure"] = "Estructura",
         ["Insp_Info"] = "Información",
         ["Insp_Ddl"] = "DDL",
-        ["Insp_Relationships"] = "Relaciones",
+        ["Insp_Indexes"] = "Índices",
+        ["Insp_NoIndexes"] = "Sin índices.",
         ["Tip_Pin"] = "Fijar / desacoplar en una ventana flotante",
         ["Hdr_Table"] = "Tabla",
         ["Hdr_View"] = "Vista",
@@ -446,6 +449,7 @@ public static class Strings
         ["Info_SampledFields"] = "Campos:",
         ["Info_Fields"] = "Campos (muestra):",
         ["Mongo_NoRelationships"] = "Las colecciones de MongoDB no tienen relaciones de clave externa.",
+        ["Mongo_NoIndexes"] = "Los detalles de índices no se muestran para colecciones de MongoDB.",
         ["Mongo_ReadOnly"] = "Vista de solo lectura — la edición de MongoDB aún no es compatible.",
     };
 }

@@ -129,7 +129,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
 
     public bool IsInfoSection => InspectorSection == InspectorSection.Info;
     public bool IsDdlSection => InspectorSection == InspectorSection.Ddl;
-    public bool IsRelSection => InspectorSection == InspectorSection.Relationships;
+    public bool IsIndexSection => InspectorSection == InspectorSection.Indexes;
     public string PaneTitle => Identifier;
 
     /// <summary>Shown only for tables without a primary key / unique index.</summary>
@@ -327,7 +327,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         UpdateInspectorContent();
         OnPropertyChanged(nameof(IsInfoSection));
         OnPropertyChanged(nameof(IsDdlSection));
-        OnPropertyChanged(nameof(IsRelSection));
+        OnPropertyChanged(nameof(IsIndexSection));
     }
 
     private async Task LoadStructureAsync()
@@ -366,7 +366,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         InspectorContent = InspectorSection switch
         {
             InspectorSection.Info => _structure.Info,
-            InspectorSection.Relationships => _structure.Relationships,
+            InspectorSection.Indexes => _structure.Indexes,
             _ => _structure.Ddl
         };
     }
