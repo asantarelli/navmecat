@@ -347,7 +347,7 @@
                     </Grid>
                     <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="11" FontStyle="Italic"
                                Foreground="{StaticResource B.TextMuted}"
-                               Text="Read-only viewer: browse your schema's tables &amp; views, run SQL, and copy data out to a SQL database."/>
+                               Text="Browse your schema's tables &amp; views, view and edit rows, run SQL, and copy tables to/from any SQL database."/>
                 </StackPanel>
 
                 <!-- ===== Clarion DAT ===== -->

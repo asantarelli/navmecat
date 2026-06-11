@@ -693,6 +693,8 @@ public partial class MainViewModel : ObservableObject
                 FirebirdService.ExecuteAsync(cs, $"DROP {keyword} \"{node.Name}\""),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb =>
                 MySqlService.ExecuteAsync(cs, db, $"DROP {keyword} `{node.Name}`"),
+            DatabaseEngine.Oracle =>
+                OracleService.ExecuteAsync(cs, $"DROP {keyword} \"{node.Name}\""),
             _ => SqlServerService.ExecuteAsync(cs, db, $"DROP {keyword} [{node.Schema}].[{node.Name}]")
         };
     }

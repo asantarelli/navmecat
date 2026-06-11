@@ -53,6 +53,7 @@ public static class TableCopyService
             DatabaseEngine.Firebird => CopyFirebirdAsync(p, srcName, newName, includeData),
             DatabaseEngine.MongoDb => CopyMongoAsync(p, tgtDatabase, srcName, newName, includeData),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => CopyMySqlAsync(p, srcDatabase, srcName, newName, includeData),
+            DatabaseEngine.Oracle => CopyOracleAsync(p, srcName, newName, includeData),
             _ => CopySqlServerAsync(p, tgtDatabase, srcSchema, srcName, tgtSchema, newName, includeData)
         };
 
@@ -65,6 +66,15 @@ public static class TableCopyService
         await MySqlService.ExecuteAsync(cs, db, $"CREATE TABLE {dst} LIKE {src}");
         if (includeData)
             await MySqlService.ExecuteAsync(cs, db, $"INSERT INTO {dst} SELECT * FROM {src}");
+    }
+
+    // ---- Oracle (CREATE TABLE AS SELECT) --------------------------------
+    private static async Task CopyOracleAsync(ConnectionProfile p, string srcName, string newName, bool includeData)
+    {
+        var cs = p.BuildConnectionString();
+        var where = includeData ? "" : " WHERE 1 = 0";
+        await OracleService.ExecuteAsync(cs,
+            $"CREATE TABLE {OracleService.Quote(newName)} AS SELECT * FROM {OracleService.Quote(srcName)}{where}");
     }
 
     private static string B(string id) => "[" + id.Replace("]", "]]") + "]";
@@ -161,9 +171,8 @@ public static class TableCopyService
 
     /// <summary>True if a table can be copied from one engine to the other.</summary>
     public static bool CanCopyBetween(DatabaseEngine a, DatabaseEngine b) =>
-        // Clarion files (TPS/DAT) and Oracle are read-only here: never a copy target, but a source
-        // into any relational engine.
-        !b.IsClarionFile() && b != DatabaseEngine.Oracle &&
+        // Clarion files (TPS/DAT) are read-only: never a copy target, but a source into any relational engine.
+        !b.IsClarionFile() &&
         (a == b
             || (IsRelational(a) && IsRelational(b))
             || (a.IsClarionFile() && IsRelational(b)));
@@ -269,9 +278,12 @@ public static class TableCopyService
         await using var tgtConn = await OpenAsync(tgt, tgtDb);
         await using var tx = await tgtConn.BeginTransactionAsync();
 
+        var oracle = tgt.Engine == DatabaseEngine.Oracle;
+        var ph = oracle ? ":" : "@";
         var colList = string.Join(", ", cols.Select(c => Q(tgt.Engine, c)));
-        var paramList = string.Join(", ", cols.Select((_, i) => "@p" + i));
+        var paramList = string.Join(", ", cols.Select((_, i) => $"{ph}p{i}"));
         await using var insert = tgtConn.CreateCommand();
+        if (insert is Oracle.ManagedDataAccess.Client.OracleCommand oc) oc.BindByName = true;
         insert.Transaction = (DbTransaction)tx;
         insert.CommandText = $"INSERT INTO {Fq(tgt.Engine, tgtSchema, newName)} ({colList}) VALUES ({paramList})";
 
@@ -279,7 +291,7 @@ public static class TableCopyService
         for (var i = 0; i < cols.Count; i++)
         {
             var p = insert.CreateParameter();
-            p.ParameterName = "@p" + i;
+            p.ParameterName = (oracle ? "p" : "@p") + i;
             insert.Parameters.Add(p);
             ps[i] = p;
         }
@@ -323,6 +335,16 @@ public static class TableCopyService
                 if (cols.Count == 0)
                     throw new InvalidOperationException($"Could not read the columns of '{srcName}'.");
                 // Clone column types verbatim; drop AUTO_INCREMENT so explicit values can be inserted.
+                var lines = cols.Select(c => $"  {Q(src.Engine, c.Name)} {c.TypeName}{(c.Nullable ? "" : " NOT NULL")}").ToList();
+                var pk = cols.Where(c => c.IsPrimaryKey).Select(c => Q(src.Engine, c.Name)).ToList();
+                if (pk.Count > 0) lines.Add($"  PRIMARY KEY ({string.Join(", ", pk)})");
+                return $"CREATE TABLE {Q(src.Engine, newName)} (\n{string.Join(",\n", lines)}\n)";
+            }
+            case DatabaseEngine.Oracle:
+            {
+                var cols = await OracleService.GetColumnsAsync(cs, srcName);
+                if (cols.Count == 0)
+                    throw new InvalidOperationException($"Could not read the columns of '{srcName}'.");
                 var lines = cols.Select(c => $"  {Q(src.Engine, c.Name)} {c.TypeName}{(c.Nullable ? "" : " NOT NULL")}").ToList();
                 var pk = cols.Where(c => c.IsPrimaryKey).Select(c => Q(src.Engine, c.Name)).ToList();
                 if (pk.Count > 0) lines.Add($"  PRIMARY KEY ({string.Join(", ", pk)})");
@@ -431,6 +453,24 @@ public static class TableCopyService
 
         return target switch
         {
+            DatabaseEngine.Oracle => tn switch
+            {
+                "Int64" => "NUMBER(19)",
+                "Int32" => "NUMBER(10)",
+                "Int16" => "NUMBER(5)",
+                "Byte" or "SByte" => "NUMBER(3)",
+                "Boolean" => "NUMBER(1)",
+                "Decimal" => $"NUMBER({ClampPrec(c.Precision, 38)},{ClampScale(c.Scale, c.Precision, 38)})",
+                "Double" => "BINARY_DOUBLE",
+                "Single" => "BINARY_FLOAT",
+                "Guid" => "RAW(16)",
+                "DateTime" or "DateTimeOffset" => "TIMESTAMP",
+                "DateOnly" => "DATE",
+                "TimeSpan" or "TimeOnly" => "INTERVAL DAY TO SECOND",
+                "Byte[]" => "BLOB",
+                "String" or "Char" => IsLarge(c.Size, 4000) ? "CLOB" : $"VARCHAR2({c.Size})",
+                _ => "CLOB"
+            },
             DatabaseEngine.Sqlite => tn switch
             {
                 "Int16" or "Int32" or "Int64" or "Byte" or "SByte" or "Boolean" => "INTEGER",
@@ -523,6 +563,7 @@ public static class TableCopyService
             case DatabaseEngine.Sqlite: await SqliteService.ExecuteScriptAsync(p.BuildConnectionString(), sql); break;
             case DatabaseEngine.Firebird: await FirebirdService.ExecuteAsync(p.BuildConnectionString(), sql); break;
             case DatabaseEngine.MySql or DatabaseEngine.MariaDb: await MySqlService.ExecuteAsync(p.BuildConnectionString(), db, sql); break;
+            case DatabaseEngine.Oracle: await OracleService.ExecuteAsync(p.BuildConnectionString(), sql); break;
             default: await SqlServerService.ExecuteAsync(p.BuildConnectionString(), db, sql); break;
         }
     }
@@ -728,9 +769,12 @@ public static class TableCopyService
         await using var tgtConn = await OpenAsync(tgt, tgtDb);
         await using var tx = await tgtConn.BeginTransactionAsync();
 
+        var oracle = tgt.Engine == DatabaseEngine.Oracle;
+        var ph = oracle ? ":" : "@";
         var colList = string.Join(", ", cols.Select(c => Q(tgt.Engine, c)));
-        var paramList = string.Join(", ", cols.Select((_, i) => "@p" + i));
+        var paramList = string.Join(", ", cols.Select((_, i) => $"{ph}p{i}"));
         await using var insert = tgtConn.CreateCommand();
+        if (insert is Oracle.ManagedDataAccess.Client.OracleCommand oc) oc.BindByName = true;
         insert.Transaction = (DbTransaction)tx;
         insert.CommandText = $"INSERT INTO {Fq(tgt.Engine, tgtSchema, newName)} ({colList}) VALUES ({paramList})";
 
@@ -738,7 +782,7 @@ public static class TableCopyService
         for (var i = 0; i < cols.Count; i++)
         {
             var p = insert.CreateParameter();
-            p.ParameterName = "@p" + i;
+            p.ParameterName = (oracle ? "p" : "@p") + i;
             insert.Parameters.Add(p);
             ps[i] = p;
         }

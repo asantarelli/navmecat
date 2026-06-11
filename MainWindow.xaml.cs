@@ -109,11 +109,8 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_CopyTable", () => Run(Vm.CopyTableCommand, node)));
                 break;
 
-            // Oracle is read-only here: open, or copy out to a SQL database.
             case NodeType.Table when node.Connection.Engine == DatabaseEngine.Oracle:
-                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
-                menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Ctx_CopyTable", () => Run(Vm.CopyTableCommand, node)));
+                AddTableMenu(menu, node, canDesign: false, canDrop: true, sqlServerExtras: false);
                 break;
 
             case NodeType.Table when node.Connection.Engine.IsMySql():
@@ -153,8 +150,8 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
                 break;
 
-            // Oracle is read-only: categories just refresh.
             case NodeType.Category when node.Connection.Engine == DatabaseEngine.Oracle:
+                if (node.CategoryChildType is NodeType.Table) AddPaste(menu, node);
                 menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 

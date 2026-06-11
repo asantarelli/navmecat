@@ -6,6 +6,7 @@ using FirebirdSql.Data.FirebirdClient;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using MySqlConnector;
+using Oracle.ManagedDataAccess.Client;
 using NavMeCat.Models;
 
 namespace NavMeCat.Services;
@@ -49,7 +50,7 @@ public sealed class EditableTableSession : IDisposable
     public bool IsCustomIdentity { get; private set; }
 
     public string Identifier =>
-        _engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird ? Table
+        _engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird or DatabaseEngine.Oracle ? Table
         : _engine.IsMySql() ? $"{Database}.{Table}"
         : $"{Database}.{Schema}.{Table}";
     public IReadOnlyList<string> AllColumnNames => Data.Columns.Cast<DataColumn>().Select(c => c.ColumnName).ToList();
@@ -84,13 +85,16 @@ public sealed class EditableTableSession : IDisposable
 
     private static string Quote(DatabaseEngine engine, string identifier) => engine switch
     {
-        DatabaseEngine.Firebird => "\"" + identifier.Replace("\"", "\"\"") + "\"",
+        DatabaseEngine.Firebird or DatabaseEngine.Oracle => "\"" + identifier.Replace("\"", "\"\"") + "\"",
         DatabaseEngine.MySql or DatabaseEngine.MariaDb => "`" + identifier.Replace("`", "``") + "`",
         _ => "[" + identifier.Replace("]", "]]") + "]"
     };
 
     /// <summary>Quote an identifier using this session's engine.</summary>
     private string Q(string identifier) => Quote(_engine, identifier);
+
+    /// <summary>Bind-parameter placeholder prefix in generated SQL — Oracle uses ':', others '@'.</summary>
+    private string Ph => _engine == DatabaseEngine.Oracle ? ":" : "@";
 
     public static Task<EditableTableSession> OpenAsync(
         DatabaseEngine engine, string connectionString, string database, string schema, string table, int rowLimit)
@@ -99,8 +103,45 @@ public sealed class EditableTableSession : IDisposable
             DatabaseEngine.Sqlite => OpenSqliteAsync(connectionString, table, rowLimit),
             DatabaseEngine.Firebird => OpenFirebirdAsync(connectionString, table, rowLimit),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => OpenMySqlAsync(engine, connectionString, database, table, rowLimit),
+            DatabaseEngine.Oracle => OpenOracleAsync(connectionString, database, schema, table, rowLimit),
             _ => OpenSqlServerAsync(connectionString, database, schema, table, rowLimit)
         };
+
+    private static async Task<EditableTableSession> OpenOracleAsync(
+        string connectionString, string database, string schema, string table, int rowLimit)
+    {
+        var connection = new OracleConnection(connectionString);
+        await connection.OpenAsync();
+
+        var fq = Quote(DatabaseEngine.Oracle, table);
+        var data = new DataTable(table);
+        await using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = $"SELECT * FROM {fq} FETCH FIRST {rowLimit} ROWS ONLY";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            data.Load(reader);
+        }
+
+        var cols = await OracleService.GetColumnsAsync(connectionString, table);
+        var nonComparable = new HashSet<string>(cols.Where(c => c.IsLob).Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
+        foreach (DataColumn c in data.Columns)
+            if (c.DataType == typeof(byte[])) nonComparable.Add(c.ColumnName);
+
+        DataColumn[] keys;
+        string description;
+        bool naturalKey;
+        var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name).Where(data.Columns.Contains).Select(n => data.Columns[n]!).ToArray();
+        if (pk.Length > 0) { keys = pk; description = "primary key"; naturalKey = true; }
+        else
+        {
+            keys = data.Columns.Cast<DataColumn>()
+                .Where(c => c.DataType != typeof(byte[]) && !nonComparable.Contains(c.ColumnName)).ToArray();
+            description = "all columns"; naturalKey = false;
+        }
+
+        return new EditableTableSession(connection, null, data, DatabaseEngine.Oracle, fq,
+            database, schema, table, rowLimit, keys, useTopOne: false, description, naturalKey, nonComparable);
+    }
 
     private static async Task<EditableTableSession> OpenSqlServerAsync(
         string connectionString, string database, string schema, string table, int rowLimit)
@@ -471,7 +512,7 @@ public sealed class EditableTableSession : IDisposable
             if (c.AutoIncrement) continue;
             var v = row[c, DataRowVersion.Current];
             names.Add(Q(c.ColumnName));
-            placeholders.Add("@p" + values.Count);
+            placeholders.Add(Ph + "p" + values.Count);
             previewValues.Add(FormatLiteral(v));
             values.Add(v);
         }
@@ -505,7 +546,7 @@ public sealed class EditableTableSession : IDisposable
             var c = changed[i];
             var v = row[c, DataRowVersion.Current];
             var sep = i > 0 ? ", " : "";
-            sql.Append(sep).Append($"{Q(c.ColumnName)} = @p{values.Count}");
+            sql.Append(sep).Append($"{Q(c.ColumnName)} = {Ph}p{values.Count}");
             preview.Append(sep).Append($"{Q(c.ColumnName)} = {FormatLiteral(v)}");
             values.Add(v);
         }
@@ -543,7 +584,7 @@ public sealed class EditableTableSession : IDisposable
             }
             else
             {
-                sql.Append(sep).Append($"{Q(c.ColumnName)} = @p{values.Count}");
+                sql.Append(sep).Append($"{Q(c.ColumnName)} = {Ph}p{values.Count}");
                 preview.Append(sep).Append($"{Q(c.ColumnName)} = {FormatLiteral(v)}");
                 values.Add(v);
             }
@@ -562,10 +603,13 @@ public sealed class EditableTableSession : IDisposable
         {
             await using var cmd = _connection.CreateCommand();
             cmd.CommandText = change.Sql;
+            // Oracle binds ':' parameters by name; ensure positional/name binding matches our placeholders.
+            if (cmd is OracleCommand oracleCmd) oracleCmd.BindByName = true;
+            var oracle = _engine == DatabaseEngine.Oracle;
             for (var i = 0; i < change.Values.Count; i++)
             {
                 var p = cmd.CreateParameter();
-                p.ParameterName = "@p" + i;
+                p.ParameterName = (oracle ? "p" : "@p") + i;
                 p.Value = change.Values[i] ?? DBNull.Value;
                 cmd.Parameters.Add(p);
             }

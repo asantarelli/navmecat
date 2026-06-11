@@ -45,9 +45,10 @@ Grab the latest **portable `.exe`** from the
     `intl\`, `tzdata\`, `firebird.conf`/`firebird.msg`, `ib_util.dll`) from the official Firebird
     **ZIP kit** (64-bit) placed next to `NavMeCat.exe`.
   - **Oracle**: connect with host / port / **service name** / user / password (Easy Connect). Browse
-    your schema's **tables & views**, view data, inspect structure (Info, reconstructed DDL, indexes),
-    run SQL in the query window, and **copy data out** to any SQL database. Read-only for now (no
-    in-grid editing yet); needs Oracle's managed driver, which is bundled.
+    your schema's **tables & views**, **view and edit rows** (primary-key or all-columns keyed),
+    inspect structure (Info, reconstructed DDL, indexes), run SQL in the query window, drop tables, and
+    copy tables to/from any SQL database. Identifiers are double-quoted; uses Oracle's bundled managed
+    driver. (The visual query builder isn't wired for Oracle yet — use the query window.)
   - **Clarion TPS**: point a connection at a **folder** and every `.tps` file in it shows up as a
     table — pick one like you'd pick a table. Selecting the connection lists its files (with size and
     date) in the **Objects** tab. NavMeCat decodes the TopSpeed binary format directly
