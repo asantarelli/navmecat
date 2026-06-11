@@ -682,7 +682,7 @@ public partial class MainViewModel : ObservableObject
         return node.Connection.Engine switch
         {
             DatabaseEngine.Sqlite =>
-                SqliteService.ExecuteScriptAsync(cs, $"DROP {keyword} \"{node.Name}\""),
+                SqliteService.ExecuteWithoutForeignKeysAsync(cs, $"DROP {keyword} \"{node.Name}\""),
             DatabaseEngine.Firebird =>
                 FirebirdService.ExecuteAsync(cs, $"DROP {keyword} \"{node.Name}\""),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb =>

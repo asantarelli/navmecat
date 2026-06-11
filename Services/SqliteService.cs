@@ -136,6 +136,25 @@ public static class SqliteService
         return await cmd.ExecuteNonQueryAsync();
     }
 
+    /// <summary>
+    /// Runs a statement with foreign-key enforcement turned off on the connection. Used for DROP:
+    /// with FKs on, SQLite implicitly deletes the table's rows first, which fails if another table
+    /// references it. (PRAGMA foreign_keys only takes effect outside a transaction, so no tx here.)
+    /// </summary>
+    public static async Task<int> ExecuteWithoutForeignKeysAsync(string connectionString, string sql)
+    {
+        await using var conn = new SqliteConnection(connectionString);
+        await conn.OpenAsync();
+        await using (var pragma = conn.CreateCommand())
+        {
+            pragma.CommandText = "PRAGMA foreign_keys=OFF";
+            await pragma.ExecuteNonQueryAsync();
+        }
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        return await cmd.ExecuteNonQueryAsync();
+    }
+
     /// <summary>Bracket-quote an identifier for use inside SQL text.</summary>
     public static string Quote(string identifier) => "[" + identifier.Replace("]", "]]") + "]";
 
