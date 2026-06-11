@@ -562,12 +562,18 @@ public partial class MainViewModel : ObservableObject
     private static async Task<bool> ConfirmDrop(DbTreeNode node, string keyword, bool dataLoss = false)
     {
         var dependents = new List<string>();
-        try
+        // The dependency check is SQL Server-specific. Running it for other engines would open a
+        // SqlConnection with a non-SQL-Server connection string and block until it times out
+        // (a long, pointless delay before the confirmation appears).
+        if (node.Connection.Engine == DatabaseEngine.SqlServer)
         {
-            dependents = await SqlServerService.GetDependentsAsync(
-                node.Connection.BuildConnectionString(), node.Database ?? "", node.Schema!, node.Name);
+            try
+            {
+                dependents = await SqlServerService.GetDependentsAsync(
+                    node.Connection.BuildConnectionString(), node.Database ?? "", node.Schema!, node.Name);
+            }
+            catch { /* dependency check is best-effort */ }
         }
-        catch { /* dependency check is best-effort */ }
 
         string L(string key) => LocalizationManager.Instance[key];
         var typeWord = L("ObjType_" + keyword.ToLowerInvariant()); // e.g. ObjType_table

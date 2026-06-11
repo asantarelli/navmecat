@@ -87,13 +87,17 @@ public partial class MainWindow : Window
 
         switch (node.Type)
         {
+            // SQLite — same actions as the Objects list: Open, Design, Copy, Paste, Delete.
             case NodeType.Table when node.Connection.Engine == DatabaseEngine.Sqlite:
-                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
-                menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
-                AddCopyPaste(menu, node);
+                AddTableMenu(menu, node, canDesign: true, canDrop: true, sqlServerExtras: false);
                 break;
 
-            case NodeType.Table when node.Connection.Engine is DatabaseEngine.Firebird or DatabaseEngine.MongoDb:
+            case NodeType.Table when node.Connection.Engine == DatabaseEngine.Firebird:
+                AddTableMenu(menu, node, canDesign: false, canDrop: true, sqlServerExtras: false);
+                break;
+
+            // MongoDB is read-only (and can't be dropped here): open and copy/paste collections only.
+            case NodeType.Table when node.Connection.Engine == DatabaseEngine.MongoDb:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 AddCopyPaste(menu, node);
                 break;
@@ -106,21 +110,11 @@ public partial class MainWindow : Window
                 break;
 
             case NodeType.Table when node.Connection.Engine.IsMySql():
-                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
-                AddCopyPaste(menu, node);
-                menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
+                AddTableMenu(menu, node, canDesign: false, canDrop: true, sqlServerExtras: false);
                 break;
 
-            case NodeType.Table:
-                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
-                menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
-                menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Ctx_GenerateInsert", () => Run(Vm.GenerateInsertsCommand, node)));
-                menu.Items.Add(Item("Ctx_ImportData", () => Run(Vm.ImportDataCommand, node)));
-                AddCopyPaste(menu, node);
-                menu.Items.Add(new Separator());
-                menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
+            case NodeType.Table: // SQL Server
+                AddTableMenu(menu, node, canDesign: true, canDrop: true, sqlServerExtras: true);
                 break;
 
             case NodeType.View when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird:
@@ -212,6 +206,42 @@ public partial class MainWindow : Window
     private static void Run(System.Windows.Input.ICommand command, DbTreeNode node)
     {
         if (command.CanExecute(node)) command.Execute(node);
+    }
+
+    /// <summary>
+    /// Builds a table's context menu to match the Objects list: Open, Design (where supported),
+    /// Copy, Paste, Delete — plus SQL Server's Generate INSERT / Import extras when requested.
+    /// </summary>
+    private void AddTableMenu(ContextMenu menu, DbTreeNode node, bool canDesign, bool canDrop, bool sqlServerExtras)
+    {
+        MenuItem Item(string headerKey, Action action)
+        {
+            var mi = new MenuItem { Header = LocalizationManager.Instance[headerKey] };
+            mi.Click += (_, _) => action();
+            return mi;
+        }
+
+        menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+        if (canDesign)
+            menu.Items.Add(Item("Ctx_Design", () => Run(Vm.DesignTableCommand, node)));
+
+        if (sqlServerExtras)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Item("Ctx_GenerateInsert", () => Run(Vm.GenerateInsertsCommand, node)));
+            menu.Items.Add(Item("Ctx_ImportData", () => Run(Vm.ImportDataCommand, node)));
+        }
+
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item("Ctx_CopyTable", () => Run(Vm.CopyTableCommand, node)));
+        // Paste is always offered (like the Objects list); it reports "nothing to paste" if the clipboard is empty.
+        menu.Items.Add(Item("Ctx_PasteTable", () => Run(Vm.PasteTableCommand, node)));
+
+        if (canDrop)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropTableCommand, node)));
+        }
     }
 
     /// <summary>Appends Copy (and Paste, when a table is on the clipboard) to a table's menu.</summary>
