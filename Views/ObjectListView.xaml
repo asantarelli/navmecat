@@ -49,7 +49,7 @@
                     </StackPanel>
                 </Button>
                 <Button Command="{Binding PasteCommand}" Style="{StaticResource ToolButton}"
-                        Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}">
+                        Visibility="{Binding CanPaste, Converter={StaticResource BoolToVis}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE77F;"/><TextBlock Text="{loc:Tr Ctx_PasteTable}"/>
                     </StackPanel>
@@ -78,7 +78,7 @@
                     <MenuItem Header="{loc:Tr Ctx_CopyTable}" Command="{Binding CopyCommand}"
                               Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
                     <MenuItem Header="{loc:Tr Ctx_PasteTable}" Command="{Binding PasteCommand}"
-                              Visibility="{Binding IsTables, Converter={StaticResource BoolToVis}}"/>
+                              Visibility="{Binding CanPaste, Converter={StaticResource BoolToVis}}"/>
                     <Separator Visibility="{Binding CanDelete, Converter={StaticResource BoolToVis}}"/>
                     <MenuItem Header="{loc:Tr OL_DeleteTable}" Command="{Binding DeleteCommand}"
                               Visibility="{Binding CanDelete, Converter={StaticResource BoolToVis}}"/>

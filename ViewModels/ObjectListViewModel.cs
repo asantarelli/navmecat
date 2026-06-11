@@ -27,6 +27,7 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
     [ObservableProperty] private bool canDesign;
     [ObservableProperty] private bool canCreate;
     [ObservableProperty] private bool canDelete = true;
+    [ObservableProperty] private bool canPaste = true;
     [ObservableProperty] private bool isTables = true;
 
     /// <summary>The kind of objects listed: Table, View, Function, or Procedure.</summary>
@@ -60,8 +61,10 @@ public partial class ObjectListViewModel : ObservableObject, ITabItem
         var engine = container.Connection.Engine;
         CanDesign = IsTables && engine is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite;
         CanCreate = CanDesign;
-        // Read-only engines (MongoDB, Clarion TPS/DAT) can't be dropped — hide the Drop action.
+        // Read-only engines (MongoDB, Clarion TPS/DAT) can't be dropped or pasted into — hide those.
+        // Copy stays available so their data can be copied out to a SQL database.
         CanDelete = !engine.IsReadOnly();
+        CanPaste = IsTables && !engine.IsReadOnly();
 
         var loc = LocalizationManager.Instance;
         var kindWord = ChildType switch
