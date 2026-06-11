@@ -172,17 +172,12 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
 
     public bool HasOverride(string column) => ClarionOverrides.ContainsKey(column);
 
-    public void SetClarionOverride(string column, ClarionKind? kind)
-    {
-        ClarionOverrides[column] = kind;
-        RefreshView();
-    }
+    // The header right-click menu updates only the affected column's display in place (see
+    // DataGridClarion), so these just record the override — no full re-projection that would
+    // reset the grid's scroll position.
+    public void SetClarionOverride(string column, ClarionKind? kind) => ClarionOverrides[column] = kind;
 
-    public void ClearClarionOverride(string column)
-    {
-        if (ClarionOverrides.Remove(column))
-            RefreshView();
-    }
+    public void ClearClarionOverride(string column) => ClarionOverrides.Remove(column);
 
     public string ClarionToggleLabel =>
         HasClarionTypes

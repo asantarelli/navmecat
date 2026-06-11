@@ -285,23 +285,82 @@ public static class DataGridClarion
         var name = GetColumnName(column);
         if (string.IsNullOrEmpty(name)) return;
 
+        var dataType = (grid.ItemsSource as DataView)?.Table?.Columns[name]?.DataType ?? typeof(object);
+        var textColumn = column as DataGridTextColumn;
+
+        // Apply the change to just this column, in place — no grid rebuild, so the scroll position
+        // and the other columns are left exactly as they are.
+        void Apply(ClarionKind? kind, bool clear)
+        {
+            if (clear) tab.ClearClarionOverride(name);
+            else tab.SetClarionOverride(name, kind);
+            if (textColumn is not null)
+                ApplyColumnDisplay(textColumn, name, tab.GetEffectiveKind(name), dataType);
+        }
+
         var effective = tab.GetEffectiveKind(name);
         var menu = new ContextMenu();
         menu.Items.Add(MakeItem("Show as date 📅", effective == ClarionKind.Date,
-            () => tab.SetClarionOverride(name, ClarionKind.Date)));
+            () => Apply(ClarionKind.Date, false)));
         menu.Items.Add(MakeItem("Show as time 🕒", effective == ClarionKind.Time,
-            () => tab.SetClarionOverride(name, ClarionKind.Time)));
+            () => Apply(ClarionKind.Time, false)));
         menu.Items.Add(MakeItem("Show as timestamp 🕓 (epoch ms)", effective == ClarionKind.Timestamp,
-            () => tab.SetClarionOverride(name, ClarionKind.Timestamp)));
+            () => Apply(ClarionKind.Timestamp, false)));
         menu.Items.Add(MakeItem("Show as number", effective is null,
-            () => tab.SetClarionOverride(name, null)));
+            () => Apply(null, false)));
         menu.Items.Add(new Separator());
         menu.Items.Add(MakeItem("Auto-detect", !tab.HasOverride(name),
-            () => tab.ClearClarionOverride(name)));
+            () => Apply(null, true)));
 
         menu.PlacementTarget = header;
         menu.IsOpen = true;
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Re-applies the converter, header and styles for a single column to reflect a new Clarion
+    /// display kind, by swapping its binding. Only that column's cells re-render — the grid's
+    /// scroll position and every other column are untouched.
+    /// </summary>
+    private static void ApplyColumnDisplay(DataGridTextColumn column, string name, ClarionKind? kind, Type propertyType)
+    {
+        var binding = new Binding(name) { Mode = BindingMode.TwoWay };
+        column.EditingElementStyle = FindStyle("GridEditBox");
+
+        if (kind is not null)
+        {
+            binding.Converter = kind switch
+            {
+                ClarionKind.Date => DateConverter,
+                ClarionKind.Time => TimeConverter,
+                _ => TimestampConverter
+            };
+            binding.ConverterParameter = propertyType;
+            column.Header = name + kind switch
+            {
+                ClarionKind.Date => "  📅",
+                ClarionKind.Time => "  🕒",
+                _ => "  🕓"
+            };
+            column.ElementStyle = null;
+        }
+        else
+        {
+            binding.Converter = NullConverter;
+            binding.ConverterParameter = propertyType;
+            column.Header = name;
+            if (IsNumeric(propertyType))
+            {
+                column.ElementStyle = FindStyle("GridNumericText");
+                column.EditingElementStyle = FindStyle("GridNumericEditBox");
+            }
+            else
+            {
+                column.ElementStyle = FindStyle("GridText");
+            }
+        }
+
+        column.Binding = binding;
     }
 
     private static MenuItem MakeItem(string header, bool isChecked, Action onClick)
