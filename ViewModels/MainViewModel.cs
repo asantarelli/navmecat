@@ -85,8 +85,8 @@ public partial class MainViewModel : ObservableObject
 
     private async void PasteFromListAsync(DbTreeNode container)
     {
+        // PasteTable already refreshes the tree folder and the Objects list.
         await PasteTable(container);
-        if (_objectsTab is not null) await _objectsTab.LoadAsync();
     }
 
     // ---- command-bar navigation -----------------------------------------
@@ -500,11 +500,13 @@ public partial class MainViewModel : ObservableObject
                     _copied.Connection, _copied.Database ?? "", _copied.Schema ?? "", _copied.Name,
                     conn, db ?? "", schema ?? "", newName, withData, mappings);
 
-            // Refresh the folder that now contains the copy.
+            // Refresh both views so the new table shows up: the tree folder that now contains the
+            // copy, and the Objects list (in case it's showing that folder).
             var folder = node.Type == NodeType.Category ? node
                 : node.Type == NodeType.Table ? node.Parent
                 : node;
             if (folder is not null) await RefreshNode(folder);
+            if (_objectsTab is not null) await _objectsTab.LoadAsync();
 
             StatusText = $"Created '{newName}'" +
                          (mode == Dialogs.CopyMode.StructureAndData ? " with data." : " (structure only).");
