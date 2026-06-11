@@ -26,6 +26,7 @@ public static class TableCopyService
             DatabaseEngine.MongoDb => MongoService.ListCollectionsAsync(cs, database),
             DatabaseEngine.Tps => Task.FromResult(TpsService.ListTables(p.FilePath)),
             DatabaseEngine.ClarionDat => Task.FromResult(DatService.ListTables(p.FilePath)),
+            DatabaseEngine.Oracle => OracleService.GetTablesAsync(cs),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => MySqlService.GetTablesAsync(cs, database),
             _ => SqlServerService.GetTablesAsync(cs, database, schema)
         };
@@ -156,12 +157,13 @@ public static class TableCopyService
 
     public static bool IsRelational(DatabaseEngine e) =>
         e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite or DatabaseEngine.Firebird
-          or DatabaseEngine.MySql or DatabaseEngine.MariaDb;
+          or DatabaseEngine.MySql or DatabaseEngine.MariaDb or DatabaseEngine.Oracle;
 
     /// <summary>True if a table can be copied from one engine to the other.</summary>
     public static bool CanCopyBetween(DatabaseEngine a, DatabaseEngine b) =>
-        // Clarion files (TPS/DAT) are read-only: never a target, but a source into any relational engine.
-        !b.IsClarionFile() &&
+        // Clarion files (TPS/DAT) and Oracle are read-only here: never a copy target, but a source
+        // into any relational engine.
+        !b.IsClarionFile() && b != DatabaseEngine.Oracle &&
         (a == b
             || (IsRelational(a) && IsRelational(b))
             || (a.IsClarionFile() && IsRelational(b)));
@@ -183,7 +185,7 @@ public static class TableCopyService
         return CopyRelationalCrossAsync(src, srcDb, srcSchema, srcName, tgt, tgtDb, tgtSchema, newName, includeData);
     }
 
-    private static string Q(DatabaseEngine e, string id) => e == DatabaseEngine.Firebird
+    private static string Q(DatabaseEngine e, string id) => e is DatabaseEngine.Firebird or DatabaseEngine.Oracle
         ? "\"" + id.Replace("\"", "\"\"") + "\""
         : e.IsMySql()
             ? "`" + id.Replace("`", "``") + "`"
@@ -199,6 +201,7 @@ public static class TableCopyService
             DatabaseEngine.SqlServer => new SqlConnection(SqlServerService.WithDatabase(p.BuildConnectionString(), db)),
             DatabaseEngine.Sqlite => new SqliteConnection(p.BuildConnectionString()),
             DatabaseEngine.Firebird => new FbConnection(p.BuildConnectionString()),
+            DatabaseEngine.Oracle => new Oracle.ManagedDataAccess.Client.OracleConnection(p.BuildConnectionString()),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb =>
                 new MySqlConnection(string.IsNullOrEmpty(db) ? p.BuildConnectionString() : MySqlService.WithDatabase(p.BuildConnectionString(), db)),
             _ => throw new NotSupportedException($"{p.Engine.DisplayName()} cross-copy is not supported.")
@@ -414,6 +417,7 @@ public static class TableCopyService
             DatabaseEngine.Sqlite => SqliteService.GetColumnDetailsAsync(cs, name)
                 .ContinueWith(t => t.Result.Where(c => c.Pk > 0).OrderBy(c => c.Pk).Select(c => c.Name).ToList()),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => MySqlService.GetPrimaryKeyAsync(cs, db, name),
+            DatabaseEngine.Oracle => OracleService.GetPrimaryKeyAsync(cs, name),
             _ => Task.FromResult(new List<string>())
         };
     }

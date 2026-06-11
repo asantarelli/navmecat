@@ -156,6 +156,7 @@ public partial class DbTreeNode : ObservableObject
                 DatabaseEngine.Tps => LoadClarionFileChildren(TpsService.ListTables(Connection.FilePath)),
                 DatabaseEngine.ClarionDat => LoadClarionFileChildren(DatService.ListTables(Connection.FilePath)),
                 DatabaseEngine.MySql or DatabaseEngine.MariaDb => await LoadMySqlChildrenAsync(connStr),
+                DatabaseEngine.Oracle => await LoadOracleChildrenAsync(connStr),
                 _ => await LoadSqlServerChildrenAsync(connStr)
             };
 
@@ -279,6 +280,31 @@ public partial class DbTreeNode : ObservableObject
                 };
                 foreach (var n in names)
                     items.Add(ObjectNode(CategoryChildType, Connection, Database!, Schema!, n));
+                break;
+        }
+        return items;
+    }
+
+    /// <summary>Oracle: browse the connected user's own schema — Tables/Views/Functions/Procedures.</summary>
+    private async Task<List<DbTreeNode>> LoadOracleChildrenAsync(string connStr)
+    {
+        const string ora = "oracle";
+        var items = new List<DbTreeNode>();
+        switch (Type)
+        {
+            case NodeType.Server:
+                items.Add(CategoryNode(Connection, ora, ora, "Tables", NodeType.Table));
+                items.Add(CategoryNode(Connection, ora, ora, "Views", NodeType.View));
+                break;
+            case NodeType.Category:
+                var names = CategoryChildType switch
+                {
+                    NodeType.Table => await OracleService.GetTablesAsync(connStr),
+                    NodeType.View => await OracleService.GetViewsAsync(connStr),
+                    _ => new List<string>()
+                };
+                foreach (var n in names)
+                    items.Add(ObjectNode(CategoryChildType, Connection, ora, ora, n));
                 break;
         }
         return items;

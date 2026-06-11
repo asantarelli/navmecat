@@ -33,6 +33,7 @@ public static class TableMetadataService
             DatabaseEngine.Tps => TpsService.GetStructureAsync(connectionString, table, connectionName),
             DatabaseEngine.ClarionDat => DatService.GetStructureAsync(connectionString, table, connectionName),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => GetMySqlAsync(connectionString, database, table, connectionName),
+            DatabaseEngine.Oracle => GetOracleAsync(connectionString, table, connectionName),
             _ => GetSqlServerAsync(connectionString, database, schema, table, connectionName)
         };
 
@@ -57,6 +58,39 @@ public static class TableMetadataService
         if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],w}{rows:N0}");
         info.AppendLine();
         info.AppendLine($"{loc["Info_Columns"],w}{cols.Count}");
+        info.AppendLine();
+        info.AppendLine(loc["Info_Columns"]);
+        foreach (var c in cols)
+            info.AppendLine($"  • {c.Name}  {c.TypeName}  {(c.Nullable ? "NULL" : "NOT NULL")}");
+
+        return new TableStructure(ddl, info.ToString().TrimEnd(), BuildIndexText(indexes));
+    }
+
+    private static async Task<TableStructure> GetOracleAsync(string cs, string table, string connectionName)
+    {
+        var loc = LocalizationManager.Instance;
+        var cols = await OracleService.GetColumnsAsync(cs, table);
+        var indexes = await OracleService.GetIndexesAsync(cs, table);
+        var pk = cols.Where(c => c.IsPrimaryKey).Select(c => c.Name).ToList();
+        long rows = -1;
+        try { rows = await OracleService.GetRowCountAsync(cs, table); } catch { /* best effort */ }
+
+        // DDL (reconstructed from the data dictionary).
+        var lines = cols.Select(c =>
+            $"  {OracleService.Quote(c.Name)} {c.TypeName}{(c.Nullable ? "" : " NOT NULL")}").ToList();
+        if (pk.Count > 0)
+            lines.Add($"  PRIMARY KEY ({string.Join(", ", pk.Select(OracleService.Quote))})");
+        var ddl = $"CREATE TABLE {OracleService.Quote(table)} (\n{string.Join(",\n", lines)}\n);";
+
+        const int w = -18;
+        var info = new StringBuilder();
+        if (!string.IsNullOrEmpty(connectionName)) info.AppendLine($"{loc["Info_Connection"],w}{connectionName}");
+        info.AppendLine($"{loc["Info_Table"],w}{table}");
+        if (rows >= 0) info.AppendLine($"{loc["Info_Rows"],w}{rows:N0}");
+        info.AppendLine();
+        info.AppendLine($"{loc["Info_Columns"],w}{cols.Count}");
+        info.AppendLine($"{loc["Info_PrimaryKey"],w}{(pk.Count == 0 ? loc["Info_None"] : string.Join(", ", pk))}");
+        info.AppendLine($"{loc["Info_Indexes"],w}{indexes.Count}");
         info.AppendLine();
         info.AppendLine(loc["Info_Columns"]);
         foreach (var c in cols)

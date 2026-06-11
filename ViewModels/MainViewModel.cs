@@ -226,6 +226,12 @@ public partial class MainViewModel : ObservableObject
                 "The visual query designer doesn't apply to MongoDB.");
             return;
         }
+        if (connection.Engine == DatabaseEngine.Oracle)
+        {
+            Dialogs.ShowMessage("Not available",
+                "The visual query designer isn't available for Oracle yet — use the SQL query window.");
+            return;
+        }
         new Views.QueryBuilderWindow(connection, node?.Database).Show();
         StatusText = $"Opened the query builder for '{connection.Name}'.";
     }

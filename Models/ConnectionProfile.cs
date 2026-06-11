@@ -54,6 +54,13 @@ public class ConnectionProfile
             case DatabaseEngine.ClarionDat:
                 // No real connection string — Clarion files are read directly from a folder.
                 return FilePath ?? "";
+            case DatabaseEngine.Oracle:
+                // Easy Connect: Data Source = host:port/service_name.
+                var oraHost = string.IsNullOrWhiteSpace(Server) ? "localhost" : Server.Trim();
+                var oraPort = Port > 0 ? Port : 1521;
+                var service = string.IsNullOrWhiteSpace(Database) ? "" : Database!.Trim();
+                return $"User Id={Username};Password={Password};" +
+                       $"Data Source={oraHost}:{oraPort}/{service};Connection Timeout=15;";
             case DatabaseEngine.MongoDb:
                 // The MongoDB URI is stored verbatim in Server (e.g. mongodb://localhost:27017).
                 return string.IsNullOrWhiteSpace(Server) ? "mongodb://localhost:27017" : Server.Trim();

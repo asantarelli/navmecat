@@ -591,7 +591,7 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         Identifier = node.Connection.Engine switch
         {
             DatabaseEngine.Sqlite or DatabaseEngine.Firebird
-                or DatabaseEngine.Tps or DatabaseEngine.ClarionDat => node.Name,
+                or DatabaseEngine.Tps or DatabaseEngine.ClarionDat or DatabaseEngine.Oracle => node.Name,
             DatabaseEngine.MongoDb or DatabaseEngine.MySql or DatabaseEngine.MariaDb => $"{node.Database}.{node.Name}",
             _ => $"{node.Database}.{node.Schema}.{node.Name}"
         };
@@ -619,6 +619,9 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
             if (Node.Connection.Engine == DatabaseEngine.ClarionDat)
                 return await LoadClarionFileAsync(
                     () => DatService.ReadTable(Node.Connection.FilePath ?? "", Node.Name, RowLimit), "Clarion DAT file");
+
+            if (Node.Connection.Engine == DatabaseEngine.Oracle)
+                return await LoadOracleAsync();
 
             _session = await EditableTableSession.OpenAsync(
                 Node.Connection.Engine, Node.Connection.BuildConnectionString(),
@@ -700,6 +703,43 @@ public partial class TableTabViewModel : ObservableObject, IDisposable, ITabItem
         {
             Dialogs.ShowError("Could not open collection", ex.Message);
             _setStatus("Failed to open collection.");
+            return false;
+        }
+        finally
+        {
+            _setBusy(false);
+        }
+    }
+
+    /// <summary>Loads an Oracle table/view into a read-only grid.</summary>
+    private async Task<bool> LoadOracleAsync()
+    {
+        try
+        {
+            _sourceData = await OracleService.LoadTableAsync(Node.Connection.BuildConnectionString(), Node.Name, RowLimit);
+
+            GridReadOnly = true;
+            ClarionColumns = new(StringComparer.OrdinalIgnoreCase);
+            OnPropertyChanged(nameof(HasClarionTypes));
+            OnPropertyChanged(nameof(ClarionToggleLabel));
+
+            ColumnNames.Clear();
+            foreach (DataColumn c in _sourceData.Columns)
+                ColumnNames.Add(c.ColumnName);
+            OnPropertyChanged(nameof(CanPickRowIdentity));
+
+            ProjectView();
+            HasUnsavedChanges = false;
+            ApplyDefaults();
+            OnPropertyChanged(nameof(TabToolTip));
+
+            _setStatus($"Loaded {_sourceData.Rows.Count} row(s) from {Identifier} (limit {RowLimit}). Read-only Oracle.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Dialogs.ShowError("Could not open Oracle table", ex.Message);
+            _setStatus("Failed to open Oracle table.");
             return false;
         }
         finally

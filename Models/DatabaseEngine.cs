@@ -11,7 +11,8 @@ public enum DatabaseEngine
     MySql,
     MariaDb,
     Tps,
-    ClarionDat
+    ClarionDat,
+    Oracle
 }
 
 public static class DatabaseEngineInfo
@@ -28,6 +29,7 @@ public static class DatabaseEngineInfo
         DatabaseEngine.MariaDb => "MariaDB",
         DatabaseEngine.Tps => "TPS (Clarion)",
         DatabaseEngine.ClarionDat => "Clarion DAT",
+        DatabaseEngine.Oracle => "Oracle",
         _ => e.ToString()
     };
 
@@ -40,11 +42,13 @@ public static class DatabaseEngineInfo
         e is DatabaseEngine.SqlServer or DatabaseEngine.Sqlite
             or DatabaseEngine.Firebird or DatabaseEngine.MongoDb
             or DatabaseEngine.MySql or DatabaseEngine.MariaDb
-            or DatabaseEngine.Tps or DatabaseEngine.ClarionDat;
+            or DatabaseEngine.Tps or DatabaseEngine.ClarionDat
+            or DatabaseEngine.Oracle;
 
     /// <summary>Read-only engines: browse and copy out, but no editing, designing or writing back.</summary>
     public static bool IsReadOnly(this DatabaseEngine e) =>
-        e is DatabaseEngine.MongoDb or DatabaseEngine.Tps or DatabaseEngine.ClarionDat;
+        e is DatabaseEngine.MongoDb or DatabaseEngine.Tps or DatabaseEngine.ClarionDat
+            or DatabaseEngine.Oracle;
 
     /// <summary>Clarion flat-file engines: a connection is a folder and each file is a table.</summary>
     public static bool IsClarionFile(this DatabaseEngine e) =>

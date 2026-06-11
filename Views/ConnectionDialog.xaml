@@ -114,6 +114,15 @@
                             <TextBlock Text="Clarion DAT" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </RadioButton>
+                    <RadioButton x:Name="EngOracle" GroupName="Engine" Style="{StaticResource EngineCard}"
+                                 Tag="Oracle" Checked="Engine_Changed">
+                        <StackPanel HorizontalAlignment="Center">
+                            <Path Width="22" Height="22" Stretch="Uniform" Fill="Transparent" StrokeThickness="1.3"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                  Data="M8,2 C10.8,2 13,2.7 13,3.6 C13,4.5 10.8,5.2 8,5.2 C5.2,5.2 3,4.5 3,3.6 C3,2.7 5.2,2 8,2 Z M3,3.6 L3,12.4 C3,13.3 5.2,14 8,14 C10.8,14 13,13.3 13,12.4 L13,3.6"/>
+                            <TextBlock Text="Oracle" Margin="0,6,0,0" FontSize="11" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </RadioButton>
                 </UniformGrid>
 
                 <!-- ===== SQL Server ===== -->
@@ -298,6 +307,47 @@
                     <TextBlock TextWrapping="Wrap" FontSize="11" FontStyle="Italic"
                                Foreground="{StaticResource B.TextMuted}"
                                Text="Each .tps file in the folder appears as a table. Read-only viewer — use Copy to write a file to a SQL database."/>
+                </StackPanel>
+
+                <!-- ===== Oracle ===== -->
+                <StackPanel x:Name="OraclePanel" Visibility="Collapsed">
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="100"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <Label Content="Host"/>
+                            <TextBox x:Name="OraHostBox" Text="localhost"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <Label Content="Port"/>
+                            <TextBox x:Name="OraPortBox" Text="1521"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Label Content="Service name  (e.g. ORCL, XEPDB1, FREEPDB1)"/>
+                    <TextBox x:Name="OraServiceBox" Margin="0,0,0,14"/>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <Label Content="Username"/>
+                            <TextBox x:Name="OraUserBox"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <Label Content="Password"/>
+                            <PasswordBox x:Name="OraPassBox"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" FontSize="11" FontStyle="Italic"
+                               Foreground="{StaticResource B.TextMuted}"
+                               Text="Read-only viewer: browse your schema's tables &amp; views, run SQL, and copy data out to a SQL database."/>
                 </StackPanel>
 
                 <!-- ===== Clarion DAT ===== -->

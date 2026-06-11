@@ -101,6 +101,7 @@ public partial class QueryWindow : Window
             DatabaseEngine.Firebird => new FbConnection(cs),
             DatabaseEngine.MySql or DatabaseEngine.MariaDb =>
                 new MySqlConnection(string.IsNullOrEmpty(_database) ? cs : MySqlService.WithDatabase(cs, _database)),
+            DatabaseEngine.Oracle => new Oracle.ManagedDataAccess.Client.OracleConnection(cs),
             _ => new SqlConnection(string.IsNullOrEmpty(_database) ? cs : SqlServerService.WithDatabase(cs, _database))
         };
     }

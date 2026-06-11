@@ -33,6 +33,10 @@ public class NodeIconConverter : IValueConverter
         // Single document with lines for a classic Clarion DAT folder connection.
         [DatabaseEngine.ClarionDat] = Geometry.Parse(
             "M4,2 H10 L13,5 V14 H4 Z M10,2 V5 H13 M6,8 H11 M6,10.5 H11 M6,5.5 H8"),
+        // Database cylinder for Oracle.
+        [DatabaseEngine.Oracle] = Geometry.Parse(
+            "M8,2 C10.8,2 13,2.7 13,3.6 C13,4.5 10.8,5.2 8,5.2 C5.2,5.2 3,4.5 3,3.6 C3,2.7 5.2,2 8,2 Z " +
+            "M3,3.6 L3,12.4 C3,13.3 5.2,14 8,14 C10.8,14 13,13.3 13,12.4 L13,3.6"),
     };
 
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -58,6 +62,7 @@ public class NodeIconBrushConverter : IValueConverter
     private static readonly Brush MariaDb = Frozen("#A0522D");
     private static readonly Brush Tps = Frozen("#D98E04");
     private static readonly Brush ClarionDat = Frozen("#6E8B3D");
+    private static readonly Brush Oracle = Frozen("#C74634");
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
@@ -73,6 +78,7 @@ public class NodeIconBrushConverter : IValueConverter
                 DatabaseEngine.MariaDb => MariaDb,
                 DatabaseEngine.Tps => Tps,
                 DatabaseEngine.ClarionDat => ClarionDat,
+                DatabaseEngine.Oracle => Oracle,
                 _ => NodeTypeToBrushConverter.BrushFor(NodeType.Server)
             };
         return NodeTypeToBrushConverter.BrushFor(node.Type);

@@ -1,7 +1,7 @@
 # NavMeCat
 
 A lightweight, Navicat-style database manager for **SQL Server**, **SQLite**, **MySQL**,
-**MariaDB**, **Firebird**, **MongoDB** and **Clarion TPS / DAT** files, built with **C# / WPF (.NET 9)**.
+**MariaDB**, **Firebird**, **Oracle**, **MongoDB** and **Clarion TPS / DAT** files, built with **C# / WPF (.NET 9)**.
 
 Add connection strings, browse the server tree (databases → schemas → tables), open a table, and
 view & edit its records in place — including adding and deleting rows — with changes pushed back to
@@ -23,7 +23,7 @@ Grab the latest **portable `.exe`** from the
 
 - **Multiple database engines** — pick the engine when creating a connection. Each connection is
   tagged with an engine icon in the tree so you can tell them apart at a glance.
-  - **SQL Server**, **SQLite**, **MySQL**, **MariaDB**, **Firebird**, **MongoDB** and
+  - **SQL Server**, **SQLite**, **MySQL**, **MariaDB**, **Firebird**, **Oracle**, **MongoDB** and
     **Clarion TPS / DAT** files are supported today; **PostgreSQL** is selectable now and being wired up next.
   - **SQLite**: just point to a `.db` / `.sqlite` file — browse tables & views, view and edit rows
     (primary-key or rowid-safe), **design tables** (create new, or alter existing via a safe
@@ -44,6 +44,10 @@ Grab the latest **portable `.exe`** from the
     local `.fdb` directly — this needs Firebird's native engine DLLs (`fbclient.dll` + `plugins\`,
     `intl\`, `tzdata\`, `firebird.conf`/`firebird.msg`, `ib_util.dll`) from the official Firebird
     **ZIP kit** (64-bit) placed next to `NavMeCat.exe`.
+  - **Oracle**: connect with host / port / **service name** / user / password (Easy Connect). Browse
+    your schema's **tables & views**, view data, inspect structure (Info, reconstructed DDL, indexes),
+    run SQL in the query window, and **copy data out** to any SQL database. Read-only for now (no
+    in-grid editing yet); needs Oracle's managed driver, which is bundled.
   - **Clarion TPS**: point a connection at a **folder** and every `.tps` file in it shows up as a
     table — pick one like you'd pick a table. Selecting the connection lists its files (with size and
     date) in the **Objects** tab. NavMeCat decodes the TopSpeed binary format directly

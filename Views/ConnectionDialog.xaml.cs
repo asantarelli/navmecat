@@ -66,6 +66,15 @@ public partial class ConnectionDialog : Window
         if (_profile.Engine == DatabaseEngine.ClarionDat)
             DatFolderBox.Text = _profile.FilePath ?? "";
 
+        if (_profile.Engine == DatabaseEngine.Oracle)
+        {
+            OraHostBox.Text = string.IsNullOrWhiteSpace(_profile.Server) ? "localhost" : _profile.Server;
+            OraPortBox.Text = (_profile.Port > 0 ? _profile.Port : 1521).ToString();
+            OraServiceBox.Text = _profile.Database ?? "";
+            OraUserBox.Text = _profile.Username ?? "";
+            OraPassBox.Password = _profile.Password ?? "";
+        }
+
         _engine = _profile.Engine;
         (_engine switch
         {
@@ -77,6 +86,7 @@ public partial class ConnectionDialog : Window
             DatabaseEngine.MariaDb => EngMariaDb,
             DatabaseEngine.Tps => EngTps,
             DatabaseEngine.ClarionDat => EngClarionDat,
+            DatabaseEngine.Oracle => EngOracle,
             _ => EngSqlServer
         }).IsChecked = true;
 
@@ -135,6 +145,17 @@ public partial class ConnectionDialog : Window
             return;
         }
 
+        if (_engine == DatabaseEngine.Oracle)
+        {
+            p.Server = string.IsNullOrWhiteSpace(OraHostBox.Text) ? "localhost" : OraHostBox.Text.Trim();
+            p.Port = int.TryParse(OraPortBox.Text, out var oraPort) ? oraPort : 1521;
+            p.Database = string.IsNullOrWhiteSpace(OraServiceBox.Text) ? null : OraServiceBox.Text.Trim();
+            p.Username = string.IsNullOrWhiteSpace(OraUserBox.Text) ? null : OraUserBox.Text.Trim();
+            p.Password = string.IsNullOrEmpty(OraPassBox.Password) ? null : OraPassBox.Password;
+            p.UseRawConnectionString = false;
+            return;
+        }
+
         p.Server = ServerBox.Text.Trim();
         p.Database = string.IsNullOrWhiteSpace(DatabaseBox.Text) ? null : DatabaseBox.Text.Trim();
         p.IntegratedSecurity = WinAuthRadio.IsChecked == true;
@@ -161,6 +182,7 @@ public partial class ConnectionDialog : Window
             var s when s == EngMariaDb => DatabaseEngine.MariaDb,
             var s when s == EngTps => DatabaseEngine.Tps,
             var s when s == EngClarionDat => DatabaseEngine.ClarionDat,
+            var s when s == EngOracle => DatabaseEngine.Oracle,
             _ => DatabaseEngine.SqlServer
         };
         ApplyEngineState();
@@ -177,6 +199,7 @@ public partial class ConnectionDialog : Window
         var isMySql = _engine is DatabaseEngine.MySql or DatabaseEngine.MariaDb;
         var isTps = _engine == DatabaseEngine.Tps;
         var isDat = _engine == DatabaseEngine.ClarionDat;
+        var isOracle = _engine == DatabaseEngine.Oracle;
         var supported = _engine.IsSupported();
 
         SqlServerPanel.Visibility = isSql ? Visibility.Visible : Visibility.Collapsed;
@@ -186,6 +209,7 @@ public partial class ConnectionDialog : Window
         MySqlPanel.Visibility = isMySql ? Visibility.Visible : Visibility.Collapsed;
         TpsPanel.Visibility = isTps ? Visibility.Visible : Visibility.Collapsed;
         DatPanel.Visibility = isDat ? Visibility.Visible : Visibility.Collapsed;
+        OraclePanel.Visibility = isOracle ? Visibility.Visible : Visibility.Collapsed;
         if (isFirebird) ApplyFirebirdState();
         ComingSoonPanel.Visibility = supported ? Visibility.Collapsed : Visibility.Visible;
         if (!supported)
@@ -306,6 +330,8 @@ public partial class ConnectionDialog : Window
                 TpsService.TestConnection(temp.FilePath);
             else if (_engine == DatabaseEngine.ClarionDat)
                 DatService.TestConnection(temp.FilePath);
+            else if (_engine == DatabaseEngine.Oracle)
+                await OracleService.TestConnectionAsync(temp.BuildConnectionString());
             else
                 await SqlServerService.TestConnectionAsync(temp.BuildConnectionString());
             TestStatus.Text = "Connection succeeded.";
@@ -366,6 +392,14 @@ public partial class ConnectionDialog : Window
             if (string.IsNullOrWhiteSpace(DatFolderBox.Text))
             {
                 Dialogs.ShowError("Missing folder", "Please choose the folder that contains your .dat files.");
+                return;
+            }
+        }
+        else if (_engine == DatabaseEngine.Oracle)
+        {
+            if (string.IsNullOrWhiteSpace(OraHostBox.Text) || string.IsNullOrWhiteSpace(OraServiceBox.Text))
+            {
+                Dialogs.ShowError("Missing details", "Please enter the Oracle host and service name.");
                 return;
             }
         }

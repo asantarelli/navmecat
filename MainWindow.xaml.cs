@@ -109,6 +109,13 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_CopyTable", () => Run(Vm.CopyTableCommand, node)));
                 break;
 
+            // Oracle is read-only here: open, or copy out to a SQL database.
+            case NodeType.Table when node.Connection.Engine == DatabaseEngine.Oracle:
+                menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
+                menu.Items.Add(new Separator());
+                menu.Items.Add(Item("Ctx_CopyTable", () => Run(Vm.CopyTableCommand, node)));
+                break;
+
             case NodeType.Table when node.Connection.Engine.IsMySql():
                 AddTableMenu(menu, node, canDesign: false, canDrop: true, sqlServerExtras: false);
                 break;
@@ -117,7 +124,8 @@ public partial class MainWindow : Window
                 AddTableMenu(menu, node, canDesign: true, canDrop: true, sqlServerExtras: true);
                 break;
 
-            case NodeType.View when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird:
+            case NodeType.View when node.Connection.Engine is DatabaseEngine.Sqlite or DatabaseEngine.Firebird
+                                     or DatabaseEngine.Oracle:
                 menu.Items.Add(Item("Ctx_Open", () => Run(Vm.OpenTableCommand, node)));
                 break;
 
@@ -143,6 +151,11 @@ public partial class MainWindow : Window
                 menu.Items.Add(Item("Ctx_Execute", () => Run(Vm.ExecuteRoutineCommand, node)));
                 menu.Items.Add(new Separator());
                 menu.Items.Add(Item("Ctx_Drop", () => Run(Vm.DropRoutineCommand, node)));
+                break;
+
+            // Oracle is read-only: categories just refresh.
+            case NodeType.Category when node.Connection.Engine == DatabaseEngine.Oracle:
+                menu.Items.Add(Item("Ctx_Refresh", () => Run(Vm.RefreshNodeCommand, node)));
                 break;
 
             case NodeType.Category when node.Connection.Engine == DatabaseEngine.Sqlite

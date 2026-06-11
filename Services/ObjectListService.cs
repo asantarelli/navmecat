@@ -23,8 +23,23 @@ public static class ObjectListService
             DatabaseEngine.MySql or DatabaseEngine.MariaDb => LoadMySqlAsync(p, database),
             DatabaseEngine.Tps => LoadClarionFilesAsync(p, ".tps", TpsService.ListTables(p.FilePath)),
             DatabaseEngine.ClarionDat => LoadClarionFilesAsync(p, ".dat", DatService.ListTables(p.FilePath)),
+            DatabaseEngine.Oracle => LoadOracleAsync(p),
             _ => Task.FromResult(new List<ObjectListItem>())
         };
+
+    private static async Task<List<ObjectListItem>> LoadOracleAsync(ConnectionProfile p)
+    {
+        var cs = p.BuildConnectionString();
+        var names = await OracleService.GetTablesAsync(cs);
+        var result = new List<ObjectListItem>();
+        foreach (var n in names)
+        {
+            long? rows = null;
+            try { rows = await OracleService.GetRowCountAsync(cs, n); } catch { /* best effort */ }
+            result.Add(new ObjectListItem(n, rows, null, null));
+        }
+        return result;
+    }
 
     /// <summary>Clarion flat files: each file in the connection's folder, with its size as a comment.</summary>
     private static Task<List<ObjectListItem>> LoadClarionFilesAsync(ConnectionProfile p, string ext, List<string> names)
@@ -88,6 +103,13 @@ public static class ObjectListService
                 "view" => await MySqlService.GetViewsAsync(cs, database),
                 "function" => await MySqlService.GetFunctionsAsync(cs, database),
                 "procedure" => await MySqlService.GetProceduresAsync(cs, database),
+                _ => new()
+            },
+            DatabaseEngine.Oracle => kind switch
+            {
+                "view" => await OracleService.GetViewsAsync(cs),
+                "function" => await OracleService.GetFunctionsAsync(cs),
+                "procedure" => await OracleService.GetProceduresAsync(cs),
                 _ => new()
             },
             _ => new()
