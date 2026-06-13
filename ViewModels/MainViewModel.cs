@@ -460,7 +460,13 @@ public partial class MainViewModel : ObservableObject
         // Resolve the paste target from the node.
         var conn = node.Connection;
         var db = node.Database ?? _copied.Database;
-        var schema = node.Schema ?? _copied.Schema;
+        // The target schema must belong to the TARGET. Fall back to the source's schema, but never
+        // carry an empty schema into SQL Server (it would generate an invalid "[].[table]" identifier);
+        // default to dbo there.
+        var schema = !string.IsNullOrEmpty(node.Schema) ? node.Schema
+            : !string.IsNullOrEmpty(_copied.Schema) ? _copied.Schema
+            : conn.Engine == DatabaseEngine.SqlServer ? "dbo"
+            : _copied.Schema;
 
         if (!TableCopyService.CanCopyBetween(_copied.Connection.Engine, conn.Engine))
         {
