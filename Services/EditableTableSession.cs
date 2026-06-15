@@ -114,13 +114,9 @@ public sealed class EditableTableSession : IDisposable
         await connection.OpenAsync();
 
         var fq = Quote(DatabaseEngine.Oracle, table);
-        var data = new DataTable(table);
-        await using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = $"SELECT * FROM {fq} FETCH FIRST {rowLimit} ROWS ONLY";
-            await using var reader = await cmd.ExecuteReaderAsync();
-            data.Load(reader);
-        }
+        // Defensive load: Oracle DATE/TIMESTAMP values outside .NET's range become NULL rather than
+        // throwing "unrepresentable DateTime" and failing to open the table.
+        var data = await OracleService.ReadTableAsync(connection, table, rowLimit);
 
         var cols = await OracleService.GetColumnsAsync(connectionString, table);
         var nonComparable = new HashSet<string>(cols.Where(c => c.IsLob).Select(c => c.Name), StringComparer.OrdinalIgnoreCase);

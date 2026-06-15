@@ -299,10 +299,18 @@ public static class TableCopyService
         while (await reader.ReadAsync())
         {
             for (var i = 0; i < cols.Count; i++)
-                ps[i].Value = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
+                ps[i].Value = SafeReaderValue(reader, i);
             await insert.ExecuteNonQueryAsync();
         }
         await tx.CommitAsync();
+    }
+
+    /// <summary>Reads a cell, treating unconvertible values (e.g. out-of-range Oracle dates) as NULL.</summary>
+    private static object SafeReaderValue(DbDataReader reader, int i)
+    {
+        if (reader.IsDBNull(i)) return DBNull.Value;
+        try { return reader.GetValue(i) ?? DBNull.Value; }
+        catch { return DBNull.Value; }
     }
 
     private static async Task<string> BuildCreateDdlAsync(

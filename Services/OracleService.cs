@@ -137,17 +137,37 @@ public static class OracleService
         return Convert.ToInt64(await cmd.ExecuteScalarAsync());
     }
 
-    /// <summary>Loads up to <paramref name="rowLimit"/> rows of a table/view into a DataTable (read-only).</summary>
-    public static async Task<DataTable> LoadTableAsync(string cs, string table, int rowLimit)
+    /// <summary>
+    /// Loads up to <paramref name="rowLimit"/> rows of a table/view into a DataTable using an already
+    /// open connection. Reads each cell defensively: Oracle DATE/TIMESTAMP values outside .NET's
+    /// DateTime range (BC years, corrupt zero-dates) — and any other unconvertible value — become NULL
+    /// instead of throwing and aborting the whole table.
+    /// </summary>
+    public static async Task<DataTable> ReadTableAsync(OracleConnection conn, string table, int rowLimit)
     {
-        await using var conn = new OracleConnection(cs);
-        await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = $"SELECT * FROM {Quote(table)} FETCH FIRST {rowLimit} ROWS ONLY";
-        var data = new DataTable(table);
         await using var reader = await cmd.ExecuteReaderAsync();
-        data.Load(reader);
+
+        var data = new DataTable(table);
+        for (var i = 0; i < reader.FieldCount; i++)
+            data.Columns.Add(reader.GetName(i), reader.GetFieldType(i) ?? typeof(object));
+
+        while (await reader.ReadAsync())
+        {
+            var row = data.NewRow();
+            for (var i = 0; i < reader.FieldCount; i++)
+                row[i] = SafeGet(reader, i);
+            data.Rows.Add(row);
+        }
         return data;
+    }
+
+    private static object SafeGet(System.Data.Common.DbDataReader reader, int i)
+    {
+        if (reader.IsDBNull(i)) return DBNull.Value;
+        try { return reader.GetValue(i) ?? DBNull.Value; }
+        catch { return DBNull.Value; } // unrepresentable DATE/TIMESTAMP, oversized NUMBER, etc.
     }
 
     public static async Task ExecuteAsync(string cs, string sql)
