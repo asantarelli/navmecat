@@ -7,14 +7,18 @@ All notable changes to NavMeCat are documented here.
 ## v1.59.0 — 2026-06-19
 
 ### Added
+- **SQL syntax highlighting** — AvalonEdit with a custom `.xshd` definition: keywords, functions, strings, comments, operators each in a distinct color. Applies to the Query Window and Routine Editor.
+- **SQL autocompletion** — triggers on typing (2+ chars) or `Ctrl+Space`. Suggests keywords, table names from the active schema, and column names from tables referenced in the current query. Dot-triggered: `table.` → columns, `alias.` → resolves alias to columns.
+- **Multi-schema autocomplete** — `dbo.` lists tables in that schema; `dbo.Table.` lists columns; schema names are also suggested as completion items.
+- **Dark theme toggle** — switchable between Light and Dark in Settings; persists across sessions. Dark theme styled to VS Code palette.
 - **SQL Beautifier** (`Ctrl+Shift+F`) — custom tokenizer, no external dependencies. Works on selected text or the entire editor. Available in Query Window and Routine Editor.
 - **Query History** — last 50 queries per connection, persisted to AppData. Popup dropdown: single-click loads, double-click runs.
 - **Multiple resultsets** — `TabControl` replaces the single DataGrid; each `SELECT` in a batch gets its own tab.
 - **Schema Diff** — compare two databases on the same connection; expandable UI showing missing/differing tables and columns.
 - **ER Diagram** — WebView2 canvas with force-directed layout, drag nodes, pan, zoom, and Bézier FK arrows.
 - **Find in editor** (`Ctrl+F`) — AvalonEdit `SearchPanel` with a fully custom themed template; dropdown for Match case / Whole words / Regex; `◄ ►` navigation; `✕` to close.
-- **Multi-schema autocomplete** — `dbo.` lists tables in that schema; `dbo.Table.` lists columns; columns from all referenced schemas are suggested in scope.
 - **Session memory** — last active database per connection is saved and restored automatically on next launch.
+- **Diff and ER buttons** in the main toolbar (ribbon).
 - **Export button** in the Query Window toolbar.
 - **App icon** wiring (`Assets/AppIcon.ico`, `csproj`, `App.xaml.cs`).
 
