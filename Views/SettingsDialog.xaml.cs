@@ -30,6 +30,14 @@ public partial class SettingsDialog : Window
         };
         LanguageCombo.SelectedValue = s.Language;
         if (LanguageCombo.SelectedItem is null) LanguageCombo.SelectedIndex = 0;
+
+        ThemeCombo.ItemsSource = new[]
+        {
+            new LanguageOption("light", "Light"),
+            new LanguageOption("dark",  "Dark"),
+        };
+        ThemeCombo.SelectedValue = s.Theme;
+        if (ThemeCombo.SelectedItem is null) ThemeCombo.SelectedIndex = 0;
     }
 
     public record LanguageOption(string Code, string Name);
@@ -47,6 +55,8 @@ public partial class SettingsDialog : Window
             s.DefaultStructureSection = section;
         if (LanguageCombo.SelectedValue is string lang)
             s.Language = lang;
+        if (ThemeCombo.SelectedValue is string theme)
+            s.Theme = theme;
 
         SettingsStore.Save(s);
         LocalizationManager.Instance.Language = s.Language;

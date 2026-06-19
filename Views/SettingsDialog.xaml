@@ -20,13 +20,22 @@
             <StackPanel Margin="22,18,22,8">
                 <TextBlock Text="{loc:Tr Settings_Interface}" FontWeight="SemiBold" FontSize="12"
                            Foreground="{StaticResource B.TextMuted}" Margin="0,0,0,8"/>
-                <Grid Margin="0,0,0,16">
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Label Grid.Column="0" Content="{loc:Tr Settings_Language}" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <ComboBox x:Name="LanguageCombo" Grid.Column="1" Width="200" HorizontalAlignment="Left"
+                              DisplayMemberPath="Name" SelectedValuePath="Code"/>
+                </Grid>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Column="0" Content="{loc:Tr Settings_Theme}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="ThemeCombo" Grid.Column="1" Width="200" HorizontalAlignment="Left"
                               DisplayMemberPath="Name" SelectedValuePath="Code"/>
                 </Grid>
 

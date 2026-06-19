@@ -97,6 +97,8 @@ public partial class MainViewModel : ObservableObject
     private Task GoToViews() => GoToSection(NodeType.View);
     [RelayCommand]
     private Task GoToFunctions() => GoToSection(NodeType.Function);
+    [RelayCommand]
+    private Task GoToProcedures() => GoToSection(NodeType.Procedure);
 
     /// <summary>Drills the tree to the current connection/database's section and selects it.</summary>
     private async Task GoToSection(NodeType childType)

@@ -28,6 +28,9 @@ public partial class RoutineEditorWindow : Window
         Title = _isNew ? $"New {kind}" : $"Edit {kind} — {schema}.{name}";
         TitleLabel.Text = Title;
 
+        SqlEditorHelper.Configure(Editor);
+        SqlEditorHelper.ConfigureCompletion(Editor, connection, database, schema);
+
         PreviewKeyDown += async (_, e) =>
         {
             if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { e.Handled = true; await SaveAsync(); }
@@ -35,7 +38,7 @@ public partial class RoutineEditorWindow : Window
 
         if (_isNew)
         {
-            Editor.Text = template!;
+            Editor.Document.Text = template!;
             Messages.Text = "New object — edit the definition and press Ctrl+S to create it.";
         }
         else
@@ -53,18 +56,18 @@ public partial class RoutineEditorWindow : Window
                 _connection.BuildConnectionString(), _database ?? "", _schema, _name);
             if (string.IsNullOrEmpty(def))
             {
-                Editor.Text = "-- Definition not available (the object may be encrypted).";
+                Editor.Document.Text = "-- Definition not available (the object may be encrypted).";
                 Messages.Text = "No definition available.";
             }
             else
             {
-                Editor.Text = def;
+                Editor.Document.Text = def;
                 Messages.Text = "Loaded. Edit and press Ctrl+S to save.";
             }
         }
         catch (Exception ex)
         {
-            Editor.Text = "";
+            Editor.Document.Text = "";
             Messages.Text = "Error: " + ex.Message;
         }
     }
@@ -73,14 +76,13 @@ public partial class RoutineEditorWindow : Window
 
     private async Task SaveAsync()
     {
-        var text = Editor.Text;
+        var text = Editor.Document.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
 
         SaveButton.IsEnabled = false;
         Messages.Text = "Saving…";
         try
         {
-            // New object: run CREATE as-is. Existing: run as ALTER (works on SQL Server 2005+).
             var sql = _isNew ? text : MakeAlter(text);
             await SqlServerService.ExecuteAsync(_connection.BuildConnectionString(), _database ?? "", sql);
             Messages.Text = "Saved successfully.";

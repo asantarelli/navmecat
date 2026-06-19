@@ -26,7 +26,11 @@ public partial class QueryWindow : Window
 
         Title = $"Query — {connection.Name}" + (string.IsNullOrEmpty(database) ? "" : " / " + database);
         TargetLabel.Text = Title;
-        if (!string.IsNullOrEmpty(initialSql)) Editor.Text = initialSql;
+
+        SqlEditorHelper.Configure(Editor);
+        SqlEditorHelper.ConfigureCompletion(Editor, connection, database);
+
+        if (!string.IsNullOrEmpty(initialSql)) Editor.Document.Text = initialSql;
 
         PreviewKeyDown += async (_, e) =>
         {
@@ -45,7 +49,10 @@ public partial class QueryWindow : Window
 
     private async Task RunAsync()
     {
-        var sql = Editor.SelectionLength > 0 ? Editor.SelectedText : Editor.Text;
+        var selLen = Editor.SelectionLength;
+        var sql = selLen > 0
+            ? Editor.Document.GetText(Editor.SelectionStart, selLen)
+            : Editor.Document.Text;
         if (string.IsNullOrWhiteSpace(sql)) return;
 
         RunButton.IsEnabled = false;

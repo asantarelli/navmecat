@@ -15,5 +15,8 @@ public class AppSettings
     /// <summary>UI language code: "en" or "es".</summary>
     public string Language { get; set; } = "en";
 
+    /// <summary>UI theme: "light" or "dark".</summary>
+    public string Theme { get; set; } = "light";
+
     public AppSettings Clone() => (AppSettings)MemberwiseClone();
 }

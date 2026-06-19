@@ -158,6 +158,18 @@
                         <TextBlock Text="{loc:Tr Bar_Function}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
+                <!-- Stored Procedure (teal SP tile) -->
+                <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToProceduresCommand}">
+                    <StackPanel>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="{StaticResource GTeal}" Data="M4.5,3.5 H19.5 A2.5,2.5 0 0 1 22,6 V18 A2.5,2.5 0 0 1 19.5,20.5 H4.5 A2.5,2.5 0 0 1 2,18 V6 A2.5,2.5 0 0 1 4.5,3.5 Z"/>
+                            <Path Fill="#28FFFFFF" Data="M4.5,3.5 H19.5 A2.5,2.5 0 0 1 22,6 V9 H2 V6 A2.5,2.5 0 0 1 4.5,3.5 Z"/>
+                            <TextBlock Canvas.Left="0" Canvas.Top="2.5" Width="24" TextAlignment="Center"
+                                       Text="SP" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                        </Canvas>
+                        <TextBlock Text="{loc:Tr Bar_Procedure}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
                 <!-- Users & Roles (amber person, dropdown) -->
                 <Button Style="{StaticResource RibbonButton}" Click="UsersButton_Click">
