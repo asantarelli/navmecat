@@ -4,6 +4,7 @@ using System.Windows.Media;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
+using ICSharpCode.AvalonEdit.Search;
 using NavMeCat.Services.SqlCompletion;
 
 namespace NavMeCat.Services;
@@ -35,6 +36,14 @@ public static class SqlEditorHelper
         editor.Options.ConvertTabsToSpaces = false;
         editor.Options.IndentationSize = 4;
         editor.Padding = new System.Windows.Thickness(8);
+        var sp = SearchPanel.Install(editor);
+        // MarkerBrush must be set after Install() — applying it via an implicit Style
+        // before the panel is attached to a TextArea throws NullReferenceException.
+        sp.MarkerBrush = ThemeManager.Current == "dark"
+            ? new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromArgb(0x66, 0x4F, 0xC3, 0xF7))  // blue
+            : new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromArgb(0x66, 0x15, 0x65, 0xC0)); // accent blue
         ApplyThemeColors(editor);
     }
 

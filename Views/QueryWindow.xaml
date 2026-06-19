@@ -28,6 +28,53 @@
                         </StackPanel>
                     </Button>
                     <Button Content="Clear" Margin="10,0,0,0" Click="Clear_Click"/>
+                    <Button Content="Format  (Ctrl+Shift+F)" Margin="10,0,0,0" Click="Format_Click" ToolTip="Beautify SQL"/>
+                    <!-- History button + popup -->
+                    <Button x:Name="HistoryButton" Content="⏱ History" Margin="10,0,0,0"
+                            Click="History_Click" ToolTip="Recent queries (Ctrl+H)"/>
+                    <Popup x:Name="HistoryPopup" StaysOpen="False"
+                           PlacementTarget="{Binding ElementName=HistoryButton}"
+                           Placement="Bottom" AllowsTransparency="True">
+                        <Border Background="{StaticResource B.Surface}"
+                                BorderBrush="{StaticResource B.Border}" BorderThickness="1"
+                                CornerRadius="6" Width="560" MaxHeight="320">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.2" Color="#FF000000"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0" Background="{StaticResource B.SurfaceAlt}"
+                                        BorderBrush="{StaticResource B.Border}" BorderThickness="0,0,0,1"
+                                        Padding="12,8">
+                                    <TextBlock Text="Recent queries — click to load · double-click to run"
+                                               FontSize="11" Foreground="{StaticResource B.TextMuted}"/>
+                                </Border>
+                                <ListBox x:Name="HistoryList" Grid.Row="1"
+                                         Background="Transparent" BorderThickness="0"
+                                         MouseDoubleClick="HistoryList_DoubleClick"
+                                         SelectionChanged="HistoryList_SelectionChanged">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="12,7"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Preview}" FontFamily="Consolas" FontSize="12"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{StaticResource B.Text}"
+                                                       ToolTip="{Binding Sql}"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Border>
+                    </Popup>
+                    <Button x:Name="ExportButton" Content="Export…" Margin="10,0,0,0" Click="Export_Click" IsEnabled="False"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -43,9 +90,9 @@
                       VerticalAlignment="Center" ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"
                       Style="{StaticResource PaneSplitter}"/>
 
-        <!-- Results -->
-        <DataGrid x:Name="ResultsGrid" Grid.Row="3" Margin="12,0,12,8"
-                  IsReadOnly="True" AutoGenerateColumns="True" CanUserAddRows="False"/>
+        <!-- Results: TabControl, one tab per resultset -->
+        <TabControl x:Name="ResultTabs" Grid.Row="3" Margin="12,0,12,8"
+                    Background="{StaticResource B.Surface}"/>
 
         <!-- Messages -->
         <Border Grid.Row="4" Background="{StaticResource B.Sidebar}" Padding="14,6">

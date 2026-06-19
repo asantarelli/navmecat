@@ -17,12 +17,15 @@
             <Grid>
                 <TextBlock x:Name="TitleLabel" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold"
                            Foreground="{StaticResource B.Text}"/>
-                <Button x:Name="SaveButton" HorizontalAlignment="Right" Style="{StaticResource AccentButton}" Click="Save_Click">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Format  (Ctrl+Shift+F)" Margin="0,0,10,0" Click="Format_Click" ToolTip="Beautify SQL"/>
+                <Button x:Name="SaveButton" Style="{StaticResource AccentButton}" Click="Save_Click">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Style="{StaticResource ToolIcon}" Text="&#xE74E;"/>
                         <TextBlock Text="Save  (Ctrl+S)"/>
                     </StackPanel>
                 </Button>
+                </StackPanel>
             </Grid>
         </Border>
 

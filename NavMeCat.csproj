@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <Version>1.58.2</Version>
     <AssemblyTitle>NavMeCat</AssemblyTitle>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -35,6 +36,9 @@
     <!-- SQL syntax highlighting definition for AvalonEdit -->
     <None Remove="Assets\SQL.xshd" />
     <EmbeddedResource Include="Assets\SQL.xshd" />
+    <!-- App icon -->
+    <None Remove="Assets\AppIcon.ico" />
+    <Resource Include="Assets\AppIcon.ico" />
   </ItemGroup>
 
 </Project>

@@ -21,6 +21,12 @@ public sealed class ExportOptions
 {
     public bool JsonLegacyRecordsKey { get; set; }
     public bool ZeroPaddingDate { get; set; } = true;
+
+    /// <summary>Emit a GO statement every N INSERT rows (0 = no GO). SQL Server batch separator.</summary>
+    public int SqlBatchSize { get; set; } = 100;
+
+    /// <summary>Wrap SQL export in SET NOCOUNT ON / OFF.</summary>
+    public bool SqlNoCount { get; set; } = true;
     public DateOrder DateOrder { get; set; } = DateOrder.DMY;
     public string DateDelimiter { get; set; } = "/";
     public string TimeDelimiter { get; set; } = ":";
@@ -104,7 +110,7 @@ public static class ExportService
             case ExportFormat.Xlsx: WriteXlsx(path, columns, rows, includeHeaders, display); break;
             case ExportFormat.Xls: WriteXls(path, columns, rows, includeHeaders, display); break;
             case ExportFormat.Dbf: WriteDbf(path, columns, rows, display); break;
-            case ExportFormat.Sql: WriteSql(path, columns, rows, objectName ?? "exported_data", display); break;
+            case ExportFormat.Sql: WriteSql(path, columns, rows, objectName ?? "exported_data", display, options); break;
         }
     }
 
@@ -319,15 +325,25 @@ public static class ExportService
 
     // ---- SQL script (INSERT statements) ---------------------------------
     private static void WriteSql(string path, IReadOnlyList<string> cols, List<DataRowView> rows,
-        string tableName, Func<string, object?, string?>? display)
+        string tableName, Func<string, object?, string?>? display, ExportOptions opt)
     {
-        var table = "\"" + tableName.Replace("\"", "\"\"") + "\"";
-        var colList = string.Join(", ", cols.Select(c => "\"" + c.Replace("\"", "\"\"") + "\""));
+        var table   = "[" + tableName.Replace("]", "]]") + "]";
+        var colList = string.Join(", ", cols.Select(c => "[" + c.Replace("]", "]]") + "]"));
         var sb = new StringBuilder();
-        sb.Append("-- Export of ").Append(tableName).Append(" — ").Append(rows.Count).AppendLine(" row(s)");
 
-        foreach (var r in rows)
+        sb.Append("-- Export of ").Append(tableName)
+          .Append(" — ").Append(rows.Count).AppendLine(" row(s)")
+          .Append("-- Generated ").AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))
+          .AppendLine();
+
+        if (opt.SqlNoCount)
+            sb.AppendLine("SET NOCOUNT ON;").AppendLine();
+
+        var batchSize = opt.SqlBatchSize > 0 ? opt.SqlBatchSize : int.MaxValue;
+
+        for (var idx = 0; idx < rows.Count; idx++)
         {
+            var r = rows[idx];
             sb.Append("INSERT INTO ").Append(table).Append(" (").Append(colList).Append(") VALUES (");
             for (var i = 0; i < cols.Count; i++)
             {
@@ -337,7 +353,18 @@ public static class ExportService
                 sb.Append(over is not null ? SqlLiteral(over) : SqlValue(raw));
             }
             sb.AppendLine(");");
+
+            // Emit GO every batchSize rows (1-based: after row 100, 200, …)
+            if (opt.SqlBatchSize > 0 && (idx + 1) % batchSize == 0 && idx + 1 < rows.Count)
+                sb.AppendLine().AppendLine("GO").AppendLine();
         }
+
+        if (opt.SqlBatchSize > 0)
+            sb.AppendLine().AppendLine("GO");
+
+        if (opt.SqlNoCount)
+            sb.AppendLine().AppendLine("SET NOCOUNT OFF;");
+
         File.WriteAllText(path, sb.ToString(), new UTF8Encoding(true));
     }
 

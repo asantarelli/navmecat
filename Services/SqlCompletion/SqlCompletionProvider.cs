@@ -112,15 +112,49 @@ public class SqlCompletionProvider
     {
         var list = new List<SqlCompletionData>();
 
-        // --- Dot-triggered: columns for the table/alias before the dot ---
+        // --- Dot-triggered ---
         if (dotTriggered)
         {
-            var dotIdx = textBefore.LastIndexOf('.');
-            var prefixBefore = dotIdx > 0 ? textBefore[..dotIdx] : "";
-            var tableOrAlias = GetTrailingWord(prefixBefore);
-            if (!string.IsNullOrEmpty(tableOrAlias))
+            // Find last dot position (just typed) and the token before it
+            var lastDot = textBefore.Length - 1; // the dot just typed
+            var prefixBefore = textBefore[..lastDot];
+
+            // Check for second dot: could be "schema.table." → columns
+            var prevDotIdx = prefixBefore.LastIndexOf('.');
+            if (prevDotIdx >= 0)
             {
-                foreach (var col in ResolveColumns(fullText, tableOrAlias))
+                // "schema.table." → try qualified lookup first
+                var tablePart  = GetTrailingWord(prefixBefore);          // e.g. "Orders"
+                var schemaPart = GetTrailingWord(prefixBefore[..prevDotIdx]); // e.g. "dbo"
+                var qKey = $"{schemaPart}.{tablePart}";
+                if (_schema.Columns.TryGetValue(qKey, out var qCols))
+                {
+                    list.AddRange(qCols.Select(c => new SqlCompletionData(c, CompletionKind.Column)));
+                    return list;
+                }
+                // Also try unqualified table name
+                if (_schema.Columns.TryGetValue(tablePart, out var tCols))
+                {
+                    list.AddRange(tCols.Select(c => new SqlCompletionData(c, CompletionKind.Column)));
+                    return list;
+                }
+            }
+
+            // Single-segment before dot: check if it's a schema name
+            var nameBeforeDot = GetTrailingWord(prefixBefore);
+            if (!string.IsNullOrEmpty(nameBeforeDot) &&
+                _schema.SchemaToTables.TryGetValue(nameBeforeDot, out var schemaTables))
+            {
+                // "dbo." → suggest tables in that schema
+                list.AddRange(schemaTables.Select(t =>
+                    new SqlCompletionData(t, CompletionKind.Table, $"{nameBeforeDot}.{t}")));
+                return list;
+            }
+
+            // Fallback: treat as table/alias → columns
+            if (!string.IsNullOrEmpty(nameBeforeDot))
+            {
+                foreach (var col in ResolveColumns(fullText, nameBeforeDot))
                     list.Add(new SqlCompletionData(col, CompletionKind.Column));
             }
             return list;
@@ -144,10 +178,15 @@ public class SqlCompletionProvider
                     list.Add(new SqlCompletionData(col, CompletionKind.Column, $"Column of {tbl}"));
         }
 
-        // Tables
+        // Tables (active schema, unqualified)
         foreach (var t in _schema.Tables)
             if (forceAll || isTableContext || t.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
                 list.Add(new SqlCompletionData(t, CompletionKind.Table));
+
+        // Schema names (so user can type "dbo" then "." to get table list)
+        foreach (var s in _schema.Schemas)
+            if (forceAll || s.StartsWith(filter, StringComparison.OrdinalIgnoreCase))
+                list.Add(new SqlCompletionData(s, CompletionKind.Table, $"Schema: {s}"));
 
         // Keywords
         foreach (var kw in SqlKeywords)
@@ -164,6 +203,12 @@ public class SqlCompletionProvider
         foreach (Match m in FromTablePattern.Matches(text))
         {
             var raw = m.Groups[1].Value;
+            // Try qualified key first (schema.table), then bare name
+            if (_schema.Columns.ContainsKey(raw))
+            {
+                result.Add(raw);
+                continue;
+            }
             var tableName = raw.Contains('.') ? raw[(raw.LastIndexOf('.') + 1)..] : raw;
             tableName = tableName.Trim('[', ']', '"');
             if (_schema.Columns.ContainsKey(tableName))
@@ -185,6 +230,9 @@ public class SqlCompletionProvider
         if (m.Success)
         {
             var raw = m.Groups[1].Value;
+            // Try qualified key first, then bare name
+            if (_schema.Columns.TryGetValue(raw, out var qCols))
+                return qCols;
             var name = raw.Contains('.') ? raw[(raw.LastIndexOf('.') + 1)..] : raw;
             name = name.Trim('[', ']', '"');
             if (_schema.Columns.TryGetValue(name, out var aliasCols))

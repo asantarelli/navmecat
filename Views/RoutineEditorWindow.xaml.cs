@@ -34,6 +34,8 @@ public partial class RoutineEditorWindow : Window
         PreviewKeyDown += async (_, e) =>
         {
             if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { e.Handled = true; await SaveAsync(); }
+            if (e.Key == Key.F && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift))
+            { e.Handled = true; FormatSql(); }
         };
 
         if (_isNew)
@@ -69,6 +71,24 @@ public partial class RoutineEditorWindow : Window
         {
             Editor.Document.Text = "";
             Messages.Text = "Error: " + ex.Message;
+        }
+    }
+
+    private void Format_Click(object sender, RoutedEventArgs e) => FormatSql();
+
+    private void FormatSql()
+    {
+        var selLen = Editor.SelectionLength;
+        if (selLen > 0)
+        {
+            var selStart = Editor.SelectionStart;
+            Editor.Document.Replace(selStart, selLen, SqlBeautifier.Format(Editor.Document.GetText(selStart, selLen)));
+        }
+        else
+        {
+            var caret = Editor.CaretOffset;
+            Editor.Document.Text = SqlBeautifier.Format(Editor.Document.Text);
+            Editor.CaretOffset = Math.Min(caret, Editor.Document.TextLength);
         }
     }
 

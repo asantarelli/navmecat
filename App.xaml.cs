@@ -11,5 +11,13 @@ public partial class App : Application
         ThemeManager.Apply(SettingsStore.Current.Theme);
         base.OnStartup(e);
         LocalizationManager.Instance.Language = SettingsStore.Current.Language;
+
+        try
+        {
+            var uri = new Uri("pack://application:,,,/Assets/AppIcon.ico", UriKind.Absolute);
+            var icon = new System.Windows.Media.Imaging.BitmapImage(uri);
+            if (MainWindow != null) MainWindow.Icon = icon;
+        }
+        catch { /* si el ico no está disponible, no pasa nada */ }
     }
 }

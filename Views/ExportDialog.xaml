@@ -34,6 +34,28 @@
                     <RadioButton x:Name="AllRadio" GroupName="Scope" Margin="2,2"/>
                 </StackPanel>
 
+                <!-- SQL options (shown only when SQL is selected) -->
+                <Border x:Name="SqlPanel" Visibility="Collapsed" Margin="0,0,0,12"
+                        Background="{StaticResource B.SurfaceAlt}" CornerRadius="6"
+                        BorderBrush="{StaticResource B.Border}" BorderThickness="1" Padding="12,10">
+                    <StackPanel>
+                        <TextBlock Text="SQL options" FontWeight="SemiBold" FontSize="12"
+                                   Foreground="{StaticResource B.TextMuted}" Margin="0,0,0,8"/>
+                        <CheckBox x:Name="SqlNoCountCheck" Content="Include SET NOCOUNT ON / OFF"
+                                  IsChecked="True" Margin="0,0,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="80"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Label Grid.Column="0" Content="GO every" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" x:Name="SqlBatchBox" Text="100" Margin="4,2,0,2"/>
+                            <Label Grid.Column="2" Content="rows  (0 = no GO)" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <!-- JSON options (shown only when JSON is selected) -->
                 <Border x:Name="JsonPanel" Visibility="Collapsed" Margin="0,0,0,12"
                         Background="{StaticResource B.SurfaceAlt}" CornerRadius="6"

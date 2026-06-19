@@ -18,5 +18,13 @@ public class AppSettings
     /// <summary>UI theme: "light" or "dark".</summary>
     public string Theme { get; set; } = "light";
 
-    public AppSettings Clone() => (AppSettings)MemberwiseClone();
+    /// <summary>Last active database per connection (connectionId → databaseName).</summary>
+    public Dictionary<string, string> LastDatabases { get; set; } = new();
+
+    public AppSettings Clone()
+    {
+        var c = (AppSettings)MemberwiseClone();
+        c.LastDatabases = new Dictionary<string, string>(LastDatabases);
+        return c;
+    }
 }
