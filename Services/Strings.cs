@@ -111,6 +111,7 @@ public static class Strings
         ["Bar_Table"] = "Table",
         ["Bar_View"] = "View",
         ["Bar_Function"] = "Function",
+        ["Bar_Procedure"] = "Stored Proc",
         ["Bar_Refresh"] = "Refresh",
         ["Bar_VisualDesigner"] = "Visual Designer",
         ["Bar_Users"] = "Users",
@@ -149,6 +150,7 @@ public static class Strings
         ["Settings_ConvertClarion"] = "Convert Clarion date / time / timestamp columns by default",
         ["Settings_ApplyNote"] = "Changes apply to tables opened from now on.",
         ["Settings_Language"] = "Language",
+        ["Settings_Theme"] = "Theme",
         ["Settings_Interface"] = "Interface",
 
         // Context menu
@@ -333,6 +335,7 @@ public static class Strings
         ["Bar_Table"] = "Tabla",
         ["Bar_View"] = "Vista",
         ["Bar_Function"] = "Función",
+        ["Bar_Procedure"] = "Proc. Almac.",
         ["Bar_Refresh"] = "Actualizar",
         ["Bar_VisualDesigner"] = "Diseñador visual",
         ["Bar_Users"] = "Usuarios",
@@ -371,6 +374,7 @@ public static class Strings
         ["Settings_ConvertClarion"] = "Convertir columnas de fecha/hora/marca de tiempo Clarion de forma predeterminada",
         ["Settings_ApplyNote"] = "Los cambios se aplican a las tablas abiertas a partir de ahora.",
         ["Settings_Language"] = "Idioma",
+        ["Settings_Theme"] = "Tema",
         ["Settings_Interface"] = "Interfaz",
 
         // Menú contextual

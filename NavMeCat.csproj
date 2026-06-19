@@ -8,9 +8,11 @@
     <UseWPF>true</UseWPF>
     <Version>1.58.2</Version>
     <AssemblyTitle>NavMeCat</AssemblyTitle>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="FirebirdSql.Data.FirebirdClient" Version="10.3.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
@@ -31,6 +33,12 @@
     <None Remove="Docs\help.es.html" />
     <Resource Include="Docs\help.en.html" />
     <Resource Include="Docs\help.es.html" />
+    <!-- SQL syntax highlighting definition for AvalonEdit -->
+    <None Remove="Assets\SQL.xshd" />
+    <EmbeddedResource Include="Assets\SQL.xshd" />
+    <!-- App icon -->
+    <None Remove="Assets\AppIcon.ico" />
+    <Resource Include="Assets\AppIcon.ico" />
   </ItemGroup>
 
 </Project>

@@ -32,7 +32,25 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnActiveTabChanged(object? value) => OnPropertyChanged(nameof(SelectedTab));
 
-    partial void OnSelectedNodeChanged(DbTreeNode? value) => _ = UpdateObjectListAsync(value);
+    partial void OnSelectedNodeChanged(DbTreeNode? value)
+    {
+        _ = UpdateObjectListAsync(value);
+        SaveLastDatabase(value);
+    }
+
+    private static void SaveLastDatabase(DbTreeNode? node)
+    {
+        if (node is null) return;
+        var db = node.Database ?? (node.Type == NodeType.Database ? node.Name : null);
+        if (string.IsNullOrEmpty(db)) return;
+
+        var settings = SettingsStore.Current;
+        var key = node.Connection.Id.ToString();
+        if (settings.LastDatabases.TryGetValue(key, out var existing) && existing == db) return;
+
+        settings.LastDatabases[key] = db;
+        SettingsStore.Save(settings);
+    }
 
     private async Task UpdateObjectListAsync(DbTreeNode? node)
     {
@@ -97,6 +115,8 @@ public partial class MainViewModel : ObservableObject
     private Task GoToViews() => GoToSection(NodeType.View);
     [RelayCommand]
     private Task GoToFunctions() => GoToSection(NodeType.Function);
+    [RelayCommand]
+    private Task GoToProcedures() => GoToSection(NodeType.Procedure);
 
     /// <summary>Drills the tree to the current connection/database's section and selects it.</summary>
     private async Task GoToSection(NodeType childType)
@@ -175,6 +195,36 @@ public partial class MainViewModel : ObservableObject
     {
         foreach (var profile in _store.Load())
             Roots.Add(DbTreeNode.Server(profile));
+        _ = RestoreLastDatabasesAsync();
+    }
+
+    /// <summary>
+    /// On startup, for each connection that has a remembered last database,
+    /// expand the server node and pre-select that database in the tree.
+    /// </summary>
+    private async Task RestoreLastDatabasesAsync()
+    {
+        var saved = SettingsStore.Current.LastDatabases;
+        if (saved.Count == 0) return;
+
+        foreach (var root in Roots.ToList())
+        {
+            if (!saved.TryGetValue(root.Connection.Id.ToString(), out var dbName)) continue;
+            if (string.IsNullOrEmpty(dbName)) continue;
+
+            // Load server children (databases / schemas)
+            // Load server children if only the placeholder (NodeType.Message) is present
+            if (root.Children.All(c => c.Type == NodeType.Message))
+                await root.LoadChildrenAsync();
+
+            var dbNode = root.Children.FirstOrDefault(c =>
+                c.Type == NodeType.Database && c.Name == dbName);
+            if (dbNode is null) continue;
+
+            root.IsExpanded = true;
+            dbNode.IsExpanded = true;
+            SelectedNode = dbNode;
+        }
     }
 
     private void Persist() =>
@@ -234,6 +284,31 @@ public partial class MainViewModel : ObservableObject
         }
         new Views.QueryBuilderWindow(connection, node?.Database).Show();
         StatusText = $"Opened the query builder for '{connection.Name}'.";
+    }
+
+    [RelayCommand]
+    private void OpenSchemaDiff()
+    {
+        var node = SelectedNode;
+        var connection = node?.Connection
+            ?? Roots.FirstOrDefault(r => r.Type == NodeType.Server)?.Connection;
+        if (connection is null) { StatusText = "Add a connection first."; return; }
+        if (connection.Engine is DatabaseEngine.MongoDb or DatabaseEngine.Sqlite)
+        { Dialogs.ShowMessage("Not available", "Schema diff requires a server with multiple databases."); return; }
+        new Views.SchemaDiffWindow(connection, node?.Database).Show();
+    }
+
+    [RelayCommand]
+    private void OpenErDiagram()
+    {
+        var node = SelectedNode;
+        var connection = node?.Connection
+            ?? Roots.FirstOrDefault(r => r.Type == NodeType.Server)?.Connection;
+        if (connection is null) { StatusText = "Add a connection first."; return; }
+        if (connection.Engine == DatabaseEngine.MongoDb)
+        { Dialogs.ShowMessage("Not available", "ER Diagram doesn't apply to MongoDB."); return; }
+        var db = node?.Database;
+        new Views.ErDiagramWindow(connection, db).Show();
     }
 
     [RelayCommand]

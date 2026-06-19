@@ -28,14 +28,19 @@ public partial class RoutineEditorWindow : Window
         Title = _isNew ? $"New {kind}" : $"Edit {kind} — {schema}.{name}";
         TitleLabel.Text = Title;
 
+        SqlEditorHelper.Configure(Editor);
+        SqlEditorHelper.ConfigureCompletion(Editor, connection, database, schema);
+
         PreviewKeyDown += async (_, e) =>
         {
             if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) { e.Handled = true; await SaveAsync(); }
+            if (e.Key == Key.F && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift))
+            { e.Handled = true; FormatSql(); }
         };
 
         if (_isNew)
         {
-            Editor.Text = template!;
+            Editor.Document.Text = template!;
             Messages.Text = "New object — edit the definition and press Ctrl+S to create it.";
         }
         else
@@ -53,19 +58,37 @@ public partial class RoutineEditorWindow : Window
                 _connection.BuildConnectionString(), _database ?? "", _schema, _name);
             if (string.IsNullOrEmpty(def))
             {
-                Editor.Text = "-- Definition not available (the object may be encrypted).";
+                Editor.Document.Text = "-- Definition not available (the object may be encrypted).";
                 Messages.Text = "No definition available.";
             }
             else
             {
-                Editor.Text = def;
+                Editor.Document.Text = def;
                 Messages.Text = "Loaded. Edit and press Ctrl+S to save.";
             }
         }
         catch (Exception ex)
         {
-            Editor.Text = "";
+            Editor.Document.Text = "";
             Messages.Text = "Error: " + ex.Message;
+        }
+    }
+
+    private void Format_Click(object sender, RoutedEventArgs e) => FormatSql();
+
+    private void FormatSql()
+    {
+        var selLen = Editor.SelectionLength;
+        if (selLen > 0)
+        {
+            var selStart = Editor.SelectionStart;
+            Editor.Document.Replace(selStart, selLen, SqlBeautifier.Format(Editor.Document.GetText(selStart, selLen)));
+        }
+        else
+        {
+            var caret = Editor.CaretOffset;
+            Editor.Document.Text = SqlBeautifier.Format(Editor.Document.Text);
+            Editor.CaretOffset = Math.Min(caret, Editor.Document.TextLength);
         }
     }
 
@@ -73,14 +96,13 @@ public partial class RoutineEditorWindow : Window
 
     private async Task SaveAsync()
     {
-        var text = Editor.Text;
+        var text = Editor.Document.Text;
         if (string.IsNullOrWhiteSpace(text)) return;
 
         SaveButton.IsEnabled = false;
         Messages.Text = "Saving…";
         try
         {
-            // New object: run CREATE as-is. Existing: run as ALTER (works on SQL Server 2005+).
             var sql = _isNew ? text : MakeAlter(text);
             await SqlServerService.ExecuteAsync(_connection.BuildConnectionString(), _database ?? "", sql);
             Messages.Text = "Saved successfully.";

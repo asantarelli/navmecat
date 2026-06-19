@@ -39,6 +39,7 @@ public partial class ExportDialog : Window
             {
                 _format = (ExportFormat)rb.Tag;
                 JsonPanel.Visibility = _format == ExportFormat.Json ? Visibility.Visible : Visibility.Collapsed;
+                SqlPanel.Visibility  = _format == ExportFormat.Sql  ? Visibility.Visible : Visibility.Collapsed;
             };
             FormatList.Children.Add(rb);
         }
@@ -73,6 +74,8 @@ public partial class ExportDialog : Window
         TimeDelimiter = string.IsNullOrEmpty(TimeDelimBox.Text) ? ":" : TimeDelimBox.Text,
         DecimalSymbol = string.IsNullOrEmpty(DecimalBox.Text) ? "." : DecimalBox.Text,
         Binary = BinaryCombo.SelectedItem is BinaryEncoding b ? b : BinaryEncoding.Base64,
+        SqlBatchSize = int.TryParse(SqlBatchBox.Text, out var bs) && bs >= 0 ? bs : 100,
+        SqlNoCount = SqlNoCountCheck.IsChecked == true,
     };
 
     /// <summary>The view to export from, honoring the All/Filtered choice.</summary>

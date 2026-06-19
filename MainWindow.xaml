@@ -158,6 +158,45 @@
                         <TextBlock Text="{loc:Tr Bar_Function}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Button>
+                <!-- Stored Procedure (teal SP tile) -->
+                <Button Style="{StaticResource RibbonButton}" Command="{Binding GoToProceduresCommand}">
+                    <StackPanel>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="{StaticResource GTeal}" Data="M4.5,3.5 H19.5 A2.5,2.5 0 0 1 22,6 V18 A2.5,2.5 0 0 1 19.5,20.5 H4.5 A2.5,2.5 0 0 1 2,18 V6 A2.5,2.5 0 0 1 4.5,3.5 Z"/>
+                            <Path Fill="#28FFFFFF" Data="M4.5,3.5 H19.5 A2.5,2.5 0 0 1 22,6 V9 H2 V6 A2.5,2.5 0 0 1 4.5,3.5 Z"/>
+                            <TextBlock Canvas.Left="0" Canvas.Top="2.5" Width="24" TextAlignment="Center"
+                                       Text="SP" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                        </Canvas>
+                        <TextBlock Text="{loc:Tr Bar_Procedure}" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
+                <!-- Schema Diff -->
+                <Button Style="{StaticResource RibbonButton}" Command="{Binding OpenSchemaDiffCommand}">
+                    <StackPanel>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Path Fill="#5C6BC0" Data="M2,4 H10 V10 H2 Z M14,4 H22 V10 H14 Z"/>
+                            <Path Stroke="#9E9E9E" StrokeThickness="1.4" Fill="Transparent"
+                                  Data="M10,7 H14 M12,5.5 L14,7 L12,8.5"/>
+                            <Path Stroke="#5C6BC0" StrokeThickness="1" Fill="Transparent"
+                                  Data="M3,12 H21 M3,15 H18 M3,18 H14"/>
+                        </Canvas>
+                        <TextBlock Text="Diff" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Button>
+                <!-- ER Diagram -->
+                <Button Style="{StaticResource RibbonButton}" Command="{Binding OpenErDiagramCommand}">
+                    <StackPanel>
+                        <Canvas Width="24" Height="24" HorizontalAlignment="Center">
+                            <Ellipse Canvas.Left="1"  Canvas.Top="9"  Width="7" Height="7" Fill="#26C6DA"/>
+                            <Ellipse Canvas.Left="16" Canvas.Top="2"  Width="7" Height="7" Fill="#4DB6AC"/>
+                            <Ellipse Canvas.Left="16" Canvas.Top="16" Width="7" Height="7" Fill="#4DB6AC"/>
+                            <Path Stroke="#90A4AE" StrokeThickness="1.2" Fill="Transparent"
+                                  Data="M8,12.5 L16,5.5 M8,12.5 L16,19.5"/>
+                        </Canvas>
+                        <TextBlock Text="ER" FontSize="11" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Button>
                 <Border Width="1" Background="{StaticResource B.Border}" Margin="6,4"/>
                 <!-- Users & Roles (amber person, dropdown) -->
                 <Button Style="{StaticResource RibbonButton}" Click="UsersButton_Click">
